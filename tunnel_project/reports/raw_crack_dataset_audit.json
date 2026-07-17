@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-17T17:02:07+08:00",
+  "audit_guarantees": {
+    "raw_dataset_modified": false,
+    "mode": "read-only scan",
+    "report_output_directory": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\tunnel_project\\reports"
+  },
+  "dataset": {
+    "root": "E:\\ditie_dataset\\隧道数据集",
+    "images_directory": "E:\\ditie_dataset\\隧道数据集\\images",
+    "labels_directory": "E:\\ditie_dataset\\隧道数据集\\labels",
+    "data_yaml": "E:\\ditie_dataset\\隧道数据集\\data.yaml",
+    "data_yaml_exists": true,
+    "data_yaml_readable": true,
+    "data_yaml_error": "",
+    "target_class_id": 2,
+    "planned_class_id": 0,
+    "planned_class_name": "crack",
+    "supported_image_extensions": [
+      ".bmp",
+      ".jpeg",
+      ".jpg",
+      ".png",
+      ".tif",
+      ".tiff"
+    ]
+  },
+  "files": {
+    "image_count": 20206,
+    "label_count": 20206
+  },
+  "pairing": {
+    "is_one_to_one": true,
+    "unambiguous_pair_count": 20206,
+    "image_without_label_count": 0,
+    "label_without_image_count": 0,
+    "image_stem_conflict_count": 0,
+    "label_stem_conflict_count": 0,
+    "image_stem_conflicts": {},
+    "label_stem_conflicts": {},
+    "unmatched_and_conflict_entries": []
+  },
+  "label_validation": {
+    "total_nonblank_rows": 27004,
+    "parseable_box_rows": 27004,
+    "strictly_valid_rows": 27002,
+    "invalid_line_count": 2,
+    "invalid_entry_count": 2,
+    "blocking_entry_count": 2,
+    "duplicate_row_count": 0,
+    "empty_label_file_count": 0,
+    "empty_label_files": [],
+    "read_error_count": 0,
+    "read_errors": [],
+    "files_with_blocking_errors_count": 2,
+    "files_with_blocking_errors": [
+      "labels/t798_620_015304743.txt",
+      "labels/t812_812_011906777.txt"
+    ],
+    "error_code_counts": {
+      "BBOX_OUT_OF_BOUNDS": 2
+    },
+    "invalid_entries": [
+      {
+        "label_path": "labels/t798_620_015304743.txt",
+        "line_number": 2,
+        "error_codes": [
+          "BBOX_OUT_OF_BOUNDS"
+        ],
+        "details": [
+          "Normalized edges are left=-0.001845, top=0.466696, right=0.555579, bottom=0.765406."
+        ],
+        "line_text": "4 0.276867 0.616051 0.557424 0.298710"
+      },
+      {
+        "label_path": "labels/t812_812_011906777.txt",
+        "line_number": 1,
+        "error_codes": [
+          "BBOX_OUT_OF_BOUNDS"
+        ],
+        "details": [
+          "Normalized edges are left=0.8397435, top=0.151554, right=0.8566865, bottom=1.000032."
+        ],
+        "line_text": "2 0.848215 0.575793 0.016943 0.848478"
+      }
+    ]
+  },
+  "class_statistics": {
+    "0": {
+      "image_count": 3343,
+      "box_count": 3734
+    },
+    "1": {
+      "image_count": 1749,
+      "box_count": 1770
+    },
+    "2": {
+      "image_count": 2404,
+      "box_count": 2941
+    },
+    "3": {
+      "image_count": 4,
+      "box_count": 4
+    },
+    "4": {
+      "image_count": 2973,
+      "box_count": 3469
+    },
+    "5": {
+      "image_count": 9388,
+      "box_count": 12852
+    },
+    "6": {
+      "image_count": 1693,
+      "box_count": 1922
+    },
+    "7": {
+      "image_count": 312,
+      "box_count": 312
+    }
+  },
+  "crack_statistics": {
+    "target_class_id": 2,
+    "images_with_target_class": 2404,
+    "target_box_count": 2941,
+    "images_with_only_target_class": 1916,
+    "images_with_target_and_other_classes": 488,
+    "images_without_target_class": 17802,
+    "target_image_total_size_bytes": 2818276269,
+    "target_image_total_size_human": "2.62 GiB",
+    "target_images_without_readable_file_size": 0
+  },
+  "image_statistics": {
+    "readable_image_count": 20206,
+    "corrupt_or_unreadable_image_count": 0,
+    "corrupt_or_unreadable_images": [],
+    "width_pixels": {
+      "count": 20206,
+      "min": 4096,
+      "max": 4096,
+      "mean": 4096.0,
+      "median": 4096.0
+    },
+    "height_pixels": {
+      "count": 20206,
+      "min": 2168,
+      "max": 2168,
+      "mean": 2168.0,
+      "median": 2168.0
+    },
+    "aspect_ratio_width_over_height": {
+      "count": 20206,
+      "min": 1.8892988929889298,
+      "max": 1.8892988929889298,
+      "mean": 1.8892988929889298,
+      "median": 1.8892988929889298
+    },
+    "file_size_bytes": {
+      "count": 20206,
+      "min": 291474,
+      "max": 2247880,
+      "mean": 1167672.731416411,
+      "median": 1132273.0,
+      "total": 23593995211
+    }
+  },
+  "readiness": {
+    "can_continue": false,
+    "blockers": [
+      "标签中有 2 个需要修复的格式或数值错误条目。"
+    ],
+    "warnings": [
+      "有 488 张图片同时包含裂缝和其他类别，后续筛选时需只保留并映射裂缝框。",
+      "有 17802 张图片不包含裂缝，后续构建单类别数据集时需按既定策略处理。"
+    ]
+  }
+}

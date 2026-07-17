@@ -1,0 +1,3 @@
+label_path,line_number,error_codes,details,line_text
+labels/t798_620_015304743.txt,2,BBOX_OUT_OF_BOUNDS,"Normalized edges are left=-0.001845, top=0.466696, right=0.555579, bottom=0.765406.",4 0.276867 0.616051 0.557424 0.298710
+labels/t812_812_011906777.txt,1,BBOX_OUT_OF_BOUNDS,"Normalized edges are left=0.8397435, top=0.151554, right=0.8566865, bottom=1.000032.",2 0.848215 0.575793 0.016943 0.848478
