@@ -28,3 +28,20 @@
 
 脚本只读取 `<dataset-root>/images`、`<dataset-root>/labels` 和 `data.yaml` 的状态，报告固定写入本项目的
 `tunnel_project/reports/`，不会写入原始数据集。
+
+## Tunnel_Crack_AugFirst_5x
+
+当前派生数据版本命名为 `Tunnel_Crack_AugFirst_5x`，继续采用 YOLO26n 单类别裂缝检测基线。原始类别 ID
+`2` 映射为新类别 ID `0`（`crack`）。每个至少含一个有效裂缝框的原图生成以下 5 个独立版本：
+
+- 原图副本（`orig`）
+- 水平翻转（`hflip`）
+- 垂直翻转（`vflip`）
+- 固定 1.20 倍亮度（`bright120`）
+- 均值 0、标准差 10 的确定性高斯噪声（`gauss_s10`）
+
+完成离线增强后，以 `seed=42` 在 variant 级别随机打乱并按 7:2:1 划分 train、val、test；不按原始
+source 分组，因此同一 source 的不同 variant 可以进入不同集合。`split_manifest.csv` 保存每个样本的
+`source_stem`，以支持审计及未来重新划分。
+
+数据集、`runs/` 和 `.pt` 权重均由 `.gitignore` 排除，不进入 Git。

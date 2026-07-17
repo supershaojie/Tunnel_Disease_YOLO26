@@ -1,0 +1,8 @@
+# Update path to the dataset location on the training server before server-side training.
+path: E:/PycharmProjects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_5x
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: crack
