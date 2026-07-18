@@ -1,0 +1,90 @@
+# Core reproducibility record for the archived server experiment.
+experiment:
+  id: yolo26n_baseline_e150_img640_b32_seed42
+  task: single-class tunnel crack object detection
+  source_commit: cbd8606
+  source_commit_full: cbd8606758e22ab7282cd859a918d0c38ffba558
+  branch: exp-yolo26n-baseline-crack
+
+model:
+  weights: yolo26n.pt
+  weights_server: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/yolo26n.pt
+  imgsz: 640
+
+data:
+  config: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_5x/data_server.yaml
+  class_names:
+    0: crack
+  train_images: 8092
+  val_images: 2312
+  test_images: 1156
+  train_instances: 9877
+  val_instances: 2816
+  test_instances: 1382
+  split_note: >-
+    Offline-augmented variants were randomly split 7:2:1 with seed 42 without grouping by source_stem;
+    1925 of 2312 sources cross splits, and no crack-free negative images are included, so test is not a fully
+    source-independent holdout.
+
+train:
+  epochs: 150
+  batch: 32
+  workers: 8
+  device: "0"
+  optimizer: MuSGD
+  lr0: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  seed: 42
+  deterministic: true
+  patience: 0
+  amp: true
+  cache: false
+  save_period: 10
+
+augmentation:
+  mosaic: 1.0
+  close_mosaic: 10
+  fliplr: 0.5
+  flipud: 0.0
+  hsv_h: 0.015
+  hsv_s: 0.7
+  hsv_v: 0.4
+  degrees: 0.0
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  mixup: 0.0
+  cutmix: 0.0
+  copy_paste: 0.0
+
+results:
+  validation:
+    checkpoint: best.pt
+    epoch: 150
+    images: 2312
+    instances: 2816
+    precision: 0.93193
+    recall: 0.86540
+    map50: 0.93845
+    map50_95: 0.69469
+  test:
+    checkpoint: best.pt
+    images: 1156
+    instances: 1382
+    precision: 0.932
+    recall: 0.852
+    map50: 0.929
+    map50_95: 0.682
+
+environment:
+  platform: AutoDL
+  python: 3.12.3
+  torch: 2.8.0+cu128
+  cuda: 12.8
+  cuda_runtime_package: 12.8.90
+  ultralytics: 8.4.98
+  gpu: NVIDIA GeForce RTX 4090 24GB
+  nvidia_driver: 580.105.08
+  nvidia_smi_cuda_capability: 13.0
