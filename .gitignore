@@ -149,6 +149,8 @@ dmypy.json
 
 # datasets and projects (ignore /datasets dir at root only to allow for docs/en/datasets dir)
 /datasets
+/artifacts/datasets/Tunnel_Crack_Original_NoAug_7_2_1_seed42.zip
+/artifacts/datasets/Tunnel_Crack_Original_NoAug_7_2_1_seed42.zip.sha256
 runs/
 wandb/
 .DS_Store
