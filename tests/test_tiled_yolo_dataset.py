@@ -8,17 +8,21 @@ import csv
 import hashlib
 import io
 import json
+import platform
 import shutil
+import subprocess
 import tempfile
 import unittest
 from contextlib import contextmanager, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
+import PIL
 from PIL import Image
 
 from tools.tiling import audit_tiled_dataset as auditor
 from tools.tiling import create_tiled_yolo_dataset as creator
+from tools.tiling import visualize_tiled_annotations as visualizer
 from tools.tiling.audit_tiled_dataset import audit_dataset, main as audit_main
 from tools.tiling.create_tiled_yolo_dataset import (
     BuildConfig,
@@ -33,6 +37,84 @@ from tools.tiling.create_tiled_yolo_dataset import (
     yolo_to_xyxy,
 )
 from tools.tiling.visualize_tiled_annotations import _render_ambiguous, failure_annotation_lines
+
+LEGACY_SCHEMA2_MANIFEST_FIELDS = (
+    "split",
+    "tile_file",
+    "source_image",
+    "source_image_hash",
+    "source_image_sha256",
+    "source_label",
+    "source_label_sha256",
+    "tile_x",
+    "tile_y",
+    "tile_w",
+    "tile_h",
+    "valid_width",
+    "valid_height",
+    "source_width",
+    "source_height",
+    "padding",
+    "padding_left",
+    "padding_top",
+    "padding_right",
+    "padding_bottom",
+    "category",
+    "original_intersecting_box_count",
+    "retained_box_count",
+    "ambiguous_box_count",
+    "source_bbox_id",
+    "visibility",
+    "rejected_reason",
+    "source_boxes",
+    "retained_box_records",
+    "failed_boxes",
+    "output_image_sha256",
+    "output_label_sha256",
+)
+LEGACY_SCHEMA2_SUMMARY_FIELDS = (
+    "schema_version",
+    "parameters",
+    "versions",
+    "splits",
+    "totals",
+    "rejection_reasons",
+    "source_data_config",
+    "source_data_config_sha256",
+    "recorded_source_dataset_fingerprint",
+    "full_source_fingerprint",
+    "processed_subset_fingerprint",
+    "processed_source_images",
+    "fingerprint_normalization",
+    "output_dataset_fingerprint",
+    "generated_at",
+    "input_modified",
+    "dry_run",
+)
+LEGACY_SCHEMA2_PARAMETER_FIELDS = (
+    "source",
+    "output",
+    "tile_size",
+    "overlap",
+    "min_visibility",
+    "min_box_size",
+    "image_format",
+    "jpeg_quality",
+    "seed",
+    "max_images_per_split",
+    "dry_run",
+    "stride",
+    "padding_value",
+    "png_compress_level",
+    "jpeg_subsampling",
+    "jpeg_optimize",
+    "jpeg_progressive",
+    "padding",
+    "visibility_comparison",
+    "max_tile_filename_chars",
+    "max_tile_stem_chars",
+    "source_path_hash_chars",
+)
 
 
 class TestTiledYoloDataset(unittest.TestCase):
@@ -58,11 +140,42 @@ class TestTiledYoloDataset(unittest.TestCase):
             "train: images/train\n"
             "val: images/val\n"
             "test: images/test\n"
+            "nc: 1\n"
             "names:\n"
             "  0: crack\n",
             encoding="utf-8",
         )
         return source
+
+    @staticmethod
+    def write_source_config(
+        path: Path,
+        *,
+        dataset_path: str = ".",
+        train: str = "images/train",
+        val: str = "images/val",
+        test: str = "images/test",
+        nc: int | None = 1,
+        names: dict[int, str] | None = None,
+        comment: str | None = None,
+    ) -> bytes:
+        """Write one synthetic source YAML and return its exact bytes."""
+        names = {0: "crack"} if names is None else names
+        lines = [
+            f"path: {dataset_path}",
+            f"train: {train}",
+            f"val: {val}",
+            f"test: {test}",
+        ]
+        if nc is not None:
+            lines.append(f"nc: {nc}")
+        lines.append("names:")
+        lines.extend(f"  {class_id}: {name}" for class_id, name in names.items())
+        if comment is not None:
+            lines.append(f"# {comment}")
+        content = ("\n".join(lines) + "\n").encode()
+        path.write_bytes(content)
+        return content
 
     def add_sample(
         self,
@@ -149,14 +262,299 @@ class TestTiledYoloDataset(unittest.TestCase):
         return fingerprint
 
     @staticmethod
-    def audit_exit_code(source: Path, dataset: Path) -> tuple[int, dict]:
+    def audit_exit_code(
+        source: Path, dataset: Path, data_yaml: Path | None = None
+    ) -> tuple[int, dict]:
         """Run the audit CLI entry point and capture its structured result."""
         stdout = io.StringIO()
-        with mock.patch(
-            "sys.argv", ["audit_tiled_dataset.py", "--source", str(source), "--dataset", str(dataset)]
-        ), redirect_stdout(stdout):
+        arguments = [
+            "audit_tiled_dataset.py",
+            "--source",
+            str(source),
+            "--dataset",
+            str(dataset),
+        ]
+        if data_yaml is not None:
+            arguments.extend(("--data-yaml", str(data_yaml)))
+        with mock.patch("sys.argv", arguments), redirect_stdout(stdout):
             exit_code = audit_main()
         return exit_code, json.loads(stdout.getvalue())
+
+    @staticmethod
+    def fixture_sha256_file(path: Path) -> str:
+        """Hash fixture bytes with only the standard library."""
+        digest = hashlib.sha256()
+        with path.open("rb") as file:
+            for block in iter(lambda: file.read(1024 * 1024), b""):
+                digest.update(block)
+        return digest.hexdigest()
+
+    @staticmethod
+    def fixture_stable_json(value) -> str:
+        """Apply the frozen Schema 2 canonical JSON rule independently."""
+        return json.dumps(
+            value,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+
+    @classmethod
+    def create_frozen_schema2_fixture(cls, root: Path) -> tuple[Path, Path]:
+        """Construct a complete literal Schema 2 source and output without production helpers."""
+        source, dataset = root / "schema2-source", root / "schema2-output"
+        for split in ("train", "val", "test"):
+            (source / "images" / split).mkdir(parents=True)
+            (source / "labels" / split).mkdir(parents=True)
+            (dataset / "images" / split).mkdir(parents=True)
+            (dataset / "labels" / split).mkdir(parents=True)
+        (dataset / "metadata").mkdir()
+
+        source_config = (
+            "path: .\n"
+            "train: images/train\n"
+            "val: images/val\n"
+            "test: images/test\n"
+            "nc: 1\n"
+            "names:\n"
+            "  0: crack\n"
+        ).encode()
+        source_config_path = source / "data.yaml"
+        source_config_path.write_bytes(source_config)
+        source_image_path = source / "images" / "train" / "image.png"
+        source_label_path = source / "labels" / "train" / "image.txt"
+        with Image.new("RGB", (32, 32), (20, 40, 60)) as source_image:
+            source_image.save(source_image_path, format="PNG")
+            with Image.new("RGB", (64, 64), (114, 114, 114)) as tile:
+                tile.paste(source_image, (0, 0))
+                image_relative = "images/train/image.png"
+                relative_hash = hashlib.sha256(image_relative.encode()).hexdigest()[:16]
+                tile_file = f"train__image__{relative_hash}__x000000__y000000__s64.png"
+                output_image_path = dataset / "images" / "train" / tile_file
+                tile.save(output_image_path, format="PNG", compress_level=6, optimize=False)
+        source_label_path.write_bytes(b"")
+        output_label_path = dataset / "labels" / "train" / f"{Path(tile_file).stem}.txt"
+        output_label_path.write_bytes(b"")
+
+        output_data = (
+            "path: .\n"
+            "train: images/train\n"
+            "val: images/val\n"
+            "test: images/test\n"
+            "names:\n"
+            "  0: crack\n"
+        ).encode()
+        (dataset / "data.yaml").write_bytes(output_data)
+        (dataset / "metadata" / "source_data.yaml").write_bytes(source_config)
+
+        source_image_sha256 = cls.fixture_sha256_file(source_image_path)
+        source_label_sha256 = cls.fixture_sha256_file(source_label_path)
+        output_image_sha256 = cls.fixture_sha256_file(output_image_path)
+        output_label_sha256 = cls.fixture_sha256_file(output_label_path)
+        source_config_sha256 = hashlib.sha256(source_config).hexdigest()
+        manifest_row = {
+            "split": "train",
+            "tile_file": tile_file,
+            "source_image": image_relative,
+            "source_image_hash": relative_hash,
+            "source_image_sha256": source_image_sha256,
+            "source_label": "labels/train/image.txt",
+            "source_label_sha256": source_label_sha256,
+            "tile_x": "0",
+            "tile_y": "0",
+            "tile_w": "64",
+            "tile_h": "64",
+            "valid_width": "32",
+            "valid_height": "32",
+            "source_width": "32",
+            "source_height": "32",
+            "padding": '{"bottom":32,"left":0,"right":32,"top":0}',
+            "padding_left": "0",
+            "padding_top": "0",
+            "padding_right": "32",
+            "padding_bottom": "32",
+            "category": "safe_negative",
+            "original_intersecting_box_count": "0",
+            "retained_box_count": "0",
+            "ambiguous_box_count": "0",
+            "source_bbox_id": "[]",
+            "visibility": "{}",
+            "rejected_reason": "[]",
+            "source_boxes": "[]",
+            "retained_box_records": "[]",
+            "failed_boxes": "[]",
+            "output_image_sha256": output_image_sha256,
+            "output_label_sha256": output_label_sha256,
+        }
+        if tuple(manifest_row) != LEGACY_SCHEMA2_MANIFEST_FIELDS:
+            raise AssertionError("literal Schema 2 manifest fixture order changed")
+        manifest_path = dataset / "metadata" / "tile_manifest.csv"
+        with manifest_path.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(
+                file,
+                fieldnames=LEGACY_SCHEMA2_MANIFEST_FIELDS,
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerow(manifest_row)
+
+        source_fingerprint_payload = {
+            "algorithm": "sha256-canonical-source-v2",
+            "source_config": "data.yaml",
+            "source_config_sha256": source_config_sha256,
+            "files": [
+                {
+                    "split": "train",
+                    "image": image_relative,
+                    "image_sha256": source_image_sha256,
+                    "label": "labels/train/image.txt",
+                    "label_sha256": source_label_sha256,
+                }
+            ],
+        }
+        source_fingerprint = hashlib.sha256(
+            cls.fixture_stable_json(source_fingerprint_payload).encode()
+        ).hexdigest()
+        train_stats = {
+            "source_images_available": 1,
+            "source_images_processed": 1,
+            "source_label_boxes": 0,
+            "candidate_tiles": 1,
+            "safe_positive": 0,
+            "safe_negative": 1,
+            "ambiguous": 0,
+            "intersecting_boxes": 0,
+            "retained_boxes": 0,
+            "failed_boxes": 0,
+            "output_label_boxes": 0,
+            "empty_labels": 1,
+        }
+        empty_stats = {
+            "source_images_available": 0,
+            "source_images_processed": 0,
+            "source_label_boxes": 0,
+            "candidate_tiles": 0,
+            "safe_positive": 0,
+            "safe_negative": 0,
+            "ambiguous": 0,
+            "intersecting_boxes": 0,
+            "retained_boxes": 0,
+            "failed_boxes": 0,
+            "output_label_boxes": 0,
+            "empty_labels": 0,
+        }
+        summary = {
+            "schema_version": 2,
+            "parameters": {
+                "source": str(source.resolve()),
+                "output": str(dataset.resolve()),
+                "tile_size": 64,
+                "overlap": 0.0,
+                "min_visibility": 0.5,
+                "min_box_size": 2.0,
+                "image_format": "png",
+                "jpeg_quality": None,
+                "seed": 42,
+                "max_images_per_split": None,
+                "dry_run": False,
+                "stride": 64,
+                "padding_value": 114,
+                "png_compress_level": 6,
+                "jpeg_subsampling": None,
+                "jpeg_optimize": None,
+                "jpeg_progressive": None,
+                "padding": {"mode": "right_bottom_constant", "value": 114},
+                "visibility_comparison": (
+                    "retain_if_visibility_greater_than_or_equal_to_threshold"
+                ),
+                "max_tile_filename_chars": 180,
+                "max_tile_stem_chars": 64,
+                "source_path_hash_chars": 16,
+            },
+            "versions": {
+                "python": platform.python_version(),
+                "pillow": PIL.__version__,
+            },
+            "splits": {
+                "train": train_stats,
+                "val": dict(empty_stats),
+                "test": dict(empty_stats),
+            },
+            "totals": dict(train_stats),
+            "rejection_reasons": {},
+            "source_data_config": "data.yaml",
+            "source_data_config_sha256": source_config_sha256,
+            "recorded_source_dataset_fingerprint": None,
+            "full_source_fingerprint": source_fingerprint,
+            "processed_subset_fingerprint": source_fingerprint,
+            "processed_source_images": [image_relative],
+            "fingerprint_normalization": {
+                "output_algorithm": "sha256-canonical-files-v2",
+                "source_algorithm": "sha256-canonical-source-v2",
+                "covered_output": [
+                    "data.yaml",
+                    "metadata/source_data.yaml",
+                    "metadata/tile_manifest.csv",
+                    "images/**",
+                    "labels/** including empty labels",
+                    "normalized summary.json",
+                ],
+                "summary_excluded_fields": [
+                    "generated_at",
+                    "output_dataset_fingerprint",
+                ],
+                "file_order": "UTF-8 POSIX paths in code-point order",
+                "serialization": (
+                    "UTF-8 canonical JSON with sorted mapping keys, preserved list order, "
+                    "finite floats, and compact separators"
+                ),
+            },
+            "output_dataset_fingerprint": None,
+            "generated_at": "2026-01-01T00:00:00+00:00",
+            "input_modified": False,
+            "dry_run": False,
+        }
+        if tuple(summary) != LEGACY_SCHEMA2_SUMMARY_FIELDS:
+            raise AssertionError("literal Schema 2 summary fixture order changed")
+        if tuple(summary["parameters"]) != LEGACY_SCHEMA2_PARAMETER_FIELDS:
+            raise AssertionError("literal Schema 2 parameter fixture order changed")
+
+        covered_files = (
+            "data.yaml",
+            f"images/train/{tile_file}",
+            f"labels/train/{Path(tile_file).stem}.txt",
+            "metadata/source_data.yaml",
+            "metadata/tile_manifest.csv",
+        )
+        file_hashes = {
+            relative: cls.fixture_sha256_file(dataset / relative)
+            for relative in covered_files
+        }
+        normalized_summary = dict(summary)
+        normalized_summary.pop("generated_at")
+        normalized_summary.pop("output_dataset_fingerprint")
+        output_fingerprint_payload = {
+            "algorithm": "sha256-canonical-files-v2",
+            "files": [
+                {"path": relative, "sha256": digest}
+                for relative, digest in sorted(file_hashes.items())
+            ],
+            "summary": normalized_summary,
+        }
+        output_fingerprint = hashlib.sha256(
+            cls.fixture_stable_json(output_fingerprint_payload).encode()
+        ).hexdigest()
+        summary["output_dataset_fingerprint"] = output_fingerprint
+        with (dataset / "metadata" / "dataset_fingerprint.sha256").open(
+            "w", encoding="utf-8", newline="\n"
+        ) as file:
+            file.write(f"{output_fingerprint}  tiled-dataset-v2\n")
+        with (dataset / "metadata" / "summary.json").open(
+            "w", encoding="utf-8", newline="\n"
+        ) as file:
+            file.write(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+        return source, dataset
 
     def test_01_exact_tile_image_has_one_anchor(self) -> None:
         """A 1024-square image produces exactly one tile."""
@@ -661,8 +1059,8 @@ class TestTiledYoloDataset(unittest.TestCase):
         errors = audit_dataset(source, output)["errors"]
         self.assertTrue(any("YOLO field 1 mismatch" in error for error in errors))
 
-    def test_34_summary_timestamp_and_runtime_versions_are_validated(self) -> None:
-        """Invalid generation time and dependency versions cannot pass summary validation."""
+    def test_34_summary_timestamp_and_historical_versions_are_validated(self) -> None:
+        """Invalid generation time and dependency-version provenance cannot pass validation."""
         source, output = self.create_source(), self.root / "output"
         self.add_sample(source, "train", "image.png", (32, 32), [])
         build_tiled_dataset(BuildConfig(source, output, tile_size=64))
@@ -672,7 +1070,7 @@ class TestTiledYoloDataset(unittest.TestCase):
         self.write_summary(output, summary)
         errors = audit_dataset(source, output)["errors"]
         self.assertTrue(any("generated_at is invalid" in error for error in errors))
-        self.assertTrue(any("versions do not match" in error for error in errors))
+        self.assertTrue(any("versions are invalid" in error for error in errors))
 
     def test_35_summary_source_parameter_tampering_changes_fingerprint(self) -> None:
         """The source path remains inside canonical summary fingerprint coverage."""
@@ -771,11 +1169,937 @@ class TestTiledYoloDataset(unittest.TestCase):
         self.add_sample(source, "train", "one.png", (32, 32), [])
         self.add_sample(source, "train", "two.png", (32, 32), [])
         collision = "train__collision__0123456789abcdef__x000000_y000000_t64.png"
+        staging = self.root / f".output.building-{creator.os.getpid()}"
         with mock.patch.object(creator, "_tile_name", return_value=collision):
-            with self.assertRaisesRegex(TilingError, "duplicate output tile filename before write"):
+            with self.assertRaises(TilingError) as context:
                 build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertIn("duplicate output tile filename before write", str(context.exception))
+        self.assertIn(f"staging retained at {staging}", str(context.exception))
+        self.assertFalse(output.exists())
+        self.assertTrue(staging.is_dir())
+        self.assertTrue((staging / "images" / "train" / collision).is_file())
+
+    def test_40_explicit_data_yaml_strictly_selects_data_local(self) -> None:
+        """An explicit data_local.yaml wins even when data.yaml exists beside it."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        local_yaml = source / "data_local.yaml"
+        local_content = self.write_source_config(
+            local_yaml,
+            dataset_path=source.as_posix(),
+            nc=None,
+            comment="explicit local configuration",
+        )
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=local_yaml, tile_size=64)
+        )
+        self.assertEqual(summary["source_data_config"], "data_local.yaml")
+        self.assertEqual(summary["source_data_config_path"], str(local_yaml.resolve()))
+        self.assertEqual(summary["source_data_config_selection"], "explicit")
+        self.assertEqual(
+            (output / "metadata" / "source_data.yaml").read_bytes(), local_content
+        )
+        self.assertNotEqual(
+            (output / "metadata" / "source_data.yaml").read_bytes(),
+            (source / "data.yaml").read_bytes(),
+        )
+
+    def test_41_invalid_server_data_yaml_does_not_interfere_with_explicit_local_yaml(self) -> None:
+        """Automatic-candidate server paths are never consulted after an explicit selection."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        self.write_source_config(
+            source / "data.yaml", dataset_path="/root/nonexistent/server/dataset"
+        )
+        local_yaml = source / "data_local.yaml"
+        self.write_source_config(local_yaml, dataset_path=source.as_posix(), nc=None)
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=local_yaml, tile_size=64, dry_run=True)
+        )
+        self.assertTrue(summary["dry_run"])
+        self.assertEqual(summary["source_data_config"], "data_local.yaml")
+        self.assertEqual(summary["totals"]["source_images_processed"], 1)
+        self.assertFalse(output.exists())
+
+    def test_42_automatic_source_yaml_discovery_remains_backward_compatible(self) -> None:
+        """Without --data-yaml, data.yaml remains the first automatic candidate."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        automatic_content = self.write_source_config(
+            source / "data.yaml", comment="automatic first candidate"
+        )
+        self.write_source_config(
+            source / "data_local.yaml",
+            dataset_path=source.as_posix(),
+            comment="automatic second candidate",
+        )
+        summary = build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertEqual(summary["parameters"]["data_yaml"], None)
+        self.assertEqual(summary["source_data_config"], "data.yaml")
+        self.assertEqual(summary["source_data_config_selection"], "auto")
+        self.assertEqual(
+            (output / "metadata" / "source_data.yaml").read_bytes(), automatic_content
+        )
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_43_missing_explicit_data_yaml_fails_before_output_write(self) -> None:
+        """A nonexistent explicit YAML is rejected before creating any output."""
+        source, output = self.create_source(), self.root / "output"
+        missing = source / "missing.yaml"
+        with self.assertRaisesRegex(TilingError, "--data-yaml must be an existing regular file"):
+            build_tiled_dataset(BuildConfig(source, output, data_yaml=missing, tile_size=64))
         self.assertFalse(output.exists())
         self.assertFalse(any(path.name.startswith(".output.building-") for path in self.root.iterdir()))
+
+    def test_44_explicit_data_yaml_directory_fails_before_output_write(self) -> None:
+        """A directory cannot be accepted as an explicit dataset configuration."""
+        source, output = self.create_source(), self.root / "output"
+        with self.assertRaisesRegex(TilingError, "--data-yaml must be an existing regular file"):
+            build_tiled_dataset(BuildConfig(source, output, data_yaml=source, tile_size=64))
+        self.assertFalse(output.exists())
+        self.assertFalse(any(path.name.startswith(".output.building-") for path in self.root.iterdir()))
+
+    def test_45_declared_split_path_mismatch_fails_before_scanning(self) -> None:
+        """YAML split declarations must resolve to the exact source directories that will be scanned."""
+        source, output = self.create_source(), self.root / "output"
+        local_yaml = source / "data_local.yaml"
+        self.write_source_config(local_yaml, train="images/not-train")
+        with self.assertRaisesRegex(TilingError, "train path resolves to .*actual scan directory"):
+            build_tiled_dataset(BuildConfig(source, output, data_yaml=local_yaml, tile_size=64))
+        self.assertFalse(output.exists())
+
+    def test_46_invalid_names_or_nc_fails_before_output_write(self) -> None:
+        """The effective class count and class mapping must both be exactly one crack class."""
+        for case in ("names", "nc"):
+            with self.subTest(case=case):
+                source = self.create_source(f"source-{case}")
+                output = self.root / f"output-{case}"
+                local_yaml = source / "data_local.yaml"
+                if case == "names":
+                    self.write_source_config(
+                        local_yaml, nc=2, names={0: "crack", 1: "other"}
+                    )
+                    expected = "source names must be exactly"
+                else:
+                    self.write_source_config(local_yaml, nc=2)
+                    expected = "source nc must be 1"
+                with self.assertRaisesRegex(TilingError, expected):
+                    build_tiled_dataset(
+                        BuildConfig(source, output, data_yaml=local_yaml, tile_size=64)
+                    )
+                self.assertFalse(output.exists())
+
+    def test_47_explicit_config_dry_run_creates_no_output_or_staging(self) -> None:
+        """Explicit YAML selection does not weaken the no-write dry-run guarantee."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        local_yaml = source / "data_local.yaml"
+        self.write_source_config(local_yaml, dataset_path=source.as_posix(), nc=None)
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=local_yaml, tile_size=64, dry_run=True)
+        )
+        self.assertTrue(summary["dry_run"])
+        self.assertEqual(summary["parameters"]["data_yaml"], str(local_yaml.resolve()))
+        self.assertEqual(summary["source_data_config_selection"], "explicit")
+        self.assertFalse(output.exists())
+        self.assertFalse(any(path.name.startswith(".output.building-") for path in self.root.iterdir()))
+
+    def test_48_explicit_config_provenance_reaches_manifest_summary_and_fingerprints(self) -> None:
+        """Selected YAML identity and bytes are preserved and independently audited everywhere."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        local_yaml = source / "data_local.yaml"
+        local_content = self.write_source_config(
+            local_yaml,
+            dataset_path=source.as_posix(),
+            nc=None,
+            comment="fingerprinted explicit configuration",
+        )
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=local_yaml, tile_size=64)
+        )
+        config_sha256 = hashlib.sha256(local_content).hexdigest()
+        rows = self.manifest_rows(output)
+        self.assertTrue(rows)
+        self.assertTrue(all(row["source_data_config"] == "data_local.yaml" for row in rows))
+        self.assertTrue(
+            all(row["source_data_config_sha256"] == config_sha256 for row in rows)
+        )
+        self.assertEqual(summary["source_data_config_sha256"], config_sha256)
+        self.assertRegex(summary["full_source_fingerprint"], r"^[0-9a-f]{64}$")
+        self.assertRegex(summary["processed_subset_fingerprint"], r"^[0-9a-f]{64}$")
+        self.assertEqual(
+            (output / "metadata" / "source_data.yaml").read_bytes(), local_content
+        )
+        self.assertEqual(audit_dataset(source, output)["status"], "PASS")
+        local_yaml.write_bytes(local_content + b"# changed after generation\n")
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "FAIL")
+        self.assertNotEqual(
+            report["full_source_fingerprint"], summary["full_source_fingerprint"]
+        )
+        self.assertNotEqual(
+            report["processed_subset_fingerprint"], summary["processed_subset_fingerprint"]
+        )
+        self.assertTrue(
+            any("full_source_fingerprint" in error for error in report["errors"])
+        )
+        self.assertTrue(
+            any("processed_subset_fingerprint" in error for error in report["errors"])
+        )
+        self.assertTrue(
+            any("does not exactly match" in error for error in report["errors"])
+        )
+
+    def test_49_create_help_documents_explicit_data_yaml_precedence(self) -> None:
+        """CLI help exposes --data-yaml and states that explicit selection disables discovery."""
+        stdout = io.StringIO()
+        with mock.patch("sys.argv", ["create_tiled_yolo_dataset.py", "--help"]), redirect_stdout(
+            stdout
+        ), self.assertRaises(SystemExit) as context:
+            creator.parse_args()
+        help_text = stdout.getvalue()
+        normalized_help = " ".join(help_text.split())
+        self.assertEqual(context.exception.code, 0)
+        self.assertIn("--data-yaml", help_text)
+        self.assertIn("used exclusively", normalized_help)
+        self.assertIn("automatic data.yaml/data_local.yaml discovery", normalized_help)
+
+    def test_50_cli_forwards_explicit_data_yaml_without_writing_output(self) -> None:
+        """The CLI forwards --data-yaml to the build while preserving dry-run no-write behavior."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        self.write_source_config(
+            source / "data.yaml", dataset_path="/root/nonexistent/server/dataset"
+        )
+        local_yaml = source / "data_local.yaml"
+        self.write_source_config(local_yaml, dataset_path=source.as_posix(), nc=None)
+        stdout = io.StringIO()
+        arguments = [
+            "create_tiled_yolo_dataset.py",
+            "--source",
+            str(source),
+            "--data-yaml",
+            str(local_yaml),
+            "--output",
+            str(output),
+            "--tile-size",
+            "64",
+            "--overlap",
+            "0",
+            "--dry-run",
+        ]
+        with mock.patch("sys.argv", arguments), redirect_stdout(stdout):
+            exit_code = creator.main()
+        summary = json.loads(stdout.getvalue())
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(summary["parameters"]["data_yaml"], str(local_yaml.resolve()))
+        self.assertEqual(summary["source_data_config"], "data_local.yaml")
+        self.assertEqual(summary["source_data_config_selection"], "explicit")
+        self.assertEqual(summary["totals"]["source_images_processed"], 1)
+        self.assertFalse(output.exists())
+
+    def test_51_schema3_source_and_dataset_migration_audits_from_current_source(self) -> None:
+        """Portable config identity lets a complete Schema 3 pair move to a new root."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        migrated = self.root / "迁移后"
+        migrated.mkdir()
+        new_source = Path(shutil.move(str(source), str(migrated / "source")))
+        new_output = Path(shutil.move(str(output), str(migrated / "output")))
+        report = audit_dataset(new_source, new_output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        self.assertFalse(source.exists())
+        self.assertFalse(output.exists())
+
+    def test_52_invalid_historical_absolute_paths_do_not_break_migrated_fingerprints(self) -> None:
+        """Historical paths may disappear while all three recorded fingerprints remain stable."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        original = build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        historical_config = Path(original["source_data_config_path"])
+        migrated = self.root / "new-root"
+        migrated.mkdir()
+        new_source = Path(shutil.move(str(source), str(migrated / "source")))
+        new_output = Path(shutil.move(str(output), str(migrated / "output")))
+        self.assertFalse(historical_config.exists())
+        report = audit_dataset(new_source, new_output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        for field in (
+            "full_source_fingerprint",
+            "processed_subset_fingerprint",
+            "output_dataset_fingerprint",
+        ):
+            self.assertEqual(report[field], original[field])
+
+    def test_53_migrated_external_config_passes_with_current_audit_data_yaml(self) -> None:
+        """An external config is relocated explicitly and never through its historical path."""
+        bundle = self.root / "bundle"
+        source = self.create_source("bundle/source")
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        external = bundle / "config" / "external.yaml"
+        external.parent.mkdir()
+        self.write_source_config(external, dataset_path="../source")
+        output = bundle / "output"
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=external, tile_size=64)
+        )
+        migrated_bundle = Path(shutil.move(str(bundle), str(self.root / "migrated-bundle")))
+        new_source = migrated_bundle / "source"
+        new_output = migrated_bundle / "output"
+        new_external = migrated_bundle / "config" / "external.yaml"
+        self.assertFalse(Path(summary["source_data_config_path"]).exists())
+        report = audit_dataset(new_source, new_output, new_external)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        self.assertEqual(report["full_source_fingerprint"], summary["full_source_fingerprint"])
+        row = self.manifest_rows(new_output)[0]
+        self.assertEqual(summary["source_data_config_relative"], None)
+        self.assertEqual(
+            summary["source_data_config_external"], summary["source_data_config"]
+        )
+        self.assertEqual(summary["source_data_config_selection"], "explicit")
+        self.assertEqual(summary["source_data_config_path"], str(external.resolve()))
+        self.assertEqual(
+            summary["source_data_config_sha256"],
+            hashlib.sha256(new_external.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(row["source_data_config_relative"], "")
+        self.assertEqual(
+            row["source_data_config_external"], summary["source_data_config_external"]
+        )
+
+    def test_54_external_config_without_current_data_yaml_fails_clearly(self) -> None:
+        """An external identity cannot be guessed from the current source tree."""
+        source = self.create_source("bundle/source")
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        external = self.root / "bundle" / "config" / "external.yaml"
+        external.parent.mkdir()
+        self.write_source_config(external, dataset_path="../source")
+        output = self.root / "bundle" / "output"
+        build_tiled_dataset(BuildConfig(source, output, data_yaml=external, tile_size=64))
+        with self.assertRaisesRegex(
+            auditor.AuditError, "external to --source.*--data-yaml"
+        ):
+            audit_dataset(source, output)
+        self.assertEqual(audit_dataset(source, output, external)["status"], "PASS")
+
+    def test_55_current_yaml_hash_mismatch_still_fails_after_portable_selection(self) -> None:
+        """Location independence does not weaken exact current-config byte validation."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        (source / "data.yaml").write_bytes((source / "data.yaml").read_bytes() + b"# changed\n")
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "FAIL")
+        self.assertTrue(
+            any("source_data_config_sha256" in error for error in report["errors"]),
+            report["errors"],
+        )
+        self.assertTrue(
+            any("does not exactly match" in error for error in report["errors"]),
+            report["errors"],
+        )
+
+    def test_56_source_image_label_and_split_changes_remain_detectable(self) -> None:
+        """Migration support still detects independent image, label, and split changes."""
+        for mutation in ("image", "label", "split"):
+            with self.subTest(mutation=mutation):
+                source = self.create_source(f"source-{mutation}")
+                output = self.root / f"output-{mutation}"
+                self.add_sample(
+                    source,
+                    "train",
+                    "image.png",
+                    (32, 32),
+                    [(0, 0.5, 0.5, 0.5, 0.5)],
+                )
+                build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+                image = source / "images" / "train" / "image.png"
+                label = source / "labels" / "train" / "image.txt"
+                if mutation == "image":
+                    Image.new("RGB", (32, 32), (1, 2, 3)).save(image)
+                elif mutation == "label":
+                    label.write_text("0 0.4 0.4 0.25 0.25\n", encoding="utf-8")
+                else:
+                    shutil.move(str(image), str(source / "images" / "val" / image.name))
+                    shutil.move(str(label), str(source / "labels" / "val" / label.name))
+                report = audit_dataset(source, output)
+                self.assertEqual(report["status"], "FAIL")
+                self.assertTrue(report["input_modified"])
+
+    def test_57_real_schema2_field_structure_remains_auditable(self) -> None:
+        """A literal pre-upgrade fixture passes without calling current production builders."""
+        with mock.patch.object(
+            creator, "build_tiled_dataset", side_effect=AssertionError("generator called")
+        ) as generator_build, mock.patch(
+            f"{__name__}.build_tiled_dataset", side_effect=AssertionError("imported generator called")
+        ) as imported_build, mock.patch.object(
+            creator, "_manifest_row", side_effect=AssertionError("generator manifest called")
+        ) as generator_manifest, mock.patch.object(
+            creator, "_source_fingerprint", side_effect=AssertionError("generator fingerprint called")
+        ) as generator_source_fingerprint, mock.patch.object(
+            creator,
+            "_canonical_output_fingerprint",
+            side_effect=AssertionError("generator output fingerprint called"),
+        ) as generator_output_fingerprint, mock.patch.object(
+            auditor, "_source_fingerprint", side_effect=AssertionError("auditor fingerprint called")
+        ) as auditor_source_fingerprint, mock.patch.object(
+            auditor,
+            "_canonical_output_fingerprint",
+            side_effect=AssertionError("auditor output fingerprint called"),
+        ) as auditor_output_fingerprint:
+            source, output = self.create_frozen_schema2_fixture(self.root)
+        for production_helper in (
+            generator_build,
+            imported_build,
+            generator_manifest,
+            generator_source_fingerprint,
+            generator_output_fingerprint,
+            auditor_source_fingerprint,
+            auditor_output_fingerprint,
+        ):
+            production_helper.assert_not_called()
+        summary = self.read_summary(output)
+        rows = self.manifest_rows(output)
+        self.assertEqual(summary["schema_version"], 2)
+        self.assertNotIn("data_yaml", summary["parameters"])
+        self.assertEqual(tuple(rows[0]), LEGACY_SCHEMA2_MANIFEST_FIELDS)
+        self.assertEqual(tuple(summary), LEGACY_SCHEMA2_SUMMARY_FIELDS)
+        self.assertEqual(
+            tuple(summary["parameters"]), LEGACY_SCHEMA2_PARAMETER_FIELDS
+        )
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_58_unknown_schema_version_fails_before_manifest_trust(self) -> None:
+        """Only genuine Schema 2 and current Schema 3 are accepted."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        summary = self.read_summary(output)
+        summary["schema_version"] = 99
+        self.write_summary(output, summary)
+        with self.assertRaisesRegex(auditor.AuditError, "unsupported summary schema_version"):
+            audit_dataset(source, output)
+
+    def test_59_schema3_manifest_contains_complete_config_provenance(self) -> None:
+        """Every Schema 3 row records identity, mode, history, hash, and location kind."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        summary = build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        row = self.manifest_rows(output)[0]
+        expected = {
+            "source_data_config": "data.yaml",
+            "source_data_config_selection": "auto",
+            "source_data_config_path": summary["source_data_config_path"],
+            "source_data_config_sha256": summary["source_data_config_sha256"],
+            "source_data_config_relative": "data.yaml",
+            "source_data_config_external": "",
+        }
+        for field, value in expected.items():
+            self.assertIn(field, auditor.MANIFEST_FIELDS)
+            self.assertEqual(row[field], value)
+
+    def test_60_manifest_summary_config_provenance_conflict_fails(self) -> None:
+        """A fresh output fingerprint cannot hide manifest/summary config-mode disagreement."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        rows = self.manifest_rows(output)
+        rows[0]["source_data_config_selection"] = "explicit"
+        self.write_manifest_rows(output, rows)
+        self.refresh_output_fingerprint(output)
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "FAIL")
+        self.assertTrue(
+            any(
+                ".source_data_config_selection" in error
+                for error in report["errors"]
+            ),
+            report["errors"],
+        )
+        self.assertFalse(
+            any("fingerprint does not match" in error for error in report["errors"])
+        )
+
+    def test_61_dry_run_never_deletes_or_modifies_preexisting_staging(self) -> None:
+        """A preexisting same-name staging sentinel survives a dry-run failure byte-for-byte."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        staging = self.root / f".output.building-{creator.os.getpid()}"
+        staging.mkdir()
+        sentinel = staging / "sentinel.bin"
+        sentinel.write_bytes(b"third-party")
+        with self.assertRaisesRegex(TilingError, "staging path already exists"):
+            build_tiled_dataset(BuildConfig(source, output, tile_size=64, dry_run=True))
+        self.assertEqual(sentinel.read_bytes(), b"third-party")
+        self.assertTrue(staging.is_dir())
+        self.assertFalse(output.exists())
+
+    def test_62_formal_failure_does_not_delete_unowned_preexisting_staging(self) -> None:
+        """Formal generation refuses but never cleans a staging directory it did not create."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        staging = self.root / f".output.building-{creator.os.getpid()}"
+        staging.mkdir()
+        sentinel = staging / "sentinel.txt"
+        sentinel.write_text("owned elsewhere", encoding="utf-8")
+        with self.assertRaisesRegex(TilingError, "staging path already exists"):
+            build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "owned elsewhere")
+        self.assertTrue(staging.is_dir())
+
+    def test_63_formal_failure_retains_owned_staging_without_recursive_cleanup(self) -> None:
+        """A controlled write failure preserves its staging content and never invokes rmtree."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        staging = self.root / f".output.building-{creator.os.getpid()}"
+        partial_files: list[Path] = []
+
+        def save_partial_then_fail(_image, path, *_args) -> None:
+            path.write_bytes(b"partial output retained for inspection")
+            partial_files.append(path)
+            raise RuntimeError("synthetic write failure")
+
+        with mock.patch.object(
+            creator, "_save_image", side_effect=save_partial_then_fail
+        ), mock.patch("shutil.rmtree") as recursive_delete:
+            with self.assertRaises(TilingError) as context:
+                build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertIn("synthetic write failure", str(context.exception))
+        self.assertIn(f"staging retained at {staging}", str(context.exception))
+        self.assertIn("manual confirmation is required before cleanup", str(context.exception))
+        recursive_delete.assert_not_called()
+        self.assertTrue(staging.is_dir())
+        self.assertEqual(len(partial_files), 1)
+        self.assertEqual(
+            partial_files[0].read_bytes(), b"partial output retained for inspection"
+        )
+        self.assertFalse(output.exists())
+        self.assertTrue((source / "images" / "train" / "image.png").is_file())
+
+    def test_64_absolute_yaml_split_paths_are_validated_and_used(self) -> None:
+        """Absolute train/val/test declarations resolve to the exact scanned directories."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        explicit = source / "absolute.yaml"
+        self.write_source_config(
+            explicit,
+            train=(source / "images" / "train").as_posix(),
+            val=(source / "images" / "val").as_posix(),
+            test=(source / "images" / "test").as_posix(),
+        )
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=explicit, tile_size=64, dry_run=True)
+        )
+        self.assertTrue(summary["dry_run"])
+        self.assertEqual(summary["totals"]["source_images_processed"], 1)
+        self.assertFalse(output.exists())
+
+    def test_65_windows_backslash_yaml_paths_remain_supported(self) -> None:
+        """Windows-style relative separators map to native source split paths."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        explicit = source / "backslashes.yaml"
+        self.write_source_config(
+            explicit,
+            train=r"images\train",
+            val=r"images\val",
+            test=r"images\test",
+        )
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=explicit, tile_size=64, dry_run=True)
+        )
+        self.assertEqual(summary["source_data_config"], "backslashes.yaml")
+        self.assertEqual(summary["totals"]["source_images_processed"], 1)
+        self.assertFalse(output.exists())
+
+    def test_66_chinese_and_long_migrated_paths_audit_successfully(self) -> None:
+        """Portable provenance survives Unicode and long directory components."""
+        source = self.create_source("中文_" + "长目录" * 20)
+        output = self.root / ("输出_" + "长目录" * 15)
+        self.add_sample(source, "train", "裂缝图像.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        migrated = self.root / ("迁移_" + "新目录" * 15)
+        migrated.mkdir()
+        new_source = Path(shutil.move(str(source), str(migrated / source.name)))
+        new_output = Path(shutil.move(str(output), str(migrated / output.name)))
+        report = audit_dataset(new_source, new_output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_67_audit_help_documents_current_data_yaml_migration_rule(self) -> None:
+        """Audit help exposes exclusive current-machine config selection for migration."""
+        stdout = io.StringIO()
+        with mock.patch("sys.argv", ["audit_tiled_dataset.py", "--help"]), redirect_stdout(
+            stdout
+        ), self.assertRaises(SystemExit) as context:
+            auditor.parse_args()
+        normalized = " ".join(stdout.getvalue().split())
+        self.assertEqual(context.exception.code, 0)
+        self.assertIn("--data-yaml", normalized)
+        self.assertIn("external to --source", normalized)
+        self.assertIn("used exclusively", normalized)
+
+    def test_68_replaced_same_name_staging_is_not_deleted_by_exception_cleanup(self) -> None:
+        """The no-cleanup failure path preserves a concurrent replacement directory."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        staging = self.root / f".output.building-{creator.os.getpid()}"
+        sentinel = staging / "third-party.txt"
+
+        def replace_staging_then_fail(*_args, **_kwargs) -> None:
+            shutil.rmtree(staging)
+            staging.mkdir()
+            sentinel.write_text("replacement", encoding="utf-8")
+            raise RuntimeError("concurrent replacement")
+
+        with mock.patch.object(creator, "_save_image", side_effect=replace_staging_then_fail):
+            with self.assertRaises(TilingError) as context:
+                build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertIn("concurrent replacement", str(context.exception))
+        self.assertIn(f"staging retained at {staging}", str(context.exception))
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "replacement")
+        self.assertTrue(staging.is_dir())
+        self.assertFalse(output.exists())
+
+    def test_69_schema3_audit_does_not_require_generation_runtime_versions(self) -> None:
+        """Valid historical runtime versions remain provenance after cross-machine migration."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        summary = self.read_summary(output)
+        summary["versions"] = {"python": "3.8.0", "pillow": "9.0.0"}
+        self.write_summary(output, summary)
+        self.refresh_output_fingerprint(output)
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_70_portable_config_identity_rejects_cross_platform_escape_syntax(self) -> None:
+        """Portable provenance rejects roots, drives, UNC paths, backslashes, and parent traversal."""
+        unsafe_values = (
+            r"C:\outside\data.yaml",
+            "C:/outside/data.yaml",
+            r"\\server\share\data.yaml",
+            "//server/share/data.yaml",
+            "/outside/data.yaml",
+            "../outside/data.yaml",
+            r"..\outside\data.yaml",
+            "safe/../outside/data.yaml",
+            r"safe\..\outside\data.yaml",
+            r"safe\outside/data.yaml",
+            r"safe/outside\data.yaml",
+            "",
+            ".",
+            "./",
+            "safe//data.yaml",
+            "safe/./data.yaml",
+            "safe/nested/../../outside/data.yaml",
+        )
+        for value in unsafe_values:
+            with self.subTest(value=value), self.assertRaises(auditor.AuditError) as context:
+                auditor._safe_source_relative(value, "synthetic identity")
+            self.assertRegex(str(context.exception), r"unsafe|nonempty")
+        for value in ("configs/data.yaml", "nested/configs/data.yaml"):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    auditor._safe_source_relative(value, "synthetic identity"),
+                    value,
+                )
+
+    def test_71_nested_internal_config_migrates_and_audits_from_new_root(self) -> None:
+        """A canonical nested relative config remains discoverable after whole-bundle migration."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        nested_config = source / "configs" / "data_local.yaml"
+        nested_config.parent.mkdir()
+        self.write_source_config(nested_config, dataset_path="..")
+        summary = build_tiled_dataset(
+            BuildConfig(source, output, data_yaml=nested_config, tile_size=64)
+        )
+        self.assertEqual(
+            summary["source_data_config_relative"], "configs/data_local.yaml"
+        )
+        migrated = self.root / "migrated"
+        migrated.mkdir()
+        new_source = Path(shutil.move(str(source), str(migrated / "source")))
+        new_output = Path(shutil.move(str(output), str(migrated / "output")))
+        report = audit_dataset(new_source, new_output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        self.assertFalse(Path(summary["source_data_config_path"]).exists())
+
+    def test_72_symlinked_internal_identity_cannot_resolve_outside_source(self) -> None:
+        """A source-contained lexical name cannot traverse an outward file symlink."""
+        source = self.create_source()
+        external_config = self.root / "outside-data.yaml"
+        self.write_source_config(external_config)
+        link = source / "linked-data.yaml"
+        try:
+            link.symlink_to(external_config)
+        except OSError as error:
+            resolved_source = source.resolve()
+            resolved_external = external_config.resolve()
+            path_type = type(source)
+            original_resolve = path_type.resolve
+
+            def simulate_outward_symlink(path, *args, **kwargs):
+                if path == link:
+                    return resolved_external
+                return original_resolve(path, *args, **kwargs)
+
+            with mock.patch.object(
+                path_type, "resolve", autospec=True, side_effect=simulate_outward_symlink
+            ), self.assertRaisesRegex(
+                auditor.AuditError, "resolves outside --source"
+            ):
+                auditor._resolve_source_relative(
+                    resolved_source, "linked-data.yaml", "synthetic identity"
+                )
+            self.assertIsInstance(error, OSError)
+            return
+        with self.assertRaisesRegex(auditor.AuditError, "resolves outside --source"):
+            auditor._resolve_source_relative(
+                source, "linked-data.yaml", "synthetic identity"
+            )
+
+    def test_73_windows_junction_cannot_resolve_outside_source(self) -> None:
+        """Resolved containment rejects an outward junction when Windows can create one."""
+        if creator.os.name != "nt":
+            self.skipTest("Windows junctions are not available on this platform")
+        source = self.create_source()
+        external_directory = self.root / "outside-junction-target"
+        external_directory.mkdir()
+        self.write_source_config(external_directory / "data.yaml")
+        junction = source / "junction"
+        result = subprocess.run(
+            [
+                "cmd.exe",
+                "/d",
+                "/c",
+                "mklink",
+                "/J",
+                str(junction),
+                str(external_directory),
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            self.skipTest(
+                f"junction creation is unavailable: {result.stderr.decode(errors='replace')}"
+            )
+        try:
+            with self.assertRaisesRegex(
+                auditor.AuditError, "resolves outside --source"
+            ):
+                auditor._resolve_source_relative(
+                    source, "junction/data.yaml", "synthetic identity"
+                )
+        finally:
+            junction.rmdir()
+
+    def test_74_unsafe_identity_fails_before_any_file_probe_or_config_read(self) -> None:
+        """Lexically unsafe provenance is rejected before filesystem content is consulted."""
+        summary = {
+            "source_data_config_relative": r"C:\outside\data.yaml",
+            "source_data_config_external": None,
+        }
+        with mock.patch.object(
+            Path, "is_file", side_effect=AssertionError("unexpected file probe")
+        ) as file_probe, mock.patch.object(
+            Path, "read_bytes", side_effect=AssertionError("unexpected config read")
+        ) as content_read, mock.patch.object(
+            auditor.yaml,
+            "safe_load",
+            side_effect=AssertionError("unexpected YAML parse"),
+        ) as yaml_parse:
+            with self.assertRaisesRegex(auditor.AuditError, "unsafe"):
+                auditor._select_current_config(self.root / "source", summary, 3, None)
+        file_probe.assert_not_called()
+        content_read.assert_not_called()
+        yaml_parse.assert_not_called()
+
+    def test_75_successful_formal_build_still_atomically_publishes_without_rmtree(self) -> None:
+        """Successful generation replaces staging with output and never requests recursive cleanup."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        staging = self.root / f".output.building-{creator.os.getpid()}"
+        with mock.patch("shutil.rmtree") as recursive_delete:
+            summary = build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        recursive_delete.assert_not_called()
+        self.assertFalse(staging.exists())
+        self.assertTrue(output.is_dir())
+        self.assertFalse(summary["dry_run"])
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_76_visualization_failure_retains_staging_without_rmtree(self) -> None:
+        """Visualization uses the same conservative no-delete failure semantics."""
+        source, dataset = self.create_source(), self.root / "dataset"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, dataset, tile_size=64))
+        output = self.root / "review"
+        staging = self.root / f".review.building-{visualizer.os.getpid()}"
+        with mock.patch.object(
+            visualizer, "_render_safe", side_effect=RuntimeError("render failure")
+        ), mock.patch("shutil.rmtree") as recursive_delete:
+            with self.assertRaises(visualizer.VisualizationError) as context:
+                visualizer.visualize(
+                    source, dataset, output, ["safe_negative"], 1, seed=42
+                )
+        recursive_delete.assert_not_called()
+        self.assertIn("render failure", str(context.exception))
+        self.assertIn(f"staging retained at {staging}", str(context.exception))
+        self.assertTrue(staging.is_dir())
+        self.assertTrue((staging / "safe_negative").is_dir())
+        self.assertFalse(output.exists())
+        self.assertTrue(source.is_dir())
+        self.assertTrue(dataset.is_dir())
+
+    def test_77_visualization_success_still_atomically_publishes(self) -> None:
+        """Successful visualization publishes staging without recursive deletion."""
+        source, dataset = self.create_source(), self.root / "dataset"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        build_tiled_dataset(BuildConfig(source, dataset, tile_size=64))
+        output = self.root / "review"
+        staging = self.root / f".review.building-{visualizer.os.getpid()}"
+        with mock.patch("shutil.rmtree") as recursive_delete:
+            counts = visualizer.visualize(
+                source, dataset, output, ["safe_negative"], 1, seed=42
+            )
+        recursive_delete.assert_not_called()
+        self.assertEqual(counts, {"safe_negative": 1})
+        self.assertTrue(output.is_dir())
+        self.assertFalse(staging.exists())
+        self.assertEqual(len(list((output / "safe_negative").glob("*.png"))), 1)
+
+    def test_78_auto_internal_nested_config_alias_builds_and_audits(self) -> None:
+        """An automatic candidate resolving to a nested in-source YAML remains portable."""
+        source, output = self.create_source(), self.root / "output"
+        self.add_sample(source, "train", "image.png", (32, 32), [])
+        automatic_candidate = source / "data.yaml"
+        automatic_candidate.unlink()
+        nested_config = source / "configs" / "data.yaml"
+        nested_config.parent.mkdir()
+        self.write_source_config(nested_config, dataset_path="..")
+        resolved_nested = nested_config.resolve()
+        path_type = type(source)
+        original_resolve = path_type.resolve
+
+        def simulate_internal_alias(path, *args, **kwargs):
+            if path == automatic_candidate:
+                return resolved_nested
+            return original_resolve(path, *args, **kwargs)
+
+        with mock.patch.object(
+            path_type,
+            "resolve",
+            autospec=True,
+            side_effect=simulate_internal_alias,
+        ):
+            summary = build_tiled_dataset(BuildConfig(source, output, tile_size=64))
+        self.assertEqual(summary["source_data_config_selection"], "auto")
+        self.assertEqual(summary["source_data_config_relative"], "configs/data.yaml")
+        self.assertEqual(summary["source_data_config_path"], str(resolved_nested))
+        report = audit_dataset(source, output)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+
+    def test_79_auto_outward_file_symlink_is_rejected_when_supported(self) -> None:
+        """A real automatic file symlink cannot escape source or fall back to data_local.yaml."""
+        source, output = self.create_source(), self.root / "output"
+        automatic_candidate = source / "data.yaml"
+        automatic_candidate.unlink()
+        self.write_source_config(source / "data_local.yaml")
+        external_config = self.root / "outside.yaml"
+        self.write_source_config(external_config)
+        try:
+            automatic_candidate.symlink_to(external_config)
+        except OSError as error:
+            self.skipTest(f"real file symlink creation is unavailable: {error}")
+        with self.assertRaisesRegex(TilingError, "resolves outside --source"):
+            build_tiled_dataset(BuildConfig(source, output, tile_size=64, dry_run=True))
+        self.assertFalse(output.exists())
+        self.assertTrue((source / "data_local.yaml").is_file())
+
+    def test_80_auto_escape_fails_before_probe_read_parse_hash_or_fallback(self) -> None:
+        """Resolved auto containment fails before all content access and without mode fallback."""
+        source = self.create_source()
+        self.write_source_config(source / "data_local.yaml", comment="must not be selected")
+        automatic_candidate = source / "data.yaml"
+        resolved_source = source.resolve()
+        resolved_external = (self.root / "outside.yaml").resolve()
+        path_type = type(source)
+        original_resolve = path_type.resolve
+
+        def simulate_outward_alias(path, *args, **kwargs):
+            if path == automatic_candidate:
+                return resolved_external
+            return original_resolve(path, *args, **kwargs)
+
+        with mock.patch.object(
+            path_type,
+            "resolve",
+            autospec=True,
+            side_effect=simulate_outward_alias,
+        ), mock.patch.object(
+            Path,
+            "is_file",
+            side_effect=AssertionError("unexpected file probe"),
+        ) as file_probe, mock.patch.object(
+            Path,
+            "read_bytes",
+            side_effect=AssertionError("unexpected config read"),
+        ) as content_read, mock.patch.object(
+            creator.yaml,
+            "safe_load",
+            side_effect=AssertionError("unexpected YAML parse"),
+        ) as yaml_parse, mock.patch.object(
+            creator.hashlib,
+            "sha256",
+            side_effect=AssertionError("unexpected config hash"),
+        ) as hash_probe:
+            with self.assertRaisesRegex(TilingError, "resolves outside --source"):
+                creator._load_source_config(resolved_source, None)
+        file_probe.assert_not_called()
+        content_read.assert_not_called()
+        yaml_parse.assert_not_called()
+        hash_probe.assert_not_called()
+
+    def test_81_auto_outward_windows_junction_is_rejected_before_fallback(self) -> None:
+        """A real Windows junction at an automatic candidate cannot escape source."""
+        if creator.os.name != "nt":
+            self.skipTest("Windows junctions are not available on this platform")
+        source = self.create_source()
+        automatic_candidate = source / "data.yaml"
+        automatic_candidate.unlink()
+        local_fallback = source / "data_local.yaml"
+        local_content = self.write_source_config(local_fallback)
+        external_directory = self.root / "outside-auto-junction"
+        external_directory.mkdir()
+        result = subprocess.run(
+            [
+                "cmd.exe",
+                "/d",
+                "/c",
+                "mklink",
+                "/J",
+                str(automatic_candidate),
+                str(external_directory),
+            ],
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            self.skipTest(
+                f"junction creation is unavailable: {result.stderr.decode(errors='replace')}"
+            )
+        try:
+            with self.assertRaisesRegex(TilingError, "resolves outside --source"):
+                creator._load_source_config(source.resolve(), None)
+            self.assertEqual(local_fallback.read_bytes(), local_content)
+        finally:
+            automatic_candidate.rmdir()
 
 
 if __name__ == "__main__":

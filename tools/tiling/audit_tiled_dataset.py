@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import csv
 import hashlib
 import io
@@ -20,17 +19,19 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 import PIL
+import yaml
 from PIL import Image, ImageChops
 
 SPLITS = ("train", "val", "test")
 IMAGE_SUFFIXES = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 FLOAT_TOLERANCE = 1e-9
 LABEL_TOLERANCE = 5e-10
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+SUPPORTED_SCHEMA_VERSIONS = (2, 3)
 OUTPUT_FINGERPRINT_ALGORITHM = "sha256-canonical-files-v2"
 SOURCE_FINGERPRINT_ALGORITHM = "sha256-canonical-source-v2"
 # Canonical summary hashing excludes only generated_at and output_dataset_fingerprint.
@@ -49,6 +50,12 @@ MANIFEST_FIELDS = (
     "source_image_sha256",
     "source_label",
     "source_label_sha256",
+    "source_data_config",
+    "source_data_config_selection",
+    "source_data_config_path",
+    "source_data_config_sha256",
+    "source_data_config_relative",
+    "source_data_config_external",
     "tile_x",
     "tile_y",
     "tile_w",
@@ -75,6 +82,20 @@ MANIFEST_FIELDS = (
     "output_image_sha256",
     "output_label_sha256",
 )
+SCHEMA_2_MANIFEST_FIELDS = tuple(
+    field
+    for field in MANIFEST_FIELDS
+    if field
+    not in {
+        "source_data_config",
+        "source_data_config_selection",
+        "source_data_config_path",
+        "source_data_config_sha256",
+        "source_data_config_relative",
+        "source_data_config_external",
+    }
+)
+MANIFEST_FIELDS_BY_SCHEMA = {2: SCHEMA_2_MANIFEST_FIELDS, 3: MANIFEST_FIELDS}
 
 
 class AuditError(RuntimeError):
@@ -111,6 +132,23 @@ class AuditBox:
     xyxy: tuple[float, float, float, float]
 
 
+@dataclass(frozen=True)
+class SourceLayout:
+    """Independently parsed source configuration and validated split directories."""
+
+    config_path: Path
+    config_identity: str
+    config_relative: str | None
+    config_external: str | None
+    config_content: bytes
+    selection: str
+    dataset_root: Path
+    image_roots: dict[str, Path]
+    label_roots: dict[str, Path]
+    nc: int
+    names: dict[int, str]
+
+
 def stable_json(value: Any) -> str:
     """Serialize UTF-8 JSON with sorted mappings, preserved list order, and finite floats."""
     return json.dumps(
@@ -138,15 +176,16 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
-def _read_manifest(path: Path) -> list[dict[str, str]]:
+def _read_manifest(path: Path, schema_version: int) -> list[dict[str, str]]:
     """Stream-read a strict, nonempty manifest."""
+    expected_fields = MANIFEST_FIELDS_BY_SCHEMA[schema_version]
     try:
         with path.open("r", encoding="utf-8-sig", newline="") as file:
             reader = csv.DictReader(file, strict=True)
             fieldnames = reader.fieldnames or []
-            if fieldnames != list(MANIFEST_FIELDS):
-                missing = sorted(set(MANIFEST_FIELDS) - set(fieldnames))
-                extra = sorted(set(fieldnames) - set(MANIFEST_FIELDS))
+            if fieldnames != list(expected_fields):
+                missing = sorted(set(expected_fields) - set(fieldnames))
+                extra = sorted(set(fieldnames) - set(expected_fields))
                 raise AuditError(
                     f"manifest columns do not match schema: missing={missing}, extra={extra}, order={fieldnames}"
                 )
@@ -161,41 +200,145 @@ def _read_manifest(path: Path) -> list[dict[str, str]]:
     return rows
 
 
-def _parse_names_mapping(text: str) -> dict[int, str]:
-    """Independently parse the compact YAML names section."""
-    lines = text.splitlines()
-    for index, raw_line in enumerate(lines):
-        stripped = raw_line.split("#", 1)[0].rstrip()
-        match = re.match(r"^\s*names\s*:\s*(.*?)\s*$", stripped)
-        if not match:
-            continue
-        inline = match.group(1)
-        if inline:
-            try:
-                value = ast.literal_eval(inline)
-            except (SyntaxError, ValueError):
-                return {0: "crack"} if re.fullmatch(r"\{\s*0\s*:\s*['\"]?crack['\"]?\s*\}", inline) else {}
-            if isinstance(value, list):
-                return {item_index: str(name) for item_index, name in enumerate(value)}
-            if isinstance(value, dict):
-                try:
-                    return {int(key): str(name) for key, name in value.items()}
-                except (TypeError, ValueError):
-                    return {}
-            return {}
-        names: dict[int, str] = {}
-        for child_line in lines[index + 1 :]:
-            if not child_line.strip() or child_line.lstrip().startswith("#"):
-                continue
-            if not child_line[:1].isspace():
-                break
-            child = child_line.split("#", 1)[0].strip()
-            child_match = re.fullmatch(r"(\d+)\s*:\s*['\"]?([^'\"]+?)['\"]?", child)
-            if not child_match:
-                return {}
-            names[int(child_match.group(1))] = child_match.group(2).strip()
-        return names
-    return {}
+def _parse_names(value: Any, config_path: Path) -> dict[int, str]:
+    """Independently normalize a YAML names list or mapping."""
+    if isinstance(value, list):
+        names = {index: str(name) for index, name in enumerate(value)}
+    elif isinstance(value, dict):
+        try:
+            names = {int(key): str(name) for key, name in value.items()}
+        except (TypeError, ValueError) as error:
+            raise AuditError(f"source names keys must be integers in {config_path}") from error
+    else:
+        raise AuditError(f"source names must be a list or mapping in {config_path}")
+    if names != {0: "crack"}:
+        raise AuditError(f"source names must be exactly {{0: 'crack'}} in {config_path}")
+    return names
+
+
+def _config_provenance(
+    config_path: Path, source: Path, config_content: bytes
+) -> tuple[str, str | None, str | None]:
+    """Independently derive a location-independent configuration identity."""
+    try:
+        relative = config_path.relative_to(source).as_posix()
+    except ValueError:
+        external = f"external:sha256:{hashlib.sha256(config_content).hexdigest()}"
+        return external, None, external
+    return relative, relative, None
+
+
+def _portable_yaml_path(value: str) -> Path:
+    """Convert relative POSIX or Windows YAML syntax to native path components."""
+    if PureWindowsPath(value).is_absolute() or PurePosixPath(value).is_absolute():
+        return Path(value)
+    pure = PureWindowsPath(value) if "\\" in value else PurePosixPath(value)
+    return Path(*pure.parts)
+
+
+def _resolve_yaml_path(value: Any, base: Path, field: str, config_path: Path) -> Path:
+    """Independently resolve one required scalar YAML path."""
+    if not isinstance(value, str) or not value.strip():
+        raise AuditError(f"source {field} must be a nonempty path string in {config_path}")
+    path = _portable_yaml_path(value.strip()).expanduser()
+    return (path if path.is_absolute() else base / path).resolve()
+
+
+def _load_source_layout(source: Path, config_path: Path, selection: str) -> SourceLayout:
+    """Independently parse the selected source YAML and prove its split paths match the audit source."""
+    if not config_path.is_file():
+        raise AuditError(f"source data configuration is not a file: {config_path}")
+    try:
+        content = config_path.read_bytes()
+        document = yaml.safe_load(content.decode("utf-8-sig"))
+    except (OSError, UnicodeError, yaml.YAMLError) as error:
+        raise AuditError(f"cannot parse source data configuration {config_path}: {error}") from error
+    if not isinstance(document, dict):
+        raise AuditError(f"source data configuration must be a YAML mapping: {config_path}")
+    config_identity, config_relative, config_external = _config_provenance(
+        config_path, source, content
+    )
+    names = _parse_names(document.get("names"), config_path)
+    nc_value = document.get("nc")
+    if nc_value is None:
+        nc = len(names)
+    elif isinstance(nc_value, bool) or not isinstance(nc_value, int):
+        raise AuditError(f"source nc must be an integer when present in {config_path}")
+    else:
+        nc = nc_value
+    if nc != 1 or nc != len(names):
+        raise AuditError(f"source nc must be 1 and match names in {config_path}, got {nc}")
+
+    dataset_root = _resolve_yaml_path(document.get("path", "."), config_path.parent, "path", config_path)
+    image_roots: dict[str, Path] = {}
+    label_roots: dict[str, Path] = {}
+    for split in SPLITS:
+        declared_image_root = _resolve_yaml_path(document.get(split), dataset_root, split, config_path)
+        actual_image_root = (source / "images" / split).resolve()
+        actual_label_root = (source / "labels" / split).resolve()
+        if declared_image_root != actual_image_root:
+            raise AuditError(
+                f"source {split} path resolves to {declared_image_root}, "
+                f"but actual scan directory is {actual_image_root}"
+            )
+        if not actual_image_root.is_dir() or not actual_label_root.is_dir():
+            raise AuditError(
+                f"missing required split directories: {actual_image_root} and {actual_label_root}"
+            )
+        image_roots[split] = actual_image_root
+        label_roots[split] = actual_label_root
+    return SourceLayout(
+        config_path=config_path,
+        config_identity=config_identity,
+        config_relative=config_relative,
+        config_external=config_external,
+        config_content=content,
+        selection=selection,
+        dataset_root=dataset_root,
+        image_roots=image_roots,
+        label_roots=label_roots,
+        nc=nc,
+        names=names,
+    )
+
+
+def _load_schema2_source_layout(source: Path, config_path: Path) -> SourceLayout:
+    """Apply the pre-upgrade config checks without claiming Schema 3 path guarantees."""
+    if not config_path.is_file():
+        raise AuditError(f"source data configuration is not a file: {config_path}")
+    try:
+        content = config_path.read_bytes()
+        document = yaml.safe_load(content.decode("utf-8-sig"))
+    except (OSError, UnicodeError, yaml.YAMLError) as error:
+        raise AuditError(f"cannot parse source data configuration {config_path}: {error}") from error
+    if not isinstance(document, dict):
+        raise AuditError(f"source data configuration must be a YAML mapping: {config_path}")
+    names = _parse_names(document.get("names"), config_path)
+    config_identity, config_relative, config_external = _config_provenance(
+        config_path, source, content
+    )
+    if config_relative is None or config_external is not None:
+        raise AuditError("Schema 2 source configuration must remain inside --source")
+    image_roots = {split: (source / "images" / split).resolve() for split in SPLITS}
+    label_roots = {split: (source / "labels" / split).resolve() for split in SPLITS}
+    for split in SPLITS:
+        if not image_roots[split].is_dir() or not label_roots[split].is_dir():
+            raise AuditError(
+                f"missing required split directories: {image_roots[split]} and {label_roots[split]}"
+            )
+    return SourceLayout(
+        config_path=config_path,
+        config_identity=config_identity,
+        config_relative=config_relative,
+        config_external=None,
+        config_content=content,
+        selection="legacy-relative",
+        dataset_root=source,
+        image_roots=image_roots,
+        label_roots=label_roots,
+        nc=len(names),
+        names=names,
+    )
 
 
 def _validate_data_yaml(dataset: Path, errors: list[str]) -> bytes:
@@ -218,7 +361,12 @@ def _validate_data_yaml(dataset: Path, errors: list[str]) -> bytes:
     for split in SPLITS:
         if scalars.get(split, "").replace("\\", "/") != f"images/{split}":
             errors.append(f"data.yaml {split} path is invalid: {scalars.get(split)!r}")
-    if _parse_names_mapping(text) != {0: "crack"}:
+    try:
+        document = yaml.safe_load(text)
+        names = _parse_names(document.get("names") if isinstance(document, dict) else None, path)
+    except (yaml.YAMLError, AuditError):
+        names = {}
+    if names != {0: "crack"}:
         errors.append("data.yaml names must be exactly {0: 'crack'}")
     return content
 
@@ -228,9 +376,12 @@ def _relative_key(path: Path) -> str:
     return path.with_suffix("").as_posix().casefold()
 
 
-def _collect_source_pairs(source: Path, split: str) -> list[AuditPair]:
+def _collect_source_pairs(
+    source: Path, split: str, image_root: Path | None = None, label_root: Path | None = None
+) -> list[AuditPair]:
     """Independently match all source images and labels in a split."""
-    image_root, label_root = source / "images" / split, source / "labels" / split
+    image_root = image_root or source / "images" / split
+    label_root = label_root or source / "labels" / split
     if not image_root.is_dir() or not label_root.is_dir():
         raise AuditError(f"missing required split directories: {image_root} and {label_root}")
     images = sorted(
@@ -457,6 +608,8 @@ def _expected_manifest_row(
     tile_size: int,
     tile_file: str,
     decision: dict[str, Any],
+    schema_version: int,
+    source_provenance: dict[str, str],
 ) -> dict[str, str]:
     """Build an expected manifest row exclusively from source data and recorded parameters."""
     valid_width, valid_height = min(tile_size, width - tile_x), min(tile_size, height - tile_y)
@@ -496,7 +649,12 @@ def _expected_manifest_row(
         "output_image_sha256": "",
         "output_label_sha256": "",
     }
-    return {field: str(values[field]) for field in MANIFEST_FIELDS}
+    if schema_version == 3:
+        values.update(source_provenance)
+    return {
+        field: str(values[field])
+        for field in MANIFEST_FIELDS_BY_SCHEMA[schema_version]
+    }
 
 
 def _source_fingerprint(
@@ -561,8 +719,9 @@ def _require_float(mapping: dict[str, Any], field: str) -> float:
 
 def _validate_parameters(summary: dict[str, Any]) -> dict[str, Any]:
     """Validate every parameter needed for independent reconstruction."""
-    if summary.get("schema_version") != SCHEMA_VERSION:
-        raise AuditError(f"unsupported summary schema_version: {summary.get('schema_version')!r}")
+    schema_version = summary.get("schema_version")
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        raise AuditError(f"unsupported summary schema_version: {schema_version!r}")
     parameters = summary.get("parameters")
     if not isinstance(parameters, dict):
         raise AuditError("summary parameters must be an object")
@@ -611,6 +770,14 @@ def _validate_parameters(summary: dict[str, Any]) -> dict[str, Any]:
         isinstance(maximum, bool) or not isinstance(maximum, int) or maximum <= 0
     ):
         raise AuditError("summary max_images_per_split must be null or a positive integer")
+    if schema_version == 2:
+        if "data_yaml" in parameters:
+            raise AuditError("Schema 2 parameters unexpectedly contain data_yaml")
+        data_yaml = None
+    else:
+        data_yaml = parameters.get("data_yaml")
+        if data_yaml is not None and (not isinstance(data_yaml, str) or not data_yaml):
+            raise AuditError("summary data_yaml must be null or a nonempty path string")
     if parameters.get("padding_value") != 114 or parameters.get("padding") != {
         "mode": "right_bottom_constant",
         "value": 114,
@@ -629,6 +796,7 @@ def _validate_parameters(summary: dict[str, Any]) -> dict[str, Any]:
     if parameters.get("dry_run") is not False or summary.get("dry_run") is not False:
         raise AuditError("a materialized dataset cannot be marked as dry_run")
     return {
+        "schema_version": schema_version,
         "tile_size": tile_size,
         "overlap": overlap,
         "stride": stride,
@@ -638,6 +806,7 @@ def _validate_parameters(summary: dict[str, Any]) -> dict[str, Any]:
         "jpeg_quality": jpeg_quality,
         "seed": seed,
         "max_images_per_split": maximum,
+        "data_yaml": data_yaml,
     }
 
 
@@ -755,9 +924,10 @@ def _initial_stats(available: int, processed: int, source_label_boxes: int) -> d
 
 def _validate_summary_metadata(
     summary: dict[str, Any],
+    schema_version: int,
     expected_splits: dict[str, dict[str, int]],
     rejection_reasons: Counter[str],
-    source_config_relative: str,
+    source_provenance: dict[str, Any],
     source_config_sha256: str,
     full_source_fingerprint: str,
     processed_subset_fingerprint: str,
@@ -777,19 +947,38 @@ def _validate_summary_metadata(
     if summary.get("rejection_reasons") != dict(sorted(rejection_reasons.items())):
         errors.append("summary rejection reasons do not match independently rejected boxes")
     comparisons = {
-        "source_data_config": source_config_relative,
-        "source_data_config_sha256": source_config_sha256,
         "full_source_fingerprint": full_source_fingerprint,
         "processed_subset_fingerprint": processed_subset_fingerprint,
         "processed_source_images": processed_images,
         "input_modified": False,
     }
+    if schema_version == 2:
+        comparisons.update(
+            {
+                "source_data_config": source_provenance["source_data_config"],
+                "source_data_config_sha256": source_config_sha256,
+            }
+        )
+    else:
+        comparisons.update(source_provenance)
     for field, expected in comparisons.items():
         if summary.get(field) != expected:
             errors.append(f"summary {field} does not match independent observation")
     versions = summary.get("versions")
-    if versions != {"python": platform.python_version(), "pillow": PIL.__version__}:
-        errors.append(f"summary versions do not match audit runtime: {versions!r}")
+    if schema_version == 2:
+        if versions != {"python": platform.python_version(), "pillow": PIL.__version__}:
+            errors.append(f"Schema 2 summary versions do not match audit runtime: {versions!r}")
+    elif (
+        not isinstance(versions, dict)
+        or set(versions) != {"python", "pillow"}
+        or any(
+            not isinstance(versions[field], str)
+            or re.fullmatch(r"[1-9]\d*(?:\.\d+)+(?:[-+._A-Za-z0-9]*)?", versions[field])
+            is None
+            for field in ("python", "pillow")
+        )
+    ):
+        errors.append(f"Schema 3 summary historical versions are invalid: {versions!r}")
     generated_at = summary.get("generated_at")
     try:
         parsed_time = datetime.fromisoformat(generated_at)
@@ -832,34 +1021,202 @@ def _validate_summary_metadata(
         errors.append("summary records a source dataset fingerprint but the source file is missing")
 
 
-def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
+def _safe_source_relative(value: Any, field: str) -> str:
+    """Validate a portable source-relative POSIX identity."""
+    if not isinstance(value, str) or not value:
+        raise AuditError(f"{field} must be a nonempty source-relative path")
+    posix_path = PurePosixPath(value)
+    windows_path = PureWindowsPath(value)
+    if (
+        "\\" in value
+        or posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or bool(windows_path.drive)
+        or bool(windows_path.root)
+        or not posix_path.parts
+        or ".." in posix_path.parts
+        or "." in posix_path.parts
+        or posix_path.as_posix() != value
+    ):
+        raise AuditError(f"{field} is unsafe: {value!r}")
+    return posix_path.as_posix()
+
+
+def _resolve_source_relative(source: Path, value: Any, field: str) -> Path:
+    """Resolve a portable identity and prove its real target remains below source."""
+    relative = _safe_source_relative(value, field)
+    resolved_source = source.resolve()
+    resolved_path = (resolved_source / Path(*PurePosixPath(relative).parts)).resolve()
+    try:
+        resolved_path.relative_to(resolved_source)
+    except ValueError as error:
+        raise AuditError(f"{field} resolves outside --source: {value!r}") from error
+    return resolved_path
+
+
+def _historical_path_is_absolute(value: Any) -> bool:
+    """Recognize absolute provenance paths from either POSIX or Windows hosts."""
+    return isinstance(value, str) and bool(value) and (
+        PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()
+    )
+
+
+def _select_current_config(
+    source: Path,
+    summary: dict[str, Any],
+    schema_version: int,
+    data_yaml: Path | None,
+) -> tuple[Path, str]:
+    """Select only a current-machine config path, never a recorded historical absolute path."""
+    if data_yaml is not None:
+        config_path = data_yaml.expanduser().resolve()
+        if not config_path.is_file():
+            raise AuditError(f"--data-yaml must be an existing regular file: {config_path}")
+        return config_path, "explicit"
+    if schema_version == 2:
+        config_path = _resolve_source_relative(
+            source,
+            summary.get("source_data_config"),
+            "summary source_data_config",
+        )
+        if not config_path.is_file():
+            raise AuditError(f"source data configuration is missing: {config_path}")
+        return config_path, "portable"
+    relative = summary.get("source_data_config_relative")
+    external = summary.get("source_data_config_external")
+    if relative is not None:
+        config_path = _resolve_source_relative(
+            source, relative, "summary source_data_config_relative"
+        )
+        if not config_path.is_file():
+            raise AuditError(f"source data configuration is missing: {config_path}")
+        return config_path, "portable"
+    if isinstance(external, str) and external:
+        raise AuditError(
+            "the recorded source configuration is external to --source; "
+            "provide the current file explicitly with --data-yaml"
+        )
+    raise AuditError("Schema 3 source configuration provenance is incomplete")
+
+
+def _validate_historical_layout(summary: dict[str, Any], errors: list[str]) -> None:
+    """Validate Schema 3 historical layout structure without using it as an operational path."""
+    layout = summary.get("source_data_layout")
+    if not isinstance(layout, dict):
+        errors.append("summary source_data_layout must be an object")
+        return
+    if layout.get("nc") != 1 or layout.get("names") != {"0": "crack"}:
+        errors.append("summary source_data_layout class mapping is invalid")
+    if not _historical_path_is_absolute(layout.get("dataset_root")):
+        errors.append("summary source_data_layout.dataset_root is not an absolute historical path")
+    for group in ("images", "labels"):
+        roots = layout.get(group)
+        if not isinstance(roots, dict) or set(roots) != set(SPLITS):
+            errors.append(f"summary source_data_layout.{group} split mapping is invalid")
+            continue
+        for split in SPLITS:
+            value = roots[split]
+            normalized = value.replace("\\", "/").casefold() if isinstance(value, str) else ""
+            if not _historical_path_is_absolute(value) or not normalized.endswith(
+                f"/{group}/{split}"
+            ):
+                errors.append(
+                    f"summary source_data_layout.{group}.{split} is not a valid historical split path"
+                )
+
+
+def _validate_schema3_provenance(
+    summary: dict[str, Any],
+    parameters: dict[str, Any],
+    source_layout: SourceLayout,
+    source_config_sha256: str,
+    errors: list[str],
+) -> dict[str, Any]:
+    """Validate portable config identity while treating generating-host paths as history only."""
+    selection = summary.get("source_data_config_selection")
+    historical_path = summary.get("source_data_config_path")
+    if selection not in {"explicit", "auto"}:
+        raise AuditError(f"summary source_data_config_selection is invalid: {selection!r}")
+    if not _historical_path_is_absolute(historical_path):
+        raise AuditError("summary source_data_config_path must be an absolute historical path")
+    recorded_parameter_path = parameters["data_yaml"]
+    if selection == "explicit":
+        if recorded_parameter_path != historical_path:
+            raise AuditError(
+                "explicit generation must record the same historical path in "
+                "parameters.data_yaml and source_data_config_path"
+            )
+    elif recorded_parameter_path is not None:
+        raise AuditError("automatic generation must record parameters.data_yaml as null")
+
+    expected = {
+        "source_data_config": source_layout.config_identity,
+        "source_data_config_path": historical_path,
+        "source_data_config_selection": selection,
+        "source_data_config_sha256": source_config_sha256,
+        "source_data_config_relative": source_layout.config_relative,
+        "source_data_config_external": source_layout.config_external,
+    }
+    for field, value in expected.items():
+        if summary.get(field) != value:
+            errors.append(f"summary {field} does not match the current source configuration")
+    if source_layout.config_relative is not None:
+        historical_normalized = historical_path.replace("\\", "/").casefold()
+        relative_suffix = f"/{source_layout.config_relative.casefold()}"
+        if not historical_normalized.endswith(relative_suffix):
+            errors.append(
+                "summary source_data_config_path is inconsistent with the portable relative identity"
+            )
+    if selection == "auto":
+        if source_layout.config_relative is None:
+            errors.append("automatic config provenance must resolve inside --source")
+        if source_layout.config_external is not None:
+            errors.append("automatic config provenance cannot be external to --source")
+    _validate_historical_layout(summary, errors)
+    return expected
+
+
+def audit_dataset(
+    source: Path, dataset: Path, data_yaml: Path | None = None
+) -> dict[str, Any]:
     """Independently reconstruct expected tiles and return a complete audit report."""
     source, dataset = source.expanduser().resolve(), dataset.expanduser().resolve()
     if not source.is_dir() or not dataset.is_dir():
         raise AuditError(f"source and dataset must exist: source={source}, dataset={dataset}")
     summary = _read_json(dataset / "metadata" / "summary.json")
     parameters = _validate_parameters(summary)
+    schema_version = parameters["schema_version"]
     manifest_path = dataset / "metadata" / "tile_manifest.csv"
-    rows = _read_manifest(manifest_path)
+    rows = _read_manifest(manifest_path, schema_version)
     errors: list[str] = []
     _validate_data_yaml(dataset, errors)
 
-    source_config_relative = summary.get("source_data_config")
-    if (
-        not isinstance(source_config_relative, str)
-        or PurePosixPath(source_config_relative).is_absolute()
-        or ".." in PurePosixPath(source_config_relative).parts
-    ):
-        raise AuditError(f"summary source_data_config is unsafe: {source_config_relative!r}")
-    source_config_path = source / Path(*PurePosixPath(source_config_relative).parts)
-    try:
-        source_config_content = source_config_path.read_bytes()
-        source_config_text = source_config_content.decode("utf-8-sig")
-    except (OSError, UnicodeError) as error:
-        raise AuditError(f"cannot read source data configuration {source_config_path}: {error}") from error
-    if _parse_names_mapping(source_config_text) != {0: "crack"}:
-        raise AuditError("source names must be exactly {0: 'crack'}")
+    source_config_path, current_selection = _select_current_config(
+        source, summary, schema_version, data_yaml
+    )
+    if schema_version == 2:
+        source_layout = _load_schema2_source_layout(source, source_config_path)
+    else:
+        source_layout = _load_source_layout(source, source_config_path, current_selection)
+    source_config_relative = source_layout.config_identity
+    source_config_content = source_layout.config_content
     source_config_sha256 = hashlib.sha256(source_config_content).hexdigest()
+    if schema_version == 2:
+        source_provenance: dict[str, Any] = {
+            "source_data_config": source_config_relative,
+        }
+        if summary.get("source_data_config") != source_config_relative:
+            errors.append(
+                "Schema 2 summary source_data_config does not match the current relative config"
+            )
+        if summary.get("source_data_config_sha256") != source_config_sha256:
+            errors.append(
+                "Schema 2 summary source_data_config_sha256 does not match the current config"
+            )
+    else:
+        source_provenance = _validate_schema3_provenance(
+            summary, parameters, source_layout, source_config_sha256, errors
+        )
     copied_config_path = dataset / "metadata" / "source_data.yaml"
     try:
         copied_config_content = copied_config_path.read_bytes()
@@ -869,7 +1226,15 @@ def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
     if copied_config_content != source_config_content:
         errors.append("metadata/source_data.yaml does not exactly match the source configuration")
 
-    all_pairs = {split: _collect_source_pairs(source, split) for split in SPLITS}
+    all_pairs = {
+        split: _collect_source_pairs(
+            source,
+            split,
+            source_layout.image_roots[split],
+            source_layout.label_roots[split],
+        )
+        for split in SPLITS
+    }
     identities: list[AuditIdentity] = []
     identities_by_image: dict[str, AuditIdentity] = {}
     source_dimensions: dict[str, tuple[int, int]] = {}
@@ -973,6 +1338,11 @@ def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
                         parameters["tile_size"],
                         tile_file,
                         decision,
+                        schema_version,
+                        {
+                            field: "" if value is None else str(value)
+                            for field, value in source_provenance.items()
+                        },
                     )
                     stats = expected_splits[split]
                     stats["candidate_tiles"] += 1
@@ -991,7 +1361,7 @@ def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
                     if actual_row is None:
                         missing_rows.append(key)
                     else:
-                        for field in MANIFEST_FIELDS:
+                        for field in MANIFEST_FIELDS_BY_SCHEMA[schema_version]:
                             if field in {"output_image_sha256", "output_label_sha256"}:
                                 continue
                             if actual_row[field] != expected_row[field]:
@@ -1085,9 +1455,10 @@ def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
 
     _validate_summary_metadata(
         summary,
+        schema_version,
         expected_splits,
         rejection_reasons,
-        source_config_relative,
+        source_provenance,
         source_config_sha256,
         full_source_fingerprint,
         processed_subset_fingerprint,
@@ -1137,7 +1508,15 @@ def audit_dataset(source: Path, dataset: Path) -> dict[str, Any]:
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", required=True, type=Path)
+    parser.add_argument("--source", required=True, type=Path, help="current-machine source dataset root")
+    parser.add_argument(
+        "--data-yaml",
+        type=Path,
+        help=(
+            "current-machine source YAML; required after migration when the recorded config was "
+            "external to --source, and used exclusively when provided"
+        ),
+    )
     parser.add_argument("--dataset", required=True, type=Path)
     return parser.parse_args()
 
@@ -1146,7 +1525,7 @@ def main() -> int:
     """Run the independent audit and uniformly return nonzero on every failure."""
     args = parse_args()
     try:
-        report = audit_dataset(args.source, args.dataset)
+        report = audit_dataset(args.source, args.dataset, args.data_yaml)
     except Exception as error:
         report = {"status": "FAIL", "errors": [f"{type(error).__name__}: {error}"]}
     print(json.dumps(report, ensure_ascii=False, indent=2))

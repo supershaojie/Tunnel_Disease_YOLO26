@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 import random
-import shutil
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -267,8 +266,10 @@ def visualize(
     if staging.exists():
         raise VisualizationError(f"staging path already exists: {staging}")
     counts: dict[str, int] = {}
+    staging_created_by_this_run = False
     try:
-        staging.mkdir(parents=True)
+        staging.mkdir(parents=True, exist_ok=False)
+        staging_created_by_this_run = True
         for category, category_rows in selected.items():
             category_dir = staging / category
             category_dir.mkdir()
@@ -286,9 +287,12 @@ def visualize(
                 )
             counts[category] = len(category_rows)
         staging.replace(output)
-    except Exception:
-        if staging.is_dir():
-            shutil.rmtree(staging)
+    except Exception as error:
+        if staging_created_by_this_run:
+            raise VisualizationError(
+                f"{error}; staging retained at {staging}; "
+                "manual confirmation is required before cleanup"
+            ) from error
         raise
     return counts
 

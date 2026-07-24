@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import argparse
-import ast
 import csv
 import hashlib
 import json
@@ -14,21 +13,21 @@ import os
 import platform
 import random
 import re
-import shutil
 import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 import PIL
+import yaml
 from PIL import Image
 
 SPLITS = ("train", "val", "test")
 IMAGE_SUFFIXES = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 FLOAT_TOLERANCE = 1e-9
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 OUTPUT_FINGERPRINT_ALGORITHM = "sha256-canonical-files-v2"
 SOURCE_FINGERPRINT_ALGORITHM = "sha256-canonical-source-v2"
 # Canonical summary hashing excludes only generated_at and output_dataset_fingerprint.
@@ -47,6 +46,12 @@ MANIFEST_FIELDS = (
     "source_image_sha256",
     "source_label",
     "source_label_sha256",
+    "source_data_config",
+    "source_data_config_selection",
+    "source_data_config_path",
+    "source_data_config_sha256",
+    "source_data_config_relative",
+    "source_data_config_external",
     "tile_x",
     "tile_y",
     "tile_w",
@@ -94,6 +99,7 @@ class BuildConfig:
     seed: int = 42
     max_images_per_split: int | None = None
     dry_run: bool = False
+    data_yaml: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -126,6 +132,23 @@ class SourceIdentity:
     image_sha256: str
     label_relative: str
     label_sha256: str
+
+
+@dataclass(frozen=True)
+class SourceLayout:
+    """Selected source configuration and its strictly validated split directories."""
+
+    config_path: Path
+    config_identity: str
+    config_relative: str | None
+    config_external: str | None
+    config_content: bytes
+    selection: str
+    dataset_root: Path
+    image_roots: dict[str, Path]
+    label_roots: dict[str, Path]
+    nc: int
+    names: dict[int, str]
 
 
 def sha256_file(path: Path) -> str:
@@ -346,9 +369,12 @@ def _relative_key(path: Path) -> str:
     return path.with_suffix("").as_posix().casefold()
 
 
-def collect_source_pairs(source: Path, split: str) -> list[SourcePair]:
+def collect_source_pairs(
+    source: Path, split: str, image_root: Path | None = None, label_root: Path | None = None
+) -> list[SourcePair]:
     """Match every image and label in a split, rejecting missing or orphaned files."""
-    image_root, label_root = source / "images" / split, source / "labels" / split
+    image_root = image_root or source / "images" / split
+    label_root = label_root or source / "labels" / split
     if not image_root.is_dir() or not label_root.is_dir():
         raise TilingError(f"missing required split directories: {image_root} and {label_root}")
     images = sorted(
@@ -406,58 +432,137 @@ def _select_pairs(pairs: list[SourcePair], maximum: int | None, seed: int, split
     return sorted(random.Random(derived).sample(pairs, maximum), key=lambda pair: pair.image_relative.casefold())
 
 
-def _load_source_config(source: Path) -> tuple[Path, bytes]:
-    """Load and validate the source class mapping without following a machine-specific path."""
-    candidates = (source / "data.yaml", source / "data_local.yaml")
-    config_path = next((path for path in candidates if path.is_file()), None)
-    if config_path is None:
-        raise TilingError(f"source data configuration is missing under {source}")
+def _config_provenance(
+    config_path: Path, source: Path, config_content: bytes
+) -> tuple[str, str | None, str | None]:
+    """Return a location-independent identity plus its source-relative or external form."""
+    try:
+        relative = config_path.relative_to(source).as_posix()
+    except ValueError:
+        external = f"external:sha256:{hashlib.sha256(config_content).hexdigest()}"
+        return external, None, external
+    return relative, relative, None
+
+
+def _portable_yaml_path(value: str) -> Path:
+    """Convert relative POSIX or Windows YAML syntax to native path components."""
+    if PureWindowsPath(value).is_absolute() or PurePosixPath(value).is_absolute():
+        return Path(value)
+    pure = PureWindowsPath(value) if "\\" in value else PurePosixPath(value)
+    return Path(*pure.parts)
+
+
+def _parse_names(value: Any, config_path: Path) -> dict[int, str]:
+    """Normalize a YAML names list or mapping to an integer-keyed mapping."""
+    if isinstance(value, list):
+        names = {index: str(name) for index, name in enumerate(value)}
+    elif isinstance(value, dict):
+        try:
+            names = {int(key): str(name) for key, name in value.items()}
+        except (TypeError, ValueError) as error:
+            raise TilingError(f"source names keys must be integers in {config_path}") from error
+    else:
+        raise TilingError(f"source names must be a list or mapping in {config_path}")
+    if names != {0: "crack"}:
+        raise TilingError(f"source names must be exactly {{0: 'crack'}} in {config_path}")
+    return names
+
+
+def _resolve_yaml_path(value: Any, base: Path, field: str, config_path: Path) -> Path:
+    """Resolve one required scalar YAML path against its documented base directory."""
+    if not isinstance(value, str) or not value.strip():
+        raise TilingError(f"source {field} must be a nonempty path string in {config_path}")
+    path = _portable_yaml_path(value.strip()).expanduser()
+    return (path if path.is_absolute() else base / path).resolve()
+
+
+def _resolve_auto_config_candidate(source: Path, candidate: Path) -> Path:
+    """Resolve an automatic YAML candidate and reject any target outside source before probing it."""
+    try:
+        resolved_source = source.resolve()
+        resolved_candidate = candidate.resolve()
+    except (OSError, RuntimeError) as error:
+        raise TilingError(f"cannot resolve auto-discovered source configuration {candidate}: {error}") from error
+    try:
+        resolved_candidate.relative_to(resolved_source)
+    except ValueError as error:
+        raise TilingError(
+            f"auto-discovered source configuration resolves outside --source: "
+            f"{candidate} -> {resolved_candidate}"
+        ) from error
+    return resolved_candidate
+
+
+def _load_source_config(source: Path, data_yaml: Path | None) -> SourceLayout:
+    """Select one YAML, parse its layout, and prove it matches the directories that will be scanned."""
+    if data_yaml is not None:
+        config_path, selection = data_yaml, "explicit"
+    else:
+        candidates = (source / "data.yaml", source / "data_local.yaml")
+        config_path = None
+        for candidate in candidates:
+            resolved_candidate = _resolve_auto_config_candidate(source, candidate)
+            if resolved_candidate.is_file():
+                config_path = resolved_candidate
+                break
+        selection = "auto"
+        if config_path is None:
+            raise TilingError(f"source data configuration is missing under {source}")
+    if not config_path.is_file():
+        raise TilingError(f"source data configuration is not a file: {config_path}")
     try:
         content = config_path.read_bytes()
         text = content.decode("utf-8-sig")
-    except (OSError, UnicodeError) as error:
+        document = yaml.safe_load(text)
+    except (OSError, UnicodeError, yaml.YAMLError) as error:
         raise TilingError(f"cannot parse source data configuration {config_path}: {error}") from error
-    if _parse_names_mapping(text) != {0: "crack"}:
-        raise TilingError("source names must be exactly {0: 'crack'}")
-    return config_path, content
+    if not isinstance(document, dict):
+        raise TilingError(f"source data configuration must be a YAML mapping: {config_path}")
+    config_identity, config_relative, config_external = _config_provenance(
+        config_path, source, content
+    )
+    names = _parse_names(document.get("names"), config_path)
+    nc_value = document.get("nc")
+    if nc_value is None:
+        nc = len(names)
+    elif isinstance(nc_value, bool) or not isinstance(nc_value, int):
+        raise TilingError(f"source nc must be an integer when present in {config_path}")
+    else:
+        nc = nc_value
+    if nc != 1 or nc != len(names):
+        raise TilingError(f"source nc must be 1 and match names in {config_path}, got {nc}")
 
-
-def _parse_names_mapping(text: str) -> dict[int, str]:
-    """Strictly parse the small YAML names section without adding a YAML dependency."""
-    lines = text.splitlines()
-    for index, raw_line in enumerate(lines):
-        stripped = raw_line.split("#", 1)[0].rstrip()
-        match = re.match(r"^\s*names\s*:\s*(.*?)\s*$", stripped)
-        if not match:
-            continue
-        inline = match.group(1)
-        if inline:
-            try:
-                value = ast.literal_eval(inline)
-            except (SyntaxError, ValueError):
-                map_match = re.fullmatch(r"\{\s*0\s*:\s*['\"]?crack['\"]?\s*\}", inline)
-                return {0: "crack"} if map_match else {}
-            if isinstance(value, list):
-                return {item_index: str(name) for item_index, name in enumerate(value)}
-            if isinstance(value, dict):
-                try:
-                    return {int(key): str(name) for key, name in value.items()}
-                except (TypeError, ValueError):
-                    return {}
-            return {}
-        names: dict[int, str] = {}
-        for child_line in lines[index + 1 :]:
-            if not child_line.strip() or child_line.lstrip().startswith("#"):
-                continue
-            if not child_line[:1].isspace():
-                break
-            child = child_line.split("#", 1)[0].strip()
-            child_match = re.fullmatch(r"(\d+)\s*:\s*['\"]?([^'\"]+?)['\"]?", child)
-            if not child_match:
-                return {}
-            names[int(child_match.group(1))] = child_match.group(2).strip()
-        return names
-    return {}
+    dataset_root = _resolve_yaml_path(document.get("path", "."), config_path.parent, "path", config_path)
+    image_roots: dict[str, Path] = {}
+    label_roots: dict[str, Path] = {}
+    for split in SPLITS:
+        declared_image_root = _resolve_yaml_path(document.get(split), dataset_root, split, config_path)
+        actual_image_root = (source / "images" / split).resolve()
+        actual_label_root = (source / "labels" / split).resolve()
+        if declared_image_root != actual_image_root:
+            raise TilingError(
+                f"source {split} path resolves to {declared_image_root}, "
+                f"but actual scan directory is {actual_image_root}"
+            )
+        if not actual_image_root.is_dir() or not actual_label_root.is_dir():
+            raise TilingError(
+                f"missing required split directories: {actual_image_root} and {actual_label_root}"
+            )
+        image_roots[split] = actual_image_root
+        label_roots[split] = actual_label_root
+    return SourceLayout(
+        config_path=config_path,
+        config_identity=config_identity,
+        config_relative=config_relative,
+        config_external=config_external,
+        config_content=content,
+        selection=selection,
+        dataset_root=dataset_root,
+        image_roots=image_roots,
+        label_roots=label_roots,
+        nc=nc,
+        names=names,
+    )
 
 
 def _validate_config(config: BuildConfig) -> BuildConfig:
@@ -470,6 +575,9 @@ def _validate_config(config: BuildConfig) -> BuildConfig:
         raise TilingError(f"output path is {state}; refusing implicit overwrite: {output}")
     if source == output or source in output.parents:
         raise TilingError(f"output must not equal or be nested inside source: {output}")
+    data_yaml = config.data_yaml.expanduser().resolve() if config.data_yaml is not None else None
+    if data_yaml is not None and not data_yaml.is_file():
+        raise TilingError(f"--data-yaml must be an existing regular file: {data_yaml}")
     compute_stride(config.tile_size, config.overlap)
     if not 0 <= config.min_visibility <= 1:
         raise TilingError(f"min_visibility must be in [0, 1], got {config.min_visibility}")
@@ -487,6 +595,7 @@ def _validate_config(config: BuildConfig) -> BuildConfig:
     return BuildConfig(
         source=source,
         output=output,
+        data_yaml=data_yaml,
         tile_size=config.tile_size,
         overlap=config.overlap,
         min_visibility=config.min_visibility,
@@ -657,6 +766,12 @@ def _manifest_row(
     tile_size: int,
     tile_file: str,
     decision: dict[str, Any],
+    source_config_identity: str,
+    source_config_selection: str,
+    source_config_path: Path,
+    source_config_sha256: str,
+    source_config_relative: str | None,
+    source_config_external: str | None,
 ) -> dict[str, Any]:
     """Build one complete manifest row."""
     valid_width, valid_height = min(tile_size, width - tile_x), min(tile_size, height - tile_y)
@@ -670,6 +785,12 @@ def _manifest_row(
         "source_image_sha256": source_identity.image_sha256,
         "source_label": pair.label_relative,
         "source_label_sha256": source_identity.label_sha256,
+        "source_data_config": source_config_identity,
+        "source_data_config_selection": source_config_selection,
+        "source_data_config_path": str(source_config_path),
+        "source_data_config_sha256": source_config_sha256,
+        "source_data_config_relative": source_config_relative or "",
+        "source_data_config_external": source_config_external or "",
         "tile_x": tile_x,
         "tile_y": tile_y,
         "tile_w": tile_size,
@@ -756,11 +877,21 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
     """Validate, analyze, and optionally build a deterministic tiled dataset."""
     config = _validate_config(raw_config)
     stride = compute_stride(config.tile_size, config.overlap)
-    source_config_path, source_config_content = _load_source_config(config.source)
-    source_config_relative = source_config_path.relative_to(config.source).as_posix()
+    source_layout = _load_source_config(config.source, config.data_yaml)
+    source_config_path = source_layout.config_path
+    source_config_content = source_layout.config_content
+    source_config_relative = source_layout.config_identity
     source_config_sha256 = hashlib.sha256(source_config_content).hexdigest()
     recorded_source_fingerprint = _read_recorded_source_fingerprint(config.source)
-    all_pairs = {split: collect_source_pairs(config.source, split) for split in SPLITS}
+    all_pairs = {
+        split: collect_source_pairs(
+            config.source,
+            split,
+            source_layout.image_roots[split],
+            source_layout.label_roots[split],
+        )
+        for split in SPLITS
+    }
     all_source_identities: list[SourceIdentity] = []
     source_box_counts: dict[str, int] = {}
     for split in SPLITS:
@@ -803,9 +934,12 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
     staging = config.output.parent / f".{config.output.name}.building-{os.getpid()}"
     if staging.exists():
         raise TilingError(f"staging path already exists: {staging}")
+    staging_created_by_this_run = False
 
     try:
         if not config.dry_run:
+            staging.mkdir(parents=True, exist_ok=False)
+            staging_created_by_this_run = True
             for split in SPLITS:
                 (staging / "images" / split).mkdir(parents=True, exist_ok=False)
                 (staging / "labels" / split).mkdir(parents=True, exist_ok=False)
@@ -843,6 +977,12 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
                         config.tile_size,
                         tile_file,
                         decision,
+                        source_config_relative,
+                        source_layout.selection,
+                        source_config_path,
+                        source_config_sha256,
+                        source_layout.config_relative,
+                        source_layout.config_external,
                     )
                     stats = split_stats[split]
                     stats["candidate_tiles"] += 1
@@ -876,6 +1016,7 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
                 **asdict(config),
                 "source": str(config.source),
                 "output": str(config.output),
+                "data_yaml": str(config.data_yaml) if config.data_yaml is not None else None,
                 "stride": stride,
                 "padding_value": 114,
                 "png_compress_level": 6 if config.image_format == "png" else None,
@@ -912,7 +1053,18 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
             },
             "rejection_reasons": dict(sorted(rejection_reasons.items())),
             "source_data_config": source_config_relative,
+            "source_data_config_path": str(source_config_path),
+            "source_data_config_selection": source_layout.selection,
             "source_data_config_sha256": source_config_sha256,
+            "source_data_config_relative": source_layout.config_relative,
+            "source_data_config_external": source_layout.config_external,
+            "source_data_layout": {
+                "dataset_root": str(source_layout.dataset_root),
+                "images": {split: str(source_layout.image_roots[split]) for split in SPLITS},
+                "labels": {split: str(source_layout.label_roots[split]) for split in SPLITS},
+                "nc": source_layout.nc,
+                "names": {str(key): value for key, value in source_layout.names.items()},
+            },
             "recorded_source_dataset_fingerprint": recorded_source_fingerprint,
             "full_source_fingerprint": full_source_fingerprint,
             "processed_subset_fingerprint": processed_subset_fingerprint,
@@ -986,16 +1138,27 @@ def build_tiled_dataset(raw_config: BuildConfig) -> dict[str, Any]:
         )
         staging.replace(config.output)
         return summary
-    except Exception:
-        if staging.is_dir():
-            shutil.rmtree(staging)
+    except Exception as error:
+        if staging_created_by_this_run:
+            raise TilingError(
+                f"{error}; staging retained at {staging}; "
+                "manual confirmation is required before cleanup"
+            ) from error
         raise
 
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", required=True, type=Path)
+    parser.add_argument("--source", required=True, type=Path, help="dataset root directory")
+    parser.add_argument(
+        "--data-yaml",
+        type=Path,
+        help=(
+            "explicit source dataset YAML; when provided it is used exclusively instead of "
+            "automatic data.yaml/data_local.yaml discovery"
+        ),
+    )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--tile-size", type=int, default=1024)
     parser.add_argument("--overlap", type=float, default=0.20)
@@ -1017,6 +1180,7 @@ def main() -> int:
             BuildConfig(
                 source=args.source,
                 output=args.output,
+                data_yaml=args.data_yaml,
                 tile_size=args.tile_size,
                 overlap=args.overlap,
                 min_visibility=args.min_visibility,
