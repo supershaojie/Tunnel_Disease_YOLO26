@@ -38,3 +38,29 @@ Generated manifests contain full SHA-256 hashes, stable SHA-256-derived sample s
 parameters, pre/post box counts, and file-level split positions. The audit reports retain the existing 8,149 source
 64-bit dHash candidate pairs and compute dry-run exact/near-duplicate statistics without automatically deleting or
 regrouping any sample.
+
+### Exhausted-retry safety fallback
+
+The original 12 seeded attempts, parameter ranges, order, acceptance checks, and quality thresholds remain the normal
+path. A normal candidate that passes is returned immediately and records `fallback_used=false`. Only a `light` or
+`compound` target for which all 12 normal attempts fail enters a separate deterministic fallback stage. That stage
+derives a fallback seed from the existing sample seed, measures source exposure and crack-box visibility, and applies
+a bounded LAB-luminance contrast/lift adjustment. A compound fallback reuses that exact light function between one
+mild bbox-aware affine component and one mild degradation component. The result still has to pass every existing
+quality check and an additional nonidentity check; otherwise the formal builder remains fail-fast.
+
+Before another formal build, scan all 2,404 `light` and 2,404 `compound` targets without persisting a JPEG dataset:
+
+```powershell
+$env:NO_ALBUMENTATIONS_UPDATE = '1'
+& 'D:\miniconda3\envs\yolo26\python.exe' -B `
+    'tunnel_project\scripts\02_build_crack_augfirst_diverse5x_randomsplit.py' `
+    --source 'datasets\Tunnel_Crack_Original_NoAug_7_2_1_seed42' `
+    --output 'datasets\_preflight_Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42' `
+    --seed 42 `
+    --preflight-collect-all
+```
+
+This audit-only mode calls the production augmentation path, continues after individual failures, and writes only a
+JSON report plus CSV details. It never enables `--full`, never writes the formal dataset, and never relaxes a quality
+threshold.

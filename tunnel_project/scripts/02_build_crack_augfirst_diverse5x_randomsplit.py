@@ -37,8 +37,9 @@ JPEG_QUALITY = 95
 MAX_AUGMENT_RETRIES = 12
 PREVIEWS_PER_VARIANT = 6
 NEAR_DUPLICATE_PREVIEW_PAIRS = 6
-MANIFEST_SCHEMA_VERSION = "2.0"
+MANIFEST_SCHEMA_VERSION = "3.0"
 SMALL_ARRAY_VALUE_LIMIT = 256
+FALLBACK_POLICY_VERSION = "adaptive_light_fallback_v1"
 POLICY = {
     "split_policy": "file_level_random",
     "parent_id_grouping": False,
@@ -194,6 +195,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Explicitly unlock all 2,404 parents and 12,020 outputs; omitted means exactly 50 parents",
     )
+    parser.add_argument(
+        "--preflight-collect-all",
+        action="store_true",
+        help="Check all 2,404 light and compound targets in memory and write only audit reports",
+    )
     return parser.parse_args()
 
 
@@ -220,6 +226,18 @@ def sample_seed(global_seed: int, parent_id: str, variant_type: str) -> int:
 def attempt_seed(stable_sample_seed: int, attempt: int) -> int:
     """Derive a stable uint32 resampling seed from a sample seed and attempt number."""
     payload = f"{stable_sample_seed}\0attempt\0{attempt}".encode()
+    return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big")
+
+
+def fallback_seed(stable_sample_seed: int) -> int:
+    """Derive the independent deterministic fallback seed after all normal attempts are exhausted."""
+    payload = f"{stable_sample_seed}\0{FALLBACK_POLICY_VERSION}".encode()
+    return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big")
+
+
+def component_seed(stable_fallback_seed: int, component: str) -> int:
+    """Derive one deterministic fallback-component seed without shared random state."""
+    payload = f"{stable_fallback_seed}\0{component}".encode()
     return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big")
 
 
@@ -878,6 +896,375 @@ def serialize_applied_transforms(
     return json_safe(applied, large_array_reconstruction=reconstruction)
 
 
+def adaptive_light_parameters(source_metrics: dict[str, Any], stable_fallback_seed: int) -> dict[str, Any]:
+    """Calculate a gentle luminance adjustment from source quality and one stable seed."""
+    unit = stable_fallback_seed / (2**32 - 1)
+    source_mean = float(source_metrics["mean"])
+    darkness = min(1.0, max(0.0, (64.0 - source_mean) / 64.0))
+    gain_bounds = (1.012, 1.028) if source_mean < 64.0 else (1.008, 1.018)
+    if source_mean < 32.0:
+        lift_bounds = (0.75, 1.50)
+    elif source_mean < 160.0:
+        lift_bounds = (0.35, 0.90)
+    elif source_mean < 208.0:
+        lift_bounds = (0.20, 0.55)
+    else:
+        lift_bounds = (-0.90, -0.35)
+    gain_position = (0.35 + 0.65 * unit) * max(darkness, 0.35)
+    lift_position = 0.35 + 0.65 * (1.0 - unit)
+    return {
+        "model": "lab_luminance_mean_anchored_contrast_and_lift",
+        "policy_version": FALLBACK_POLICY_VERSION,
+        "fallback_seed": stable_fallback_seed,
+        "source_mean": source_mean,
+        "source_dark_pixel_ratio": float(source_metrics["dark_pixel_ratio"]),
+        "source_dynamic_range_p01_p99": float(source_metrics["dynamic_range_p01_p99"]),
+        "source_minimum_bbox_mean": float(source_metrics["minimum_bbox_mean"]),
+        "source_minimum_bbox_std": float(source_metrics["minimum_bbox_std"]),
+        "source_minimum_bbox_edge_mean": float(source_metrics["minimum_bbox_edge_mean"]),
+        "gain": gain_bounds[0] + (gain_bounds[1] - gain_bounds[0]) * gain_position,
+        "luminance_lift": lift_bounds[0] + (lift_bounds[1] - lift_bounds[0]) * lift_position,
+        "adaptive_bounds": {
+            "contrast_gain": list(gain_bounds),
+            "luminance_lift": list(lift_bounds),
+            "darkness_score": darkness,
+            "seed_fraction": unit,
+        },
+        "parameter_policy": (
+            "source-quality-conditioned LAB luminance contrast anchored at source L mean plus bounded lift; "
+            "all values derived from source metrics and fallback_seed"
+        ),
+    }
+
+
+def apply_adaptive_light_fallback(
+    image: np.ndarray,
+    source_metrics: dict[str, Any],
+    stable_fallback_seed: int,
+    recorded_parameters: dict[str, Any] | None = None,
+) -> tuple[np.ndarray, list[Any], dict[str, Any]]:
+    """Apply the one shared deterministic light fallback used by light and compound."""
+    parameters = recorded_parameters or adaptive_light_parameters(source_metrics, stable_fallback_seed)
+    if int(parameters["fallback_seed"]) != stable_fallback_seed:
+        raise BuildStop("recorded adaptive-light fallback seed disagrees with the derived seed")
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB).astype(np.float32)
+    luminance_mean = float(lab[:, :, 0].mean())
+    lab[:, :, 0] = np.clip(
+        (lab[:, :, 0] - luminance_mean) * float(parameters["gain"])
+        + luminance_mean
+        + float(parameters["luminance_lift"]),
+        0.0,
+        255.0,
+    )
+    output = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR)
+    actual = dict(parameters)
+    actual["input_luminance_mean"] = luminance_mean
+    actual["operation"] = "L_out=clip((L_in-mean_L)*gain+mean_L+luminance_lift,0,255)"
+    return output, [["AdaptiveLuminanceContrast", json_safe(actual)]], actual
+
+
+def fallback_geometry_parameters(stable_component_seed: int) -> dict[str, Any]:
+    """Derive one mild, bbox-aware affine policy for a compound fallback."""
+    rng = random.Random(stable_component_seed)
+    return {
+        "component_seed": stable_component_seed,
+        "rotation_degrees": rng.choice((-1.0, 1.0)) * rng.uniform(0.75, 1.50),
+        "scale": rng.uniform(0.992, 1.008),
+        "translate_x": rng.uniform(-0.004, 0.004),
+        "translate_y": rng.uniform(-0.004, 0.004),
+        "shear_x_degrees": rng.uniform(-0.40, 0.40),
+        "shear_y_degrees": rng.uniform(-0.40, 0.40),
+    }
+
+
+def apply_fallback_geometry(
+    image: np.ndarray,
+    boxes: tuple[tuple[float, float, float, float], ...],
+    stable_component_seed: int,
+    recorded_parameters: dict[str, Any] | None = None,
+) -> tuple[np.ndarray, tuple[tuple[float, float, float, float], ...], list[Any]]:
+    """Apply one deterministic, mild affine component while preserving every box."""
+    policy = recorded_parameters or fallback_geometry_parameters(stable_component_seed)
+    if int(policy["component_seed"]) != stable_component_seed:
+        raise BuildStop("recorded compound geometry seed disagrees with the derived seed")
+    transform = A.Compose(
+        [
+            A.Affine(
+                scale=(float(policy["scale"]), float(policy["scale"])),
+                translate_percent={
+                    "x": (float(policy["translate_x"]), float(policy["translate_x"])),
+                    "y": (float(policy["translate_y"]), float(policy["translate_y"])),
+                },
+                rotate=(float(policy["rotation_degrees"]), float(policy["rotation_degrees"])),
+                shear={
+                    "x": (float(policy["shear_x_degrees"]), float(policy["shear_x_degrees"])),
+                    "y": (float(policy["shear_y_degrees"]), float(policy["shear_y_degrees"])),
+                },
+                border_mode=cv2.BORDER_REFLECT_101,
+                p=1,
+            )
+        ],
+        bbox_params=geometry_bbox_params(),
+        seed=stable_component_seed,
+        strict=True,
+        save_applied_params=True,
+    )
+    transformed = transform(image=image, bboxes=list(boxes), class_labels=[0] * len(boxes))
+    output_boxes = canonicalize_boxes(transformed["bboxes"])
+    actual = dict(policy)
+    actual["albumentations_applied"] = serialize_applied_transforms(
+        transformed.get("applied_transforms", []), stable_component_seed, "compound", "fallback_geometry"
+    )
+    return transformed["image"], output_boxes, [["AdaptiveAffineGeometry", json_safe(actual)]]
+
+
+def fallback_degrade_parameters(stable_component_seed: int) -> dict[str, Any]:
+    """Derive one fixed-size, mild Gaussian blur for a compound fallback."""
+    unit = stable_component_seed / (2**32 - 1)
+    return {
+        "component_seed": stable_component_seed,
+        "kernel_size": [3, 3],
+        "sigma": 0.30 + 0.20 * unit,
+        "border_type": "BORDER_REFLECT_101",
+    }
+
+
+def apply_fallback_degrade(
+    image: np.ndarray,
+    stable_component_seed: int,
+    recorded_parameters: dict[str, Any] | None = None,
+) -> tuple[np.ndarray, list[Any]]:
+    """Apply the deterministic, mild compound degradation component."""
+    parameters = recorded_parameters or fallback_degrade_parameters(stable_component_seed)
+    if int(parameters["component_seed"]) != stable_component_seed:
+        raise BuildStop("recorded compound degrade seed disagrees with the derived seed")
+    kernel = tuple(int(value) for value in parameters["kernel_size"])
+    output = cv2.GaussianBlur(
+        image,
+        kernel,
+        sigmaX=float(parameters["sigma"]),
+        sigmaY=float(parameters["sigma"]),
+        borderType=cv2.BORDER_REFLECT_101,
+    )
+    return output, [["AdaptiveGaussianBlur", json_safe(parameters)]]
+
+
+def apply_adaptive_fallback(
+    source_image: np.ndarray,
+    source_boxes: tuple[tuple[float, float, float, float], ...],
+    variant_type: str,
+    stable_sample_seed: int,
+    recorded_parameters: list[Any] | None = None,
+) -> tuple[np.ndarray, tuple[tuple[float, float, float, float], ...], list[Any], dict[str, Any]]:
+    """Apply the deterministic post-retry fallback without changing normal augmentation behavior."""
+    stable_fallback_seed = fallback_seed(stable_sample_seed)
+    source_metrics = _quality_components(source_image, source_boxes)
+    if variant_type == "light":
+        recorded_light = recorded_parameters[0][1] if recorded_parameters else None
+        image, applied, light_parameters = apply_adaptive_light_fallback(
+            source_image, source_metrics, stable_fallback_seed, recorded_light
+        )
+        metadata = {
+            "fallback_seed": stable_fallback_seed,
+            "source_quality_metrics": json_safe(source_metrics),
+            "parameter_policy": light_parameters["parameter_policy"],
+            "adaptive_bounds": light_parameters["adaptive_bounds"],
+        }
+        return image, source_boxes, applied, metadata
+    if variant_type != "compound":
+        raise BuildStop(f"adaptive fallback is not defined for variant {variant_type}")
+    geometry_seed = component_seed(stable_fallback_seed, "geometry")
+    light_seed = component_seed(stable_fallback_seed, "light")
+    degrade_seed = component_seed(stable_fallback_seed, "degrade")
+    recorded_geometry = recorded_parameters[0][1] if recorded_parameters else None
+    recorded_light = recorded_parameters[1][1] if recorded_parameters else None
+    recorded_degrade = recorded_parameters[2][1] if recorded_parameters else None
+    image, boxes, geometry_applied = apply_fallback_geometry(
+        source_image, source_boxes, geometry_seed, recorded_geometry
+    )
+    if len(boxes) != len(source_boxes):
+        raise BuildStop("compound fallback geometry did not preserve every source box")
+    image, light_applied, light_parameters = apply_adaptive_light_fallback(
+        image, source_metrics, light_seed, recorded_light
+    )
+    image, degrade_applied = apply_fallback_degrade(image, degrade_seed, recorded_degrade)
+    applied = geometry_applied + light_applied + degrade_applied
+    metadata = {
+        "fallback_seed": stable_fallback_seed,
+        "component_seeds": {"geometry": geometry_seed, "light": light_seed, "degrade": degrade_seed},
+        "source_quality_metrics": json_safe(source_metrics),
+        "parameter_policy": light_parameters["parameter_policy"],
+        "adaptive_bounds": light_parameters["adaptive_bounds"],
+    }
+    return image, boxes, applied, metadata
+
+
+def evaluate_augmented_bytes(
+    source: SourceRecord,
+    variant_type: str,
+    subtype: str,
+    stable_sample_seed: int,
+    forbidden_hashes: set[str],
+) -> dict[str, Any]:
+    """Evaluate normal attempts and the isolated fallback while retaining complete audit state."""
+    source_image = read_image(source.image_path)
+    normal_failures: list[dict[str, Any]] = []
+    for attempt in range(MAX_AUGMENT_RETRIES):
+        current_seed = attempt_seed(stable_sample_seed, attempt)
+        try:
+            image, boxes, applied, shadow = apply_augmentation_attempt(
+                source_image, source.boxes, variant_type, subtype, current_seed
+            )
+        except (BuildStop, ValueError) as error:
+            normal_failures.append(
+                {"retry_index": attempt, "attempt_seed": current_seed, "failure_reasons": [str(error)]}
+            )
+            continue
+        if len(boxes) != len(source.boxes):
+            normal_failures.append(
+                {
+                    "retry_index": attempt,
+                    "attempt_seed": current_seed,
+                    "failure_reasons": [f"bbox_count_changed:{len(source.boxes)}->{len(boxes)}"],
+                }
+            )
+            continue
+        quality = image_quality(image, boxes, source_image, source.boxes, variant_type, subtype)
+        if not quality["passed"]:
+            normal_failures.append(
+                {
+                    "retry_index": attempt,
+                    "attempt_seed": current_seed,
+                    "failure_reasons": list(quality["failed_checks"]),
+                }
+            )
+            continue
+        image_bytes = encode_jpeg(image)
+        digest = sha256_bytes(image_bytes)
+        if digest in forbidden_hashes:
+            normal_failures.append(
+                {"retry_index": attempt, "attempt_seed": current_seed, "failure_reasons": ["forbidden_sha256"]}
+            )
+            continue
+        serialized = serialize_applied_transforms(applied, current_seed, variant_type, subtype)
+        parameters = {
+            "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+            "sample_seed": stable_sample_seed,
+            "retry_index": attempt,
+            "attempt_seed": current_seed,
+            "variant_subtype": subtype,
+            "applied_transforms": serialized,
+            "quality": quality,
+            "fallback_used": False,
+            "normal_attempts_exhausted": False,
+            "fallback_seed": None,
+            "source_quality_metrics": None,
+            "parameter_policy": "normal_seeded_retry",
+            "adaptive_bounds": None,
+            "final_actual_parameters": serialized,
+            "fallback_quality_metrics": None,
+            "fallback_failure_reasons": [],
+        }
+        if shadow is not None:
+            parameters["shadow"] = shadow
+        if variant_type == "compound":
+            if len(parameters["applied_transforms"]) != 3:
+                normal_failures.append(
+                    {
+                        "retry_index": attempt,
+                        "attempt_seed": current_seed,
+                        "failure_reasons": ["compound_component_count_changed"],
+                    }
+                )
+                continue
+            parameters["required_components"] = ["geometry", "light", "degrade"]
+            parameters["components"] = dict(
+                zip(parameters["required_components"], parameters["applied_transforms"])
+            )
+        return {
+            "passed": True,
+            "image_bytes": image_bytes,
+            "boxes": boxes,
+            "parameters": parameters,
+            "normal_failures": normal_failures,
+        }
+    if variant_type not in {"light", "compound"}:
+        return {
+            "passed": False,
+            "image_bytes": None,
+            "boxes": source.boxes,
+            "parameters": None,
+            "normal_failures": normal_failures,
+            "failure_reasons": ["normal_attempts_exhausted_and_no_fallback_for_variant"],
+        }
+    stable_fallback_seed = fallback_seed(stable_sample_seed)
+    fallback_failures: list[str] = []
+    try:
+        image, boxes, applied, fallback_metadata = apply_adaptive_fallback(
+            source_image, source.boxes, variant_type, stable_sample_seed
+        )
+        if len(boxes) != len(source.boxes):
+            fallback_failures.append(f"bbox_count_changed:{len(source.boxes)}->{len(boxes)}")
+        quality = image_quality(image, boxes, source_image, source.boxes, variant_type, subtype)
+        fallback_failures.extend(quality["failed_checks"])
+        difference = cv2.absdiff(image, source_image)
+        mean_absolute_change = float(difference.mean())
+        changed_component_ratio = float(np.mean(difference > 0))
+        if mean_absolute_change < 0.50:
+            fallback_failures.append("fallback_change_too_small")
+        if changed_component_ratio < 0.01:
+            fallback_failures.append("fallback_changed_component_ratio_too_small")
+        image_bytes = encode_jpeg(image)
+        digest = sha256_bytes(image_bytes)
+        if digest in forbidden_hashes:
+            fallback_failures.append("forbidden_sha256")
+    except (BuildStop, ValueError) as error:
+        image_bytes, boxes, applied, quality = None, source.boxes, [], None
+        fallback_metadata = {
+            "fallback_seed": stable_fallback_seed,
+            "source_quality_metrics": json_safe(_quality_components(source_image, source.boxes)),
+            "parameter_policy": FALLBACK_POLICY_VERSION,
+            "adaptive_bounds": None,
+        }
+        mean_absolute_change = 0.0
+        changed_component_ratio = 0.0
+        fallback_failures.append(str(error))
+    serialized = json_safe(applied)
+    parameters = {
+        "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+        "sample_seed": stable_sample_seed,
+        "retry_index": MAX_AUGMENT_RETRIES,
+        "attempt_seed": stable_fallback_seed,
+        "variant_subtype": subtype,
+        "applied_transforms": serialized,
+        "quality": quality,
+        "fallback_used": True,
+        "normal_attempts_exhausted": True,
+        "fallback_seed": stable_fallback_seed,
+        "source_quality_metrics": fallback_metadata["source_quality_metrics"],
+        "parameter_policy": fallback_metadata["parameter_policy"],
+        "adaptive_bounds": fallback_metadata["adaptive_bounds"],
+        "final_actual_parameters": serialized,
+        "fallback_quality_metrics": quality,
+        "fallback_failure_reasons": fallback_failures,
+        "normal_attempt_failure_reasons": normal_failures,
+        "fallback_mean_absolute_pixel_change": mean_absolute_change,
+        "fallback_changed_component_ratio": changed_component_ratio,
+    }
+    if variant_type == "compound" and len(serialized) == 3:
+        parameters["required_components"] = ["geometry", "light", "degrade"]
+        parameters["components"] = dict(zip(parameters["required_components"], serialized))
+        parameters["component_seeds"] = fallback_metadata["component_seeds"]
+    return {
+        "passed": not fallback_failures,
+        "image_bytes": image_bytes if not fallback_failures else None,
+        "boxes": boxes,
+        "parameters": parameters,
+        "normal_failures": normal_failures,
+        "failure_reasons": fallback_failures,
+    }
+
+
 def generate_augmented_bytes(
     source: SourceRecord,
     variant_type: str,
@@ -885,48 +1272,14 @@ def generate_augmented_bytes(
     stable_sample_seed: int,
     forbidden_hashes: set[str],
 ) -> tuple[bytes, tuple[tuple[float, float, float, float], ...], dict[str, Any]]:
-    """Generate, validate, and if necessary deterministically resample one augmentation."""
-    source_image = read_image(source.image_path)
-    for attempt in range(MAX_AUGMENT_RETRIES):
-        current_seed = attempt_seed(stable_sample_seed, attempt)
-        try:
-            image, boxes, applied, shadow = apply_augmentation_attempt(
-                source_image, source.boxes, variant_type, subtype, current_seed
-            )
-        except (BuildStop, ValueError):
-            continue
-        if len(boxes) != len(source.boxes):
-            continue
-        quality = image_quality(image, boxes, source_image, source.boxes, variant_type, subtype)
-        if not quality["passed"]:
-            continue
-        image_bytes = encode_jpeg(image)
-        digest = sha256_bytes(image_bytes)
-        if digest in forbidden_hashes:
-            continue
-        parameters = {
-            "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
-            "sample_seed": stable_sample_seed,
-            "retry_index": attempt,
-            "attempt_seed": current_seed,
-            "variant_subtype": subtype,
-            "applied_transforms": serialize_applied_transforms(applied, current_seed, variant_type, subtype),
-            "quality": quality,
-        }
-        if shadow is not None:
-            parameters["shadow"] = shadow
-        if variant_type == "compound":
-            if len(parameters["applied_transforms"]) != 3:
-                continue
-            parameters["required_components"] = ["geometry", "light", "degrade"]
-            parameters["components"] = dict(
-                zip(parameters["required_components"], parameters["applied_transforms"])
-            )
-        return image_bytes, boxes, parameters
-    raise BuildStop(
-        f"unable to generate valid {variant_type}/{subtype} for {source.parent_id} "
-        f"after {MAX_AUGMENT_RETRIES} attempts"
-    )
+    """Generate one augmentation and retain fail-fast behavior after the safe fallback."""
+    outcome = evaluate_augmented_bytes(source, variant_type, subtype, stable_sample_seed, forbidden_hashes)
+    if not outcome["passed"]:
+        raise BuildStop(
+            f"unable to generate valid {variant_type}/{subtype} for {source.parent_id}; "
+            f"normal attempts exhausted and fallback failed: {outcome['failure_reasons']}"
+        )
+    return outcome["image_bytes"], outcome["boxes"], outcome["parameters"]
 
 
 def replay_augmented_bytes(
@@ -936,18 +1289,31 @@ def replay_augmented_bytes(
     parameters: dict[str, Any],
 ) -> tuple[bytes, bytes, tuple[tuple[float, float, float, float], ...], list[Any]]:
     """Replay one augmentation from its public manifest fields and authoritative source only."""
-    if parameters.get("manifest_schema_version") != MANIFEST_SCHEMA_VERSION:
+    if parameters.get("manifest_schema_version") not in {"2.0", MANIFEST_SCHEMA_VERSION}:
         raise BuildStop("unsupported manifest schema for replay")
     source_image = read_image(source.image_path)
-    image, boxes, applied, _ = apply_augmentation_attempt(
-        source_image,
-        source.boxes,
-        variant_type,
-        subtype,
-        int(parameters["attempt_seed"]),
-        recorded_shadow=parameters.get("shadow"),
-    )
-    serialized = serialize_applied_transforms(applied, int(parameters["attempt_seed"]), variant_type, subtype)
+    if parameters.get("fallback_used"):
+        expected_seed = fallback_seed(int(parameters["sample_seed"]))
+        if int(parameters["fallback_seed"]) != expected_seed:
+            raise BuildStop("manifest fallback seed disagrees with stable derivation")
+        image, boxes, applied, _ = apply_adaptive_fallback(
+            source_image,
+            source.boxes,
+            variant_type,
+            int(parameters["sample_seed"]),
+            recorded_parameters=parameters["final_actual_parameters"],
+        )
+        serialized = json_safe(applied)
+    else:
+        image, boxes, applied, _ = apply_augmentation_attempt(
+            source_image,
+            source.boxes,
+            variant_type,
+            subtype,
+            int(parameters["attempt_seed"]),
+            recorded_shadow=parameters.get("shadow"),
+        )
+        serialized = serialize_applied_transforms(applied, int(parameters["attempt_seed"]), variant_type, subtype)
     label_bytes = (
         format_yolo_labels(boxes)
         if variant_type in {"geo", "compound"}
@@ -1028,6 +1394,17 @@ def generate_pool(staging: Path, rows: list[dict[str, Any]], source_by_parent: d
                 "sample_seed": row["sample_seed"],
                 "operation": "byte_exact_copy",
                 "source_extension": source.image_path.suffix.casefold(),
+                "fallback_used": False,
+                "normal_attempts_exhausted": False,
+                "retry_index": None,
+                "attempt_seed": None,
+                "fallback_seed": None,
+                "source_quality_metrics": None,
+                "parameter_policy": "byte_exact_copy",
+                "adaptive_bounds": None,
+                "final_actual_parameters": {"operation": "byte_exact_copy"},
+                "fallback_quality_metrics": None,
+                "fallback_failure_reasons": [],
             }
             boxes = source.boxes
         else:
@@ -1499,6 +1876,175 @@ deleted. Manual previews are under `previews/`, including original/augmented box
     (staging / "README.md").write_text(text, encoding="utf-8", newline="\n")
 
 
+def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, Any]:
+    """Check all full light/compound targets through the production path without persisting dataset JPEGs."""
+    records = load_source_records(source)
+    recorded_fingerprint = (source / "metadata" / "dataset_fingerprint.sha256").read_text(
+        encoding="ascii"
+    ).split()[0]
+    print("recomputing source fingerprint before collect-all", flush=True)
+    fingerprint_before = source_dataset_fingerprint(records)
+    if fingerprint_before != recorded_fingerprint:
+        raise BuildStop(f"source fingerprint disagrees with metadata: {fingerprint_before} != {recorded_fingerprint}")
+    geo_subtypes, _ = assign_subtypes(records, "geo", GEO_QUOTAS, seed)
+    light_subtypes, _ = assign_subtypes(records, "light", LIGHT_QUOTAS, seed)
+    degrade_subtypes, _ = assign_subtypes(records, "degrade", DEGRADE_QUOTAS, seed)
+    planned = build_rows(records, geo_subtypes, light_subtypes, degrade_subtypes, seed)
+    targets = sorted(
+        (row for row in planned if row["variant_type"] in {"light", "compound"}),
+        key=lambda row: row["pool_image"].casefold(),
+    )
+    if len(targets) != FULL_SOURCE_COUNT * 2:
+        raise BuildStop(f"collect-all target count changed: {len(targets)}")
+    source_by_parent = {record.parent_id: record for record in records}
+    family_hashes: defaultdict[str, set[str]] = defaultdict(set)
+    details: list[dict[str, Any]] = []
+    variant_counts: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    retry_distribution: defaultdict[str, Counter[str]] = defaultdict(Counter)
+    normal_failure_rules: Counter[str] = Counter()
+    final_failure_rules: Counter[str] = Counter()
+    with staged_output(output) as staging:
+        for index, row in enumerate(targets, 1):
+            source_record = source_by_parent[row["parent_id"]]
+            outcome = evaluate_augmented_bytes(
+                source_record,
+                row["variant_type"],
+                row["variant_subtype"],
+                int(row["sample_seed"]),
+                family_hashes[row["parent_id"]] | {source_record.image_sha256},
+            )
+            parameters = outcome["parameters"]
+            fallback_used = bool(parameters and parameters["fallback_used"])
+            if outcome["passed"]:
+                family_hashes[row["parent_id"]].add(sha256_bytes(outcome["image_bytes"]))
+            variant_counts[row["variant_type"]]["targets"] += 1
+            variant_counts[row["variant_type"]]["passed" if outcome["passed"] else "failed"] += 1
+            if fallback_used:
+                variant_counts[row["variant_type"]]["normal_attempts_exhausted"] += 1
+                variant_counts[row["variant_type"]]["fallback_started"] += 1
+                variant_counts[row["variant_type"]]["fallback_passed" if outcome["passed"] else "fallback_failed"] += 1
+            else:
+                variant_counts[row["variant_type"]]["normal_success"] += 1
+            retry_key = str(parameters["retry_index"] if parameters else MAX_AUGMENT_RETRIES)
+            retry_distribution[row["variant_type"]][retry_key] += 1
+            for normal_failure in outcome["normal_failures"]:
+                normal_failure_rules.update(normal_failure["failure_reasons"])
+            final_failure_rules.update(outcome.get("failure_reasons", []))
+            details.append(
+                {
+                    "parent_id": row["parent_id"],
+                    "source_image": row["source_image"],
+                    "variant_type": row["variant_type"],
+                    "variant_subtype": row["variant_subtype"],
+                    "sample_seed": int(row["sample_seed"]),
+                    "passed": bool(outcome["passed"]),
+                    "fallback_used": fallback_used,
+                    "normal_attempts_exhausted": fallback_used,
+                    "retry_index": int(parameters["retry_index"] if parameters else MAX_AUGMENT_RETRIES),
+                    "fallback_seed": (
+                        parameters["fallback_seed"] if parameters else fallback_seed(int(row["sample_seed"]))
+                    ),
+                    "normal_attempt_failure_reasons_json": json.dumps(
+                        outcome["normal_failures"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ),
+                    "source_quality_metrics_json": json.dumps(
+                        parameters["source_quality_metrics"] if parameters else None,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    "parameter_policy": parameters["parameter_policy"] if parameters else FALLBACK_POLICY_VERSION,
+                    "adaptive_bounds_json": json.dumps(
+                        parameters["adaptive_bounds"] if parameters else None,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    "final_actual_parameters_json": json.dumps(
+                        parameters["final_actual_parameters"] if parameters else None,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    "fallback_quality_metrics_json": json.dumps(
+                        parameters["fallback_quality_metrics"] if parameters else None,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    "fallback_failure_reasons_json": json.dumps(
+                        outcome.get("failure_reasons", []),
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                }
+            )
+            if index % 25 == 0 or index == len(targets):
+                print(f"collect-all {index}/{len(targets)}", flush=True)
+        print("recomputing source fingerprint after collect-all", flush=True)
+        fingerprint_after = source_dataset_fingerprint(records)
+        if fingerprint_after != fingerprint_before:
+            raise BuildStop(f"source fingerprint changed: {fingerprint_before} -> {fingerprint_after}")
+        fallback_details = [row for row in details if row["fallback_used"]]
+        final_failures = [row for row in details if not row["passed"]]
+        retry_highest = sorted(
+            details, key=lambda row: (-int(row["retry_index"]), row["variant_type"], row["parent_id"])
+        )[:100]
+        known_parent = "sample_7eae2feee5741ef9cfde"
+        report = {
+            **POLICY,
+            "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
+            "mode": "preflight_collect_all_light_compound",
+            "global_seed": seed,
+            "processed_targets": len(details),
+            "variant_statistics": {variant: dict(counts) for variant, counts in sorted(variant_counts.items())},
+            "normal_success_count": sum(not row["fallback_used"] and row["passed"] for row in details),
+            "normal_attempts_exhausted_count": len(fallback_details),
+            "fallback_started_count": len(fallback_details),
+            "fallback_passed_count": sum(row["passed"] for row in fallback_details),
+            "fallback_failed_count": sum(not row["passed"] for row in fallback_details),
+            "unique_fallback_parent_count": len({row["parent_id"] for row in fallback_details}),
+            "fallback_trigger_rate": len(fallback_details) / len(details),
+            "retry_index_distribution": {
+                variant: dict(sorted(counts.items(), key=lambda item: int(item[0])))
+                for variant, counts in sorted(retry_distribution.items())
+            },
+            "normal_attempt_failure_rule_distribution": dict(normal_failure_rules.most_common()),
+            "final_failure_rule_distribution": dict(final_failure_rules.most_common()),
+            "retry_highest_samples": retry_highest,
+            "fallback_samples": fallback_details,
+            "final_failure_samples": final_failures,
+            "known_failed_parent_passed": any(
+                row["parent_id"] == known_parent and row["variant_type"] == "light" and row["passed"]
+                for row in details
+            ),
+            "source_fingerprint_before": fingerprint_before,
+            "source_fingerprint_after": fingerprint_after,
+            "source_unchanged": fingerprint_before == fingerprint_after,
+        }
+        report["formal_rerun_gate_passed"] = all(
+            (
+                len(details) == FULL_SOURCE_COUNT * 2,
+                not final_failures,
+                report["known_failed_parent_passed"],
+                len(fallback_details) <= 5,
+                report["fallback_trigger_rate"] <= 5 / (FULL_SOURCE_COUNT * 2),
+                report["source_unchanged"],
+            )
+        )
+        write_json(staging / "collect_all_report.json", report)
+        fieldnames = tuple(details[0])
+        write_csv(staging / "collect_all_details.csv", fieldnames, details)
+    summary = {
+        key: value
+        for key, value in report.items()
+        if key not in {"fallback_samples", "final_failure_samples", "retry_highest_samples"}
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2), flush=True)
+    return report
+
+
 def validate_output_target(output: Path) -> Path:
     """Reject overwrite and return the fixed same-parent staging path."""
     if output.exists():
@@ -1529,6 +2075,11 @@ def main() -> int:
     source, output = args.source.resolve(), args.output.resolve()
     if args.seed != GLOBAL_SEED:
         raise BuildStop(f"this experiment requires seed={GLOBAL_SEED}")
+    if args.full and args.preflight_collect_all:
+        raise BuildStop("--full and --preflight-collect-all are mutually exclusive")
+    if args.preflight_collect_all:
+        collect_all_preflight(source, output, args.seed)
+        return 0
     source_count = FULL_SOURCE_COUNT if args.full else 50
     expected_outputs = source_count * len(VARIANT_TYPES)
     records = load_source_records(source)
