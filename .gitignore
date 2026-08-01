@@ -149,6 +149,7 @@ dmypy.json
 
 # datasets and projects (ignore /datasets dir at root only to allow for docs/en/datasets dir)
 /datasets
+/datasets_dryrun_Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42
 runs/
 wandb/
 .DS_Store
