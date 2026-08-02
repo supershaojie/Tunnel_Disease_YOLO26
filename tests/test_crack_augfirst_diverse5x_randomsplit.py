@@ -72,6 +72,21 @@ def known_dark_fallback() -> tuple[BUILDER.SourceRecord, tuple[bytes, tuple, dic
     return source, result
 
 
+@pytest.fixture(scope="module")
+def known_geo_fallback() -> tuple[BUILDER.SourceRecord, tuple[bytes, tuple, dict]]:
+    """Generate the formal-build edge-box failure through the new standalone geo fallback."""
+    source = next(
+        record
+        for record in BUILDER.load_source_records(SOURCE)
+        if record.parent_id == "sample_cff60ce4c7af444272f2"
+    )
+    stable_seed = BUILDER.sample_seed(42, source.parent_id, "geo")
+    result = BUILDER.generate_augmented_bytes(
+        source, "geo", "affine_or_perspective", stable_seed, {source.image_sha256}
+    )
+    return source, result
+
+
 def test_authoritative_source_pairs_and_boxes() -> None:
     """The builder reads all current repaired NoAug pairs and no legacy labels."""
     records = BUILDER.load_source_records(SOURCE)
@@ -436,6 +451,192 @@ def test_same_seed_repeats_geo_image_labels_and_boxes(tmp_path: Path) -> None:
     ).hexdigest()
 
 
+def test_known_geo_edge_exhausts_the_unchanged_twelve_attempts_before_fallback(
+    known_geo_fallback: tuple,
+) -> None:
+    """The formal-build edge parent retains its exact failures and enters fallback only at retry 12."""
+    source, (_, boxes, parameters) = known_geo_fallback
+    failures = [row["failure_reasons"] for row in parameters["normal_attempt_failure_reasons"]]
+    assert failures == [
+        ["bbox_count_changed:1->2"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->2"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->2"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+        ["bbox_count_changed:1->0"],
+    ]
+    assert parameters["retry_index"] == BUILDER.MAX_AUGMENT_RETRIES == 12
+    assert parameters["fallback_used"] is parameters["normal_attempts_exhausted"] is True
+    assert len(boxes) == len(source.boxes) == 1
+
+
+def test_known_geo_fallback_is_deterministic_nonidentity_and_publicly_replayable(
+    known_geo_fallback: tuple,
+) -> None:
+    """Standalone geo fallback repeats byte-for-byte and replays from manifest fields only."""
+    source, first = known_geo_fallback
+    stable_seed = BUILDER.sample_seed(42, source.parent_id, "geo")
+    second = BUILDER.generate_augmented_bytes(
+        source, "geo", "affine_or_perspective", stable_seed, {source.image_sha256}
+    )
+    replay_image, replay_label, replay_boxes, replay_applied = BUILDER.replay_augmented_bytes(
+        source, "geo", "affine_or_perspective", first[2]
+    )
+    assert hashlib.sha256(first[0]).hexdigest() == hashlib.sha256(second[0]).hexdigest()
+    assert hashlib.sha256(first[0]).hexdigest() == hashlib.sha256(replay_image).hexdigest()
+    assert hashlib.sha256(replay_label).hexdigest() == hashlib.sha256(BUILDER.format_yolo_labels(first[1])).hexdigest()
+    assert first[1] == second[1] == replay_boxes
+    assert first[2] == second[2]
+    assert replay_applied == first[2]["final_actual_parameters"]
+    assert hashlib.sha256(first[0]).hexdigest() != source.image_sha256
+
+
+@pytest.mark.parametrize(
+    "box",
+    (
+        (0.05, 0.50, 0.10, 0.20),
+        (0.95, 0.50, 0.10, 0.20),
+        (0.50, 0.05, 0.20, 0.10),
+        (0.50, 0.95, 0.20, 0.10),
+        (0.05, 0.05, 0.10, 0.10),
+        (0.95, 0.05, 0.10, 0.10),
+        (0.05, 0.95, 0.10, 0.10),
+        (0.95, 0.95, 0.10, 0.10),
+    ),
+)
+def test_safe_geometry_preserves_each_edge_and_corner_box_one_to_one(
+    tmp_path: Path, box: tuple[float, float, float, float]
+) -> None:
+    """Every image edge and corner remains valid without clipping, padding, or reflected copies."""
+    image = BUILDER.read_image(synthetic_source(tmp_path).image_path)
+    _, output_boxes, applied = BUILDER.apply_fallback_geometry(image, (box,), 1)
+    actual = applied[0][1]
+    assert len(output_boxes) == 1
+    assert actual["bbox_one_to_one_preserved"] is True
+    assert actual["bbox_correspondence"] == [{"source_index": 0, "output_index": 0}]
+    assert actual["border_mode"] == actual["interpolation"] == "none"
+    assert all(0 <= value <= 1 for value in output_boxes[0])
+    assert output_boxes[0][2] > 0 and output_boxes[0][3] > 0
+
+
+def test_safe_geometry_preserves_multiple_boxes_and_all_axis_operations(tmp_path: Path) -> None:
+    """Horizontal, vertical, and 180-degree safe transforms retain N boxes in source order."""
+    image = BUILDER.read_image(synthetic_source(tmp_path).image_path)
+    boxes = (
+        (0.05, 0.05, 0.10, 0.10),
+        (0.95, 0.05, 0.10, 0.10),
+        (0.05, 0.95, 0.10, 0.10),
+        (0.95, 0.95, 0.10, 0.10),
+    )
+    operations = []
+    for component_seed in range(3):
+        _, output_boxes, applied = BUILDER.apply_fallback_geometry(image, boxes, component_seed)
+        actual = applied[0][1]
+        operations.append(actual["operation"])
+        assert len(output_boxes) == len(boxes)
+        assert actual["bbox_correspondence"] == [
+            {"source_index": index, "output_index": index} for index in range(len(boxes))
+        ]
+    assert operations == ["horizontal_flip", "vertical_flip", "rotate_180"]
+
+
+def test_normal_geo_success_never_enters_fallback(tmp_path: Path) -> None:
+    """A normal candidate still returns immediately without touching the fallback path."""
+    source = synthetic_source(tmp_path)
+    stable_seed = BUILDER.sample_seed(42, source.parent_id, "geo")
+    _, boxes, parameters = BUILDER.generate_augmented_bytes(
+        source, "geo", "horizontal_flip", stable_seed, {source.image_sha256}
+    )
+    assert len(boxes) == len(source.boxes)
+    assert parameters["fallback_used"] is parameters["normal_attempts_exhausted"] is False
+    assert parameters["retry_index"] < BUILDER.MAX_AUGMENT_RETRIES
+
+
+@pytest.mark.parametrize("output_count", (0, 2))
+def test_geo_fallback_rejects_dropped_or_reflected_extra_boxes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, output_count: int
+) -> None:
+    """Fallback never accepts either lost boxes or reflected duplicates and remains fail-fast."""
+    source = synthetic_source(tmp_path)
+
+    def rejected_normal(
+        image: np.ndarray,
+        boxes: tuple,
+        variant_type: str,
+        subtype: str,
+        current_seed: int,
+        recorded_shadow: dict | None = None,
+    ) -> tuple[np.ndarray, tuple, list, None]:
+        del variant_type, subtype, current_seed, recorded_shadow
+        return image, (), [["ForcedBBoxFailure", {}]], None
+
+    def invalid_fallback(
+        source_image: np.ndarray,
+        source_boxes: tuple,
+        variant_type: str,
+        stable_sample_seed: int,
+        recorded_parameters: list | None = None,
+    ) -> tuple[np.ndarray, tuple, list, dict]:
+        del variant_type, recorded_parameters
+        boxes = source_boxes[:output_count] if output_count == 0 else source_boxes + source_boxes
+        seed = BUILDER.variant_fallback_seed(stable_sample_seed, "geo")
+        return np.flip(source_image, axis=0).copy(), boxes, [["InvalidGeometry", {}]], {
+            "fallback_seed": seed,
+            "fallback_type": "test_invalid_geometry",
+            "source_quality_metrics": BUILDER.json_safe(BUILDER._quality_components(source_image, source_boxes)),
+            "parameter_policy": "test-invalid",
+            "adaptive_bounds": None,
+            "source_box_count": len(source_boxes),
+            "output_box_count": len(boxes),
+            "bbox_one_to_one_preserved": False,
+            "bbox_correspondence": [],
+            "border_mode": "test",
+        }
+
+    monkeypatch.setattr(BUILDER, "apply_augmentation_attempt", rejected_normal)
+    monkeypatch.setattr(BUILDER, "apply_adaptive_fallback", invalid_fallback)
+    stable_seed = BUILDER.sample_seed(42, source.parent_id, "geo")
+    outcome = BUILDER.evaluate_augmented_bytes(
+        source, "geo", "affine_or_perspective", stable_seed, {source.image_sha256}
+    )
+    assert not outcome["passed"]
+    assert f"bbox_count_changed:1->{output_count}" in outcome["failure_reasons"]
+    assert "bbox_one_to_one_not_preserved" in outcome["failure_reasons"]
+    with pytest.raises(BUILDER.BuildStop, match="fallback failed"):
+        BUILDER.generate_augmented_bytes(
+            source, "geo", "affine_or_perspective", stable_seed, {source.image_sha256}
+        )
+
+
+def test_geo_fallback_manifest_records_complete_safety_evidence(known_geo_fallback: tuple) -> None:
+    """The public manifest exposes the fallback decision, mapping, parameters, and all gates."""
+    source, (_, boxes, parameters) = known_geo_fallback
+    assert parameters["fallback_type"] == "safe_axis_flip_with_subtle_luminance"
+    assert parameters["fallback_reason"] == "normal_attempts_exhausted"
+    assert parameters["fallback_seed"] == BUILDER.variant_fallback_seed(parameters["sample_seed"], "geo")
+    assert parameters["source_box_count"] == parameters["output_box_count"] == len(source.boxes) == len(boxes)
+    assert parameters["bbox_one_to_one_preserved"] is True
+    assert parameters["bbox_correspondence"] == [{"source_index": 0, "output_index": 0}]
+    assert parameters["border_mode"] == "none"
+    assert parameters["quality"]["passed"] is True
+    assert parameters["fallback_quality_metrics"]["passed"] is True
+    assert parameters["parent_child_nonidentity_check"]["passed"] is True
+    assert list(parameters["components"]) == ["geometry", "light"]
+
+
+def test_production_builder_contains_no_known_parent_special_case() -> None:
+    """Fallback routing is generic and never identifies either historical failure by parent ID."""
+    source = SCRIPT.read_text(encoding="utf-8")
+    assert "sample_cff60ce4c7af444272f2" not in source
+    assert "sample_7eae2feee5741ef9cfde" not in source
+
+
 def _assert_v2_normal_light_and_compound_regression_bytes_and_parameters_are_unchanged() -> None:
     """Eight normal light and eight compound outputs retain their baseline bytes and realized parameters."""
     records = {record.parent_id: record for record in BUILDER.load_source_records(SOURCE)}
@@ -608,9 +809,17 @@ def test_bad_fallback_remains_subject_to_near_black_and_bbox_visibility(
         output[:] = 0
         return output, source_boxes, [["InvalidFallback", {}]], {
             "fallback_seed": 1,
+            "fallback_type": "test_invalid_exposure",
             "source_quality_metrics": BUILDER.json_safe(BUILDER._quality_components(source_image, source_boxes)),
             "parameter_policy": "test-invalid",
             "adaptive_bounds": {},
+            "source_box_count": len(source_boxes),
+            "output_box_count": len(source_boxes),
+            "bbox_one_to_one_preserved": True,
+            "bbox_correspondence": [
+                {"source_index": index, "output_index": index} for index in range(len(source_boxes))
+            ],
+            "border_mode": "not_applicable",
         }
 
     monkeypatch.setattr(BUILDER, "apply_augmentation_attempt", rejected_normal)
@@ -656,11 +865,13 @@ def test_compound_fallback_reuses_shared_light_and_keeps_three_components(
     )
     assert calls == [BUILDER.component_seed(BUILDER.fallback_seed(stable_seed), "light")]
     assert [component[0] for component in applied] == [
-        "AdaptiveAffineGeometry",
+        "SafeAxisFlipGeometry",
         "AdaptiveLuminanceContrast",
         "AdaptiveGaussianBlur",
     ]
     assert len(boxes) == len(source.boxes)
+    assert applied[0][1]["bbox_one_to_one_preserved"] is True
+    assert applied[0][1]["border_mode"] == "none"
     assert quality["passed"]
     assert metadata["component_seeds"]["light"] == calls[0]
 
@@ -704,15 +915,29 @@ def test_collect_all_continues_after_one_target_failure(tmp_path: Path, monkeypa
             "image_bytes": None if failed else f"image-{len(calls)}".encode(),
             "boxes": source.boxes,
             "parameters": parameters,
-            "normal_failures": [{"failure_reasons": ["fixture_failure"]}] if failed else [],
+            "normal_failures": (
+                [{"retry_index": index, "attempt_seed": index, "failure_reasons": ["fixture_failure"]}
+                 for index in range(12)]
+                if failed
+                else []
+            ),
             "failure_reasons": ["fixture_failure"] if failed else [],
         }
 
     monkeypatch.setattr(BUILDER, "evaluate_augmented_bytes", fake_evaluate)
-    report = BUILDER.collect_all_preflight(source_root, tmp_path / "audit", 42)
-    assert len(calls) == 4
-    assert report["processed_targets"] == 4
+    output = tmp_path / "audit"
+    report = BUILDER.collect_all_preflight(source_root, output, 42)
+    assert len(calls) == 8
+    assert report["processed_targets"] == 8
+    assert {call.rsplit(":", 1)[1] for call in calls} == {"geo", "light", "degrade", "compound"}
+    assert all(
+        report["variant_statistics"][variant]["targets"] == 2
+        for variant in ("geo", "light", "degrade", "compound")
+    )
     assert report["fallback_started_count"] == 1
     assert report["fallback_failed_count"] == 1
     assert len(report["final_failure_samples"]) == 1
-    assert (tmp_path / "audit" / "collect_all_report.json").is_file()
+    assert {path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()} == {
+        "collect_all_report.json",
+        "collect_all_details.csv",
+    }

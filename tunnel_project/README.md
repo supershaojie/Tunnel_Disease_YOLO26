@@ -39,17 +39,19 @@ parameters, pre/post box counts, and file-level split positions. The audit repor
 64-bit dHash candidate pairs and compute dry-run exact/near-duplicate statistics without automatically deleting or
 regrouping any sample.
 
-### Exhausted-retry safety fallback
+### Exhausted-retry safety fallbacks
 
 The original 12 seeded attempts, parameter ranges, order, acceptance checks, and quality thresholds remain the normal
 path. A normal candidate that passes is returned immediately and records `fallback_used=false`. Only a `light` or
-`compound` target for which all 12 normal attempts fail enters a separate deterministic fallback stage. That stage
-derives a fallback seed from the existing sample seed, measures source exposure and crack-box visibility, and applies
-a bounded LAB-luminance contrast/lift adjustment. A compound fallback reuses that exact light function between one
-mild bbox-aware affine component and one mild degradation component. The result still has to pass every existing
-quality check and an additional nonidentity check; otherwise the formal builder remains fail-fast.
+`compound` target for which all 12 normal attempts fail enters the existing deterministic luminance fallback stage.
+A `geo` target that exhausts all 12 normal candidates enters a separate deterministic full-frame axis-flip fallback.
+The safe geometry uses no padding or interpolation, maps boxes analytically in their original order, and is shared by
+standalone `geo` and the geometry component of `compound` fallback. Standalone `geo` also applies the existing bounded
+luminance adjustment after the flip. Every fallback still has to preserve a one-to-one source/output box mapping, pass
+all existing quality checks, and pass the nonidentity check; otherwise the formal builder remains fail-fast.
 
-Before another formal build, scan all 2,404 `light` and 2,404 `compound` targets without persisting a JPEG dataset:
+Before another formal build, scan all 9,616 `geo`, `light`, `degrade`, and `compound` targets without persisting a JPEG
+dataset:
 
 ```powershell
 $env:NO_ALBUMENTATIONS_UPDATE = '1'
@@ -61,6 +63,6 @@ $env:NO_ALBUMENTATIONS_UPDATE = '1'
     --preflight-collect-all
 ```
 
-This audit-only mode calls the production augmentation path, continues after individual failures, and writes only a
-JSON report plus CSV details. It never enables `--full`, never writes the formal dataset, and never relaxes a quality
-threshold.
+This audit-only mode calls the production augmentation path in the same stable order as a formal build, continues after
+individual failures, and writes only a JSON report plus CSV details. It never enables `--full`, never writes the formal
+dataset, and never relaxes a quality threshold.

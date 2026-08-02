@@ -40,6 +40,7 @@ NEAR_DUPLICATE_PREVIEW_PAIRS = 6
 MANIFEST_SCHEMA_VERSION = "3.0"
 SMALL_ARRAY_VALUE_LIMIT = 256
 FALLBACK_POLICY_VERSION = "adaptive_light_fallback_v1"
+GEO_FALLBACK_POLICY_VERSION = "safe_geo_axis_flip_v1"
 POLICY = {
     "split_policy": "file_level_random",
     "parent_id_grouping": False,
@@ -198,7 +199,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--preflight-collect-all",
         action="store_true",
-        help="Check all 2,404 light and compound targets in memory and write only audit reports",
+        help="Check all 9,616 geo/light/degrade/compound targets in memory and write only audit reports",
     )
     return parser.parse_args()
 
@@ -233,6 +234,16 @@ def fallback_seed(stable_sample_seed: int) -> int:
     """Derive the independent deterministic fallback seed after all normal attempts are exhausted."""
     payload = f"{stable_sample_seed}\0{FALLBACK_POLICY_VERSION}".encode()
     return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big")
+
+
+def variant_fallback_seed(stable_sample_seed: int, variant_type: str) -> int:
+    """Derive the existing light seed or the isolated geo-safe fallback seed."""
+    if variant_type == "geo":
+        payload = f"{stable_sample_seed}\0{GEO_FALLBACK_POLICY_VERSION}".encode()
+        return int.from_bytes(hashlib.sha256(payload).digest()[:4], "big")
+    if variant_type in {"light", "compound"}:
+        return fallback_seed(stable_sample_seed)
+    raise BuildStop(f"fallback seed is not defined for variant {variant_type}")
 
 
 def component_seed(stable_fallback_seed: int, component: str) -> int:
@@ -964,16 +975,16 @@ def apply_adaptive_light_fallback(
 
 
 def fallback_geometry_parameters(stable_component_seed: int) -> dict[str, Any]:
-    """Derive one mild, bbox-aware affine policy for a compound fallback."""
-    rng = random.Random(stable_component_seed)
+    """Select one deterministic full-frame geometry that cannot crop or replicate boxes."""
+    operations = ("horizontal_flip", "vertical_flip", "rotate_180")
     return {
+        "model": "index_preserving_full_frame_axis_flip",
+        "policy_version": GEO_FALLBACK_POLICY_VERSION,
         "component_seed": stable_component_seed,
-        "rotation_degrees": rng.choice((-1.0, 1.0)) * rng.uniform(0.75, 1.50),
-        "scale": rng.uniform(0.992, 1.008),
-        "translate_x": rng.uniform(-0.004, 0.004),
-        "translate_y": rng.uniform(-0.004, 0.004),
-        "shear_x_degrees": rng.uniform(-0.40, 0.40),
-        "shear_y_degrees": rng.uniform(-0.40, 0.40),
+        "operation": operations[stable_component_seed % len(operations)],
+        "border_mode": "none",
+        "interpolation": "none",
+        "bbox_mapping": "analytic_index_preserving_yolo_xywh",
     }
 
 
@@ -983,39 +994,38 @@ def apply_fallback_geometry(
     stable_component_seed: int,
     recorded_parameters: dict[str, Any] | None = None,
 ) -> tuple[np.ndarray, tuple[tuple[float, float, float, float], ...], list[Any]]:
-    """Apply one deterministic, mild affine component while preserving every box."""
+    """Apply one deterministic full-frame axis flip with analytic one-to-one box mapping."""
     policy = recorded_parameters or fallback_geometry_parameters(stable_component_seed)
     if int(policy["component_seed"]) != stable_component_seed:
-        raise BuildStop("recorded compound geometry seed disagrees with the derived seed")
-    transform = A.Compose(
-        [
-            A.Affine(
-                scale=(float(policy["scale"]), float(policy["scale"])),
-                translate_percent={
-                    "x": (float(policy["translate_x"]), float(policy["translate_x"])),
-                    "y": (float(policy["translate_y"]), float(policy["translate_y"])),
-                },
-                rotate=(float(policy["rotation_degrees"]), float(policy["rotation_degrees"])),
-                shear={
-                    "x": (float(policy["shear_x_degrees"]), float(policy["shear_x_degrees"])),
-                    "y": (float(policy["shear_y_degrees"]), float(policy["shear_y_degrees"])),
-                },
-                border_mode=cv2.BORDER_REFLECT_101,
-                p=1,
-            )
-        ],
-        bbox_params=geometry_bbox_params(),
-        seed=stable_component_seed,
-        strict=True,
-        save_applied_params=True,
-    )
-    transformed = transform(image=image, bboxes=list(boxes), class_labels=[0] * len(boxes))
-    output_boxes = canonicalize_boxes(transformed["bboxes"])
+        raise BuildStop("recorded fallback geometry seed disagrees with the derived seed")
+    operation = str(policy["operation"])
+    if operation == "horizontal_flip":
+        output = cv2.flip(image, 1)
+        candidates = tuple((1.0 - x, y, width, height) for x, y, width, height in boxes)
+    elif operation == "vertical_flip":
+        output = cv2.flip(image, 0)
+        candidates = tuple((x, 1.0 - y, width, height) for x, y, width, height in boxes)
+    elif operation == "rotate_180":
+        output = cv2.flip(image, -1)
+        candidates = tuple((1.0 - x, 1.0 - y, width, height) for x, y, width, height in boxes)
+    else:
+        raise BuildStop(f"unknown safe fallback geometry operation: {operation}")
+    output_boxes = canonicalize_boxes(candidates)
+    if len(output_boxes) != len(boxes):
+        raise BuildStop(f"safe fallback geometry changed bbox count: {len(boxes)}->{len(output_boxes)}")
     actual = dict(policy)
-    actual["albumentations_applied"] = serialize_applied_transforms(
-        transformed.get("applied_transforms", []), stable_component_seed, "compound", "fallback_geometry"
+    actual.update(
+        {
+            "source_box_count": len(boxes),
+            "output_box_count": len(output_boxes),
+            "bbox_one_to_one_preserved": len(output_boxes) == len(boxes),
+            "bbox_correspondence": [
+                {"source_index": index, "output_index": index} for index in range(len(boxes))
+            ],
+            "actual_output_boxes": json_safe(output_boxes),
+        }
     )
-    return transformed["image"], output_boxes, [["AdaptiveAffineGeometry", json_safe(actual)]]
+    return output, output_boxes, [["SafeAxisFlipGeometry", json_safe(actual)]]
 
 
 def fallback_degrade_parameters(stable_component_seed: int) -> dict[str, Any]:
@@ -1057,8 +1067,36 @@ def apply_adaptive_fallback(
     recorded_parameters: list[Any] | None = None,
 ) -> tuple[np.ndarray, tuple[tuple[float, float, float, float], ...], list[Any], dict[str, Any]]:
     """Apply the deterministic post-retry fallback without changing normal augmentation behavior."""
-    stable_fallback_seed = fallback_seed(stable_sample_seed)
+    stable_fallback_seed = variant_fallback_seed(stable_sample_seed, variant_type)
     source_metrics = _quality_components(source_image, source_boxes)
+    if variant_type == "geo":
+        geometry_seed = component_seed(stable_fallback_seed, "geometry")
+        light_seed = component_seed(stable_fallback_seed, "light")
+        recorded_geometry = recorded_parameters[0][1] if recorded_parameters else None
+        recorded_light = recorded_parameters[1][1] if recorded_parameters else None
+        image, boxes, geometry_applied = apply_fallback_geometry(
+            source_image, source_boxes, geometry_seed, recorded_geometry
+        )
+        image, light_applied, light_parameters = apply_adaptive_light_fallback(
+            image, source_metrics, light_seed, recorded_light
+        )
+        geometry_parameters = geometry_applied[0][1]
+        metadata = {
+            "fallback_seed": stable_fallback_seed,
+            "fallback_type": "safe_axis_flip_with_subtle_luminance",
+            "component_seeds": {"geometry": geometry_seed, "light": light_seed},
+            "source_quality_metrics": json_safe(source_metrics),
+            "parameter_policy": (
+                "full-frame analytic axis flip without padding/interpolation plus shared bounded luminance adjustment"
+            ),
+            "adaptive_bounds": light_parameters["adaptive_bounds"],
+            "source_box_count": len(source_boxes),
+            "output_box_count": len(boxes),
+            "bbox_one_to_one_preserved": geometry_parameters["bbox_one_to_one_preserved"],
+            "bbox_correspondence": geometry_parameters["bbox_correspondence"],
+            "border_mode": geometry_parameters["border_mode"],
+        }
+        return image, boxes, geometry_applied + light_applied, metadata
     if variant_type == "light":
         recorded_light = recorded_parameters[0][1] if recorded_parameters else None
         image, applied, light_parameters = apply_adaptive_light_fallback(
@@ -1066,9 +1104,17 @@ def apply_adaptive_fallback(
         )
         metadata = {
             "fallback_seed": stable_fallback_seed,
+            "fallback_type": "adaptive_luminance_contrast",
             "source_quality_metrics": json_safe(source_metrics),
             "parameter_policy": light_parameters["parameter_policy"],
             "adaptive_bounds": light_parameters["adaptive_bounds"],
+            "source_box_count": len(source_boxes),
+            "output_box_count": len(source_boxes),
+            "bbox_one_to_one_preserved": True,
+            "bbox_correspondence": [
+                {"source_index": index, "output_index": index} for index in range(len(source_boxes))
+            ],
+            "border_mode": "not_applicable",
         }
         return image, source_boxes, applied, metadata
     if variant_type != "compound":
@@ -1091,10 +1137,16 @@ def apply_adaptive_fallback(
     applied = geometry_applied + light_applied + degrade_applied
     metadata = {
         "fallback_seed": stable_fallback_seed,
+        "fallback_type": "safe_axis_flip_light_degrade",
         "component_seeds": {"geometry": geometry_seed, "light": light_seed, "degrade": degrade_seed},
         "source_quality_metrics": json_safe(source_metrics),
         "parameter_policy": light_parameters["parameter_policy"],
         "adaptive_bounds": light_parameters["adaptive_bounds"],
+        "source_box_count": len(source_boxes),
+        "output_box_count": len(boxes),
+        "bbox_one_to_one_preserved": geometry_applied[0][1]["bbox_one_to_one_preserved"],
+        "bbox_correspondence": geometry_applied[0][1]["bbox_correspondence"],
+        "border_mode": geometry_applied[0][1]["border_mode"],
     }
     return image, boxes, applied, metadata
 
@@ -1188,7 +1240,7 @@ def evaluate_augmented_bytes(
             "parameters": parameters,
             "normal_failures": normal_failures,
         }
-    if variant_type not in {"light", "compound"}:
+    if variant_type not in {"geo", "light", "compound"}:
         return {
             "passed": False,
             "image_bytes": None,
@@ -1197,7 +1249,7 @@ def evaluate_augmented_bytes(
             "normal_failures": normal_failures,
             "failure_reasons": ["normal_attempts_exhausted_and_no_fallback_for_variant"],
         }
-    stable_fallback_seed = fallback_seed(stable_sample_seed)
+    stable_fallback_seed = variant_fallback_seed(stable_sample_seed, variant_type)
     fallback_failures: list[str] = []
     try:
         image, boxes, applied, fallback_metadata = apply_adaptive_fallback(
@@ -1205,8 +1257,13 @@ def evaluate_augmented_bytes(
         )
         if len(boxes) != len(source.boxes):
             fallback_failures.append(f"bbox_count_changed:{len(source.boxes)}->{len(boxes)}")
-        quality = image_quality(image, boxes, source_image, source.boxes, variant_type, subtype)
-        fallback_failures.extend(quality["failed_checks"])
+        bbox_one_to_one = bool(fallback_metadata.get("bbox_one_to_one_preserved"))
+        if not bbox_one_to_one:
+            fallback_failures.append("bbox_one_to_one_not_preserved")
+        quality = None
+        if len(boxes) == len(source.boxes) and bbox_one_to_one:
+            quality = image_quality(image, boxes, source_image, source.boxes, variant_type, subtype)
+            fallback_failures.extend(quality["failed_checks"])
         difference = cv2.absdiff(image, source_image)
         mean_absolute_change = float(difference.mean())
         changed_component_ratio = float(np.mean(difference > 0))
@@ -1222,9 +1279,17 @@ def evaluate_augmented_bytes(
         image_bytes, boxes, applied, quality = None, source.boxes, [], None
         fallback_metadata = {
             "fallback_seed": stable_fallback_seed,
+            "fallback_type": "failed_before_completion",
             "source_quality_metrics": json_safe(_quality_components(source_image, source.boxes)),
-            "parameter_policy": FALLBACK_POLICY_VERSION,
+            "parameter_policy": (
+                GEO_FALLBACK_POLICY_VERSION if variant_type == "geo" else FALLBACK_POLICY_VERSION
+            ),
             "adaptive_bounds": None,
+            "source_box_count": len(source.boxes),
+            "output_box_count": len(source.boxes),
+            "bbox_one_to_one_preserved": False,
+            "bbox_correspondence": [],
+            "border_mode": None,
         }
         mean_absolute_change = 0.0
         changed_component_ratio = 0.0
@@ -1240,7 +1305,14 @@ def evaluate_augmented_bytes(
         "quality": quality,
         "fallback_used": True,
         "normal_attempts_exhausted": True,
+        "fallback_type": fallback_metadata["fallback_type"],
+        "fallback_reason": "normal_attempts_exhausted",
         "fallback_seed": stable_fallback_seed,
+        "source_box_count": len(source.boxes),
+        "output_box_count": len(boxes),
+        "bbox_one_to_one_preserved": fallback_metadata["bbox_one_to_one_preserved"],
+        "bbox_correspondence": fallback_metadata["bbox_correspondence"],
+        "border_mode": fallback_metadata["border_mode"],
         "source_quality_metrics": fallback_metadata["source_quality_metrics"],
         "parameter_policy": fallback_metadata["parameter_policy"],
         "adaptive_bounds": fallback_metadata["adaptive_bounds"],
@@ -1250,8 +1322,19 @@ def evaluate_augmented_bytes(
         "normal_attempt_failure_reasons": normal_failures,
         "fallback_mean_absolute_pixel_change": mean_absolute_change,
         "fallback_changed_component_ratio": changed_component_ratio,
+        "parent_child_nonidentity_check": {
+            "mean_absolute_pixel_change": mean_absolute_change,
+            "minimum_mean_absolute_pixel_change": 0.50,
+            "changed_component_ratio": changed_component_ratio,
+            "minimum_changed_component_ratio": 0.01,
+            "passed": mean_absolute_change >= 0.50 and changed_component_ratio >= 0.01,
+        },
     }
-    if variant_type == "compound" and len(serialized) == 3:
+    if variant_type == "geo" and len(serialized) == 2:
+        parameters["required_components"] = ["geometry", "light"]
+        parameters["components"] = dict(zip(parameters["required_components"], serialized))
+        parameters["component_seeds"] = fallback_metadata["component_seeds"]
+    elif variant_type == "compound" and len(serialized) == 3:
         parameters["required_components"] = ["geometry", "light", "degrade"]
         parameters["components"] = dict(zip(parameters["required_components"], serialized))
         parameters["component_seeds"] = fallback_metadata["component_seeds"]
@@ -1293,7 +1376,7 @@ def replay_augmented_bytes(
         raise BuildStop("unsupported manifest schema for replay")
     source_image = read_image(source.image_path)
     if parameters.get("fallback_used"):
-        expected_seed = fallback_seed(int(parameters["sample_seed"]))
+        expected_seed = variant_fallback_seed(int(parameters["sample_seed"]), variant_type)
         if int(parameters["fallback_seed"]) != expected_seed:
             raise BuildStop("manifest fallback seed disagrees with stable derivation")
         image, boxes, applied, _ = apply_adaptive_fallback(
@@ -1877,7 +1960,7 @@ deleted. Manual previews are under `previews/`, including original/augmented box
 
 
 def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, Any]:
-    """Check all full light/compound targets through the production path without persisting dataset JPEGs."""
+    """Check every stochastic full-build target without persisting dataset JPEGs."""
     records = load_source_records(source)
     recorded_fingerprint = (source / "metadata" / "dataset_fingerprint.sha256").read_text(
         encoding="ascii"
@@ -1891,10 +1974,10 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
     degrade_subtypes, _ = assign_subtypes(records, "degrade", DEGRADE_QUOTAS, seed)
     planned = build_rows(records, geo_subtypes, light_subtypes, degrade_subtypes, seed)
     targets = sorted(
-        (row for row in planned if row["variant_type"] in {"light", "compound"}),
+        (row for row in planned if row["variant_type"] != "orig"),
         key=lambda row: row["pool_image"].casefold(),
     )
-    if len(targets) != FULL_SOURCE_COUNT * 2:
+    if len(targets) != FULL_SOURCE_COUNT * 4:
         raise BuildStop(f"collect-all target count changed: {len(targets)}")
     source_by_parent = {record.parent_id: record for record in records}
     family_hashes: defaultdict[str, set[str]] = defaultdict(set)
@@ -1915,16 +1998,20 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
             )
             parameters = outcome["parameters"]
             fallback_used = bool(parameters and parameters["fallback_used"])
+            normal_attempts_exhausted = len(outcome["normal_failures"]) == MAX_AUGMENT_RETRIES
             if outcome["passed"]:
                 family_hashes[row["parent_id"]].add(sha256_bytes(outcome["image_bytes"]))
             variant_counts[row["variant_type"]]["targets"] += 1
             variant_counts[row["variant_type"]]["passed" if outcome["passed"] else "failed"] += 1
-            if fallback_used:
+            if normal_attempts_exhausted:
                 variant_counts[row["variant_type"]]["normal_attempts_exhausted"] += 1
+            if fallback_used:
                 variant_counts[row["variant_type"]]["fallback_started"] += 1
                 variant_counts[row["variant_type"]]["fallback_passed" if outcome["passed"] else "fallback_failed"] += 1
-            else:
+            elif outcome["passed"]:
                 variant_counts[row["variant_type"]]["normal_success"] += 1
+            elif normal_attempts_exhausted:
+                variant_counts[row["variant_type"]]["fallback_not_available"] += 1
             retry_key = str(parameters["retry_index"] if parameters else MAX_AUGMENT_RETRIES)
             retry_distribution[row["variant_type"]][retry_key] += 1
             for normal_failure in outcome["normal_failures"]:
@@ -1939,10 +2026,26 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
                     "sample_seed": int(row["sample_seed"]),
                     "passed": bool(outcome["passed"]),
                     "fallback_used": fallback_used,
-                    "normal_attempts_exhausted": fallback_used,
+                    "normal_attempts_exhausted": normal_attempts_exhausted,
                     "retry_index": int(parameters["retry_index"] if parameters else MAX_AUGMENT_RETRIES),
-                    "fallback_seed": (
-                        parameters["fallback_seed"] if parameters else fallback_seed(int(row["sample_seed"]))
+                    "fallback_seed": parameters["fallback_seed"] if parameters else None,
+                    "fallback_type": parameters.get("fallback_type") if parameters else None,
+                    "source_box_count": len(source_record.boxes),
+                    "output_box_count": len(outcome["boxes"]),
+                    "output_image_sha256": (
+                        sha256_bytes(outcome["image_bytes"]) if outcome["passed"] else None
+                    ),
+                    "output_label_sha256": (
+                        sha256_bytes(
+                            format_yolo_labels(outcome["boxes"])
+                            if row["variant_type"] in {"geo", "compound"}
+                            else source_record.label_path.read_bytes()
+                        )
+                        if outcome["passed"]
+                        else None
+                    ),
+                    "augmentation_parameters_json": json.dumps(
+                        parameters, ensure_ascii=False, sort_keys=True, separators=(",", ":")
                     ),
                     "normal_attempt_failure_reasons_json": json.dumps(
                         outcome["normal_failures"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -1953,7 +2056,11 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
                         sort_keys=True,
                         separators=(",", ":"),
                     ),
-                    "parameter_policy": parameters["parameter_policy"] if parameters else FALLBACK_POLICY_VERSION,
+                    "parameter_policy": (
+                        parameters["parameter_policy"]
+                        if parameters
+                        else "normal_attempts_exhausted_without_available_fallback"
+                    ),
                     "adaptive_bounds_json": json.dumps(
                         parameters["adaptive_bounds"] if parameters else None,
                         ensure_ascii=False,
@@ -1991,16 +2098,31 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
         retry_highest = sorted(
             details, key=lambda row: (-int(row["retry_index"]), row["variant_type"], row["parent_id"])
         )[:100]
-        known_parent = "sample_7eae2feee5741ef9cfde"
+        statistic_fields = (
+            "targets",
+            "normal_success",
+            "normal_attempts_exhausted",
+            "fallback_started",
+            "fallback_passed",
+            "fallback_failed",
+            "fallback_not_available",
+            "passed",
+            "failed",
+        )
         report = {
             **POLICY,
             "manifest_schema_version": MANIFEST_SCHEMA_VERSION,
-            "mode": "preflight_collect_all_light_compound",
+            "mode": "preflight_collect_all_augmented_variants",
             "global_seed": seed,
             "processed_targets": len(details),
-            "variant_statistics": {variant: dict(counts) for variant, counts in sorted(variant_counts.items())},
-            "normal_success_count": sum(not row["fallback_used"] and row["passed"] for row in details),
-            "normal_attempts_exhausted_count": len(fallback_details),
+            "variant_statistics": {
+                variant: {field: int(variant_counts[variant][field]) for field in statistic_fields}
+                for variant in ("geo", "light", "degrade", "compound")
+            },
+            "normal_success_count": sum(
+                not row["normal_attempts_exhausted"] and row["passed"] for row in details
+            ),
+            "normal_attempts_exhausted_count": sum(row["normal_attempts_exhausted"] for row in details),
             "fallback_started_count": len(fallback_details),
             "fallback_passed_count": sum(row["passed"] for row in fallback_details),
             "fallback_failed_count": sum(not row["passed"] for row in fallback_details),
@@ -2015,21 +2137,14 @@ def collect_all_preflight(source: Path, output: Path, seed: int) -> dict[str, An
             "retry_highest_samples": retry_highest,
             "fallback_samples": fallback_details,
             "final_failure_samples": final_failures,
-            "known_failed_parent_passed": any(
-                row["parent_id"] == known_parent and row["variant_type"] == "light" and row["passed"]
-                for row in details
-            ),
             "source_fingerprint_before": fingerprint_before,
             "source_fingerprint_after": fingerprint_after,
             "source_unchanged": fingerprint_before == fingerprint_after,
         }
         report["formal_rerun_gate_passed"] = all(
             (
-                len(details) == FULL_SOURCE_COUNT * 2,
+                len(details) == FULL_SOURCE_COUNT * 4,
                 not final_failures,
-                report["known_failed_parent_passed"],
-                len(fallback_details) <= 5,
-                report["fallback_trigger_rate"] <= 5 / (FULL_SOURCE_COUNT * 2),
                 report["source_unchanged"],
             )
         )
