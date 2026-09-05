@@ -470,20 +470,7 @@ class BaseTrainer:
                     # Backward
                     self.scaler.scale(self.loss).backward()
                 except RuntimeError as e:
-                    is_oom = isinstance(e, torch.cuda.OutOfMemoryError)
-                    if not is_oom and not any(
-                        s in str(e) for s in ("CUDNN_STATUS_INTERNAL_ERROR", "unable to find an engine")
-                    ):
-                        raise
-                    if epoch > self.start_epoch or self._oom_retries >= 3 or RANK != -1:
-                        raise  # only auto-reduce during first epoch on single GPU, max 3 retries
-                    self._oom_retries += 1
-                    old_batch = self.batch_size
-                    self.args.batch = self.batch_size = max(self.batch_size // 2, 1)
-                    LOGGER.warning(
-                        f"{'CUDA out of memory' if is_oom else 'CUDA backend memory error'} with batch={old_batch}. "
-                        f"Reducing to batch={self.batch_size} and retrying ({self._oom_retries}/3)."
-                    )
+                    self._handle_train_memory_error(e, epoch)
                     batch = loss = preds = None
                     self.loss = self.loss_items = self.tloss = None
                     self._clear_memory()
@@ -602,6 +589,26 @@ class BaseTrainer:
                 loader.close()  # shut down persistent dataloader workers so none survive to interpreter exit
         unset_deterministic()
         self.run_callbacks("teardown")
+
+    def _handle_train_memory_error(self, error: RuntimeError, epoch: int):
+        """Handle a training memory error before changing batch size or rebuilding the pipeline.
+
+        Args:
+            error (RuntimeError): Error raised by the forward/backward pass.
+            epoch (int): Current training epoch.
+        """
+        is_oom = isinstance(error, torch.cuda.OutOfMemoryError)
+        if not is_oom and not any(s in str(error) for s in ("CUDNN_STATUS_INTERNAL_ERROR", "unable to find an engine")):
+            raise error
+        if epoch > self.start_epoch or self._oom_retries >= 3 or RANK != -1:
+            raise error  # only auto-reduce during first epoch on single GPU, max 3 retries
+        self._oom_retries += 1
+        old_batch = self.batch_size
+        self.args.batch = self.batch_size = max(self.batch_size // 2, 1)
+        LOGGER.warning(
+            f"{'CUDA out of memory' if is_oom else 'CUDA backend memory error'} with batch={old_batch}. "
+            f"Reducing to batch={self.batch_size} and retrying ({self._oom_retries}/3)."
+        )
 
     def auto_batch(self, max_num_obj=0, dataset_size=0):
         """Calculate optimal batch size based on model and device memory constraints."""
