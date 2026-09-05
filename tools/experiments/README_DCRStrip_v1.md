@@ -9,7 +9,7 @@
 - 本地 worktree：`E:/PycharmProjects/Tunnel_Disease_YOLO26/.worktrees/exp-yolo26n-b19-dcrstrip-v1`。
 - 正式实验：`yolo26n_b19_a1_dcrstrip_v1`；本地仅产生检查报告，尚未启动完整训练，也没有 A1 的 best.pt/results.csv。
 - 当前会话未连接服务器，无法确认服务器上由其他会话启动的任务；本次没有终止任何进程。
-- 实现与本说明一同提交；交付时记录实际 commit SHA。复核可执行 `git log -1 --format=fuller`，用 `git show <SHA>` 固定版本。
+- 初始实现提交：`ff93edfe5390ffb0245b241ebc65099f12b4de2c`；补充修正与本说明一同提交，交付时记录最终 SHA。复核可执行 `git log -1 --format=fuller`，用 `git show <SHA>` 固定版本。
 
 ## b19 的真实来源
 
@@ -97,7 +97,7 @@
 新增 10 个参数张量仅位于 `model.4.dcr`。构造新分支时局部保存/恢复 CPU RNG；原生 trainer 先在 CPU 构造，随后移至设备，
 这段构造不消耗 CUDA RNG。`AuditedTrainer.get_model` 审计真实重建路径，训练前 callback 再检查最终模型和 optimizer。
 
-本地已执行 17 项模块/入口检查，全部通过；随后补充的目录冲突与原生最终 setup/OOM 检查 2 项，以及逻辑 GPU 与物理 UUID 映射检查 1 项也已通过，共 20 项：
+本地已执行 17 项模块/入口检查，全部通过；随后补充的目录冲突与原生最终 setup/OOM 检查 2 项，以及逻辑 GPU 与物理 UUID 映射检查 1 项也已通过，加上同一权重重定位、CLI 相对路径、原命令有效配方复现 3 项，共 23 项：
 
 - 四方向核有效位置、法向采样、边界、常量零对比、奇数/矩形/极小块输入、c1≠c2。
 - `forward` / `forward_split` 一致；disabled 时整网 640×640、640×960 原始输出旁路等价。
@@ -125,7 +125,9 @@
 4. 初始权重重定位须与仍存在的原始文件逐字节匹配；旧位置缺失时要求原文件历史 SHA-256，不能自行换权重。
 5. 正式日志同时保存 LOGGER、进度/print、异常；fresh-process 检查输出也会回收。无静默 OOM 降级。
 6. GPU 占用查询使用所选 PyTorch 设备的 UUID，正确处理 CUDA_VISIBLE_DEVICES 的逻辑/物理编号映射。
-7. 删除 Windows 文档生成器造成的无关导航路径改写，仅保留新模块一行导航；删除新模型 YAML 中不再适用的原模型性能注释。
+7. 检查比较复用 shape/dtype + torch.allclose，去除依赖较新 Python/PyTorch 的少量 API；未在本地另装或运行 Python 3.8 / torch 1.8 环境。
+8. 规范化 CLI 相对路径后才切换子进程 cwd；原始 launcher 还必须从当前默认配置完整复现归档中的有效参数。
+9. 删除 Windows 文档生成器造成的无关导航路径改写，仅保留新模块一行导航；删除新模型 YAML 中不再适用的原模型性能注释。
 
 未产生修正前 A1 完整实验结果，因此当前没有需要重跑的 A1。历史 b19 的代码和结果没有被修改，仍可作为约定协议下的 baseline。
 未来若改动计算、训练或初始化，必须另建输出并从同一初始预训练重新进行公平消融，不能混用旧结果或从旧 best.pt 续训冒充重跑。

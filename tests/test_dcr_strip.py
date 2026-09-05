@@ -2,6 +2,7 @@
 
 import copy
 import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -17,8 +18,12 @@ from tools.experiments.run_b19_dcrstrip import (
     find_baseline,
     final_model_audit,
     gradient_check,
+    launcher_evidence,
+    main,
     runtime_issues,
+    resolve_recipe,
     save_reload_check,
+    sha256,
     structural_checks,
 )
 from ultralytics.cfg import get_cfg
@@ -97,8 +102,8 @@ def test_bypass_split_and_initialization_stream(shape):
         assert_close_tree(candidate(x), candidate.forward_split(x))
         candidate.dcr.enabled = False
         with patch.object(candidate.dcr, "residual", side_effect=AssertionError):
-            torch.testing.assert_close(baseline(x), candidate(x))
-            torch.testing.assert_close(baseline.forward_split(x), candidate.forward_split(x))
+            assert_close_tree(baseline(x), candidate(x))
+            assert_close_tree(baseline.forward_split(x), candidate.forward_split(x))
 
 
 def test_controls_remove_the_intended_mechanism():
@@ -115,8 +120,8 @@ def test_controls_remove_the_intended_mechanism():
         module.adaptive_fusion = False
         with patch.object(module.gate, "forward", side_effect=AssertionError):
             fixed, fixed_gates = module.residual(x)
-        torch.testing.assert_close(delta, fixed)
-        torch.testing.assert_close(gates, fixed_gates)
+        assert_close_tree(delta, fixed)
+        assert_close_tree(gates, fixed_gates)
     module(x).square().mean().backward()
     assert module.gate.weight.grad is None
     assert module.alpha.grad is not None
@@ -282,7 +287,7 @@ def test_gpu_occupancy_uses_selected_uuid(monkeypatch):
     """A remapped logical GPU must query its own physical UUID, not physical index zero."""
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "1")
     with patch("torch.cuda.is_available", return_value=True), patch(
-        "torch.cuda.mem_get_info", return_value=(20 * 1024**3, 24 * 1024**3)
+        "torch.cuda.mem_get_info", return_value=(20 * 1024**3, 24 * 1024**3), create=True
     ), patch("torch.cuda.get_device_properties", return_value=SimpleNamespace(uuid="selected-device")), patch(
         "tools.experiments.run_b19_dcrstrip.subprocess.check_output", return_value="999999, 1024"
     ) as query:
@@ -290,3 +295,81 @@ def test_gpu_occupancy_uses_selected_uuid(monkeypatch):
     command = query.call_args.args[0]
     assert command[command.index("-i") + 1] == "GPU-selected-device"
     assert any("999999" in item for item in issues)
+
+
+def test_relocated_initial_weight_identity(tmp_path):
+    """Accept byte-identical initial weights in a weights directory; missing originals need historical identity."""
+    root = os.environ.get("DCR_BASELINE_ROOT")
+    if not root:
+        pytest.skip("Set DCR_BASELINE_ROOT to check the original initial-weight mapping")
+    root = Path(root)
+    target = tmp_path / "weights/yolo26n.pt"
+    target.parent.mkdir()
+    shutil.copy2(root / "yolo26n.pt", target)
+    record = tmp_path / "b19/args.yaml"
+    record.parent.mkdir()
+    YAML.save(record, REFERENCE["args"])
+    (record.parent / "results.csv").write_text("epoch,metrics/mAP50(B)\n1,0.1\n", encoding="utf-8")
+    options = SimpleNamespace(
+        baseline_root=root, baseline_args=record, pretrained=target, pretrained_sha256=None, project=tmp_path, name="A1"
+    )
+    assert resolve_recipe(options)[2]["initial_path"] == str(target.resolve())
+    args = YAML.load(record)
+    args["model"] = "missing-original/yolo26n.pt"
+    YAML.save(record, args)
+    with pytest.raises(FileNotFoundError, match="Original initial weight is missing"):
+        resolve_recipe(options)
+    options.pretrained_sha256 = sha256(root / "yolo26n.pt")
+    assert resolve_recipe(options)[2]["initial_sha256"] == options.pretrained_sha256
+    options.pretrained_sha256 = "0" * 64
+    with pytest.raises(ValueError, match="does not match"):
+        resolve_recipe(options)
+
+
+def test_cli_resolves_paths_before_changing_child_cwd(tmp_path, monkeypatch):
+    """Valid --stage=train and relative source paths retain their original calling-directory meaning."""
+    monkeypatch.chdir(tmp_path)
+    with patch("tools.experiments.run_b19_dcrstrip.structural_checks"), patch(
+        "tools.experiments.run_b19_dcrstrip.resolve_recipe", side_effect=ValueError("stop before training")
+    ) as resolve:
+        assert (
+            main(
+                [
+                    "--baseline-root",
+                    ".",
+                    "--baseline-args",
+                    "b19/args.yaml",
+                    "--baseline-launcher",
+                    "b19.sh",
+                    "--pretrained",
+                    "weights/yolo26n.pt",
+                    "--project",
+                    "runs",
+                    "--stage=train",
+                ]
+            )
+            == 1
+        )
+    options = resolve.call_args.args[0]
+    assert options.baseline_root == tmp_path
+    assert options.baseline_args == tmp_path / "b19/args.yaml"
+    assert options.baseline_launcher == tmp_path / "b19.sh"
+    assert options.pretrained == tmp_path / "weights/yolo26n.pt"
+    assert options.project == tmp_path / "runs"
+
+
+def test_launcher_must_reproduce_effective_recipe(tmp_path):
+    """A matching name alone cannot prove b19's overridden epochs, optimizer and augmentation."""
+    script = tmp_path / "b19.sh"
+    raw = REFERENCE["args"]
+    script.write_text(f"yolo train name={raw['name']}\n", encoding="utf-8")
+    options = SimpleNamespace(baseline_launcher=script)
+    with pytest.raises(ValueError, match="does not reproduce"):
+        launcher_evidence(options, raw)
+    script.write_text(
+        "yolo detect train "
+        + " ".join(f"{k}={v}" for k, v in raw.items() if k not in {"save_dir", "cfg", "mode", "task"})
+        + "\n",
+        encoding="utf-8",
+    )
+    assert launcher_evidence(options, raw)["verified"]

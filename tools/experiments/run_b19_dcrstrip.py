@@ -178,7 +178,7 @@ def resolve_recipe(options):
         source = override
     if options.pretrained_sha256 and sha256(source) != options.pretrained_sha256.lower():
         raise ValueError("Initial weight does not match the supplied original b19 SHA-256.")
-    if source.name.lower() in {"best.pt", "last.pt"} or "weights" in source.parts:
+    if source.name.lower() in {"best.pt", "last.pt"}:
         raise ValueError("Do not initialize A1 from a b19 trained checkpoint.")
     weights, checkpoint = load_checkpoint(source)
     if len(weights.names) != 80 or architecture_signature(weights.yaml) != architecture_signature(
@@ -364,7 +364,8 @@ def audit_optimizer(trainer):
 def assert_close_tree(a, b, atol=1e-5, rtol=1e-5):
     """Compare complete raw one-to-many/one-to-one output structures recursively."""
     if isinstance(a, torch.Tensor):
-        torch.testing.assert_close(a, b, atol=atol, rtol=rtol)
+        assert a.shape == b.shape and a.dtype == b.dtype
+        assert torch.allclose(a, b, atol=atol, rtol=rtol), "Raw output tensor values differ"
     elif isinstance(a, dict):
         assert a.keys() == b.keys()
         for key in a:
@@ -473,7 +474,7 @@ with torch.no_grad():
     before = m.model(x)[0]
     m.fuse()
     after = m.model(x)[0]
-torch.testing.assert_close(before, after, atol=1e-4, rtol=1e-4)
+assert before.shape == after.shape and torch.allclose(before, after, atol=1e-4, rtol=1e-4)
 result = m.predict(np.zeros((64, 96, 3), dtype=np.uint8), imgsz=96, device='cpu', verbose=False)
 assert len(result) == 1 and torch.isfinite(result[0].boxes.data).all()
 print('fresh-process YOLO reload, fuse, prediction passed')
@@ -527,11 +528,11 @@ def runtime_issues(config):
     if str(config["device"]) != "0" or not torch.cuda.is_available():
         issues.append("Recorded b19 CUDA device 0 is unavailable; CPU or another device is not substituted.")
     else:
-        free, _ = torch.cuda.mem_get_info(0)
         uuid = getattr(torch.cuda.get_device_properties(0), "uuid", None)
         if uuid is None:
             return issues + ["Cannot map the selected logical CUDA device to a physical GPU UUID."]
-        gpu_id = "GPU-" + str(uuid).removeprefix("GPU-")
+        gpu_id = str(uuid) if str(uuid).startswith("GPU-") else "GPU-" + str(uuid)
+        free, _ = torch.cuda.mem_get_info(0)
         if free < 8 * 1024**3:
             issues.append(
                 f"Insufficient verified headroom: free={free / 1024**3:.2f} GiB; require 8 GiB for preflight."
@@ -592,6 +593,12 @@ def launcher_evidence(options, raw):
     for key, value in values.items():
         if key not in raw or str(value) != str(raw[key]):
             raise ValueError(f"Original launch command differs from args.yaml: {key}={value!r}, args={raw.get(key)!r}")
+    expanded = vars(get_cfg(overrides={**values, "task": "detect", "mode": "train"}))
+    missing_overrides = {
+        k: [expanded.get(k), v] for k, v in raw.items() if k != "save_dir" and str(expanded.get(k)) != str(v)
+    }
+    if missing_overrides:
+        raise ValueError(f"The original command does not reproduce archived effective args: {missing_overrides}")
     return dict(verified=True, path=str(path), sha256=sha256(path), command=command, trainer="native DetectionTrainer")
 
 
@@ -672,6 +679,10 @@ def main(argv=None):
         parser.print_help()
         return 0
     options = parser.parse_args(arguments)
+    for attr in ("baseline_root", "baseline_args", "pretrained", "baseline_launcher", "project"):
+        value = getattr(options, attr)
+        if value is not None:
+            setattr(options, attr, value.resolve())
     project = (options.project or ROOT / "runs/detect").resolve()
     check_root = project / f"{options.name}_preflight"
     check_root.mkdir(parents=True, exist_ok=True)
