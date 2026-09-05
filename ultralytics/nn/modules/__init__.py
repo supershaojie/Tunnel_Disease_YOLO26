@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .dcr_strip import C3k2_DCRStrip, DCRStrip
 from .head import (
     OBB,
     OBB26,
@@ -138,6 +139,8 @@ __all__ = (
     "C2fPSA",
     "C3Ghost",
     "C3k2",
+    "C3k2_DCRStrip",
+    "DCRStrip",
     "C3x",
     "CBFuse",
     "CBLinear",
