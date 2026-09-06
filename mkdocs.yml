@@ -812,6 +812,7 @@ nav:
               - block: reference/nn/modules/block.md
               - conv: reference/nn/modules/conv.md
               - dcr_strip: reference/nn/modules/dcr_strip.md
+              - dcr_strip_v2: reference/nn/modules/dcr_strip_v2.md
               - head: reference/nn/modules/head.md
               - transformer: reference/nn/modules/transformer.md
               - utils: reference/nn/modules/utils.md

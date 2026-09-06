@@ -90,6 +90,10 @@ def find_baseline(root, explicit=None):
     found = {}
     for path in candidates:
         args = YAML.load(path)
+        if "dcrstrip" in str(args.get("model", "")).lower() or "dcrstrip" in str(args.get("name", "")).lower():
+            if explicit:
+                raise ValueError(f"Expected original b19, received a DCR experiment: {path}")
+            continue
         if args.get("mode") != "train" or not B19.search(str(args.get("name", ""))):
             if explicit:
                 raise ValueError(f"Not a b19 training args.yaml: {path}")
@@ -135,7 +139,7 @@ def architecture_signature(cfg):
     return json.dumps(values, sort_keys=True).replace('"None"', "null")
 
 
-def resolve_recipe(options):
+def resolve_recipe(options, model=MODEL):
     """Validate the archived b19 recipe and classify every allowed A1 difference."""
     root = options.baseline_root.resolve()
     if Path(ultralytics.__file__).resolve().parent != ROOT / "ultralytics":
@@ -195,7 +199,7 @@ def resolve_recipe(options):
         raise ValueError("--name must be a single directory name.")
     effective = {k: v for k, v in raw.items() if k not in {"save_dir", "cfg"}}
     effective.update(
-        model=str(MODEL),
+        model=str(model),
         pretrained=str(source),
         data=str(data),
         project=str(project),
@@ -378,15 +382,15 @@ def assert_close_tree(a, b, atol=1e-5, rtol=1e-5):
         assert a == b
 
 
-def structural_checks(directory):
+def structural_checks(directory, model=MODEL, block_type=C3k2_DCRStrip):
     """Check full-model bypass and shape invariants using no dataset, weights, network, or GPU."""
     init_seeds(42)
     baseline = DetectionModel(baseline_architecture(), verbose=False).eval()
     init_seeds(42)
-    candidate = DetectionModel(str(MODEL), verbose=False).eval()
+    candidate = DetectionModel(str(model), verbose=False).eval()
     audit = audit_weights(baseline, candidate, None)
     assert candidate.yaml["scale"] == "n"
-    assert [i for i, m in enumerate(candidate.model) if isinstance(m, C3k2_DCRStrip)] == [4]
+    assert [i for i, m in enumerate(candidate.model) if isinstance(m, block_type)] == [4]
     assert candidate.model[4].cv1.conv.in_channels == 64 and candidate.model[4].cv2.conv.out_channels == 128
     assert candidate.model[-1].f == baseline.model[-1].f == [16, 19, 22]
     assert candidate.stride.tolist() == baseline.stride.tolist() == [8, 16, 32]
@@ -434,7 +438,7 @@ def gradient_check(trainer, batch, amp):
             raise AssertionError(f"Nonfinite gradient: {key}")
         if ".dcr." in key:
             if p.grad is None or not torch.count_nonzero(p.grad):
-                raise AssertionError(f"Inactive full-v1 gradient path: {key}")
+                raise AssertionError(f"Inactive DCR gradient path: {key}")
             norms[key] = p.grad.float().norm().item()
     torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), 10.0)
     trainer.optimizer.step()
@@ -451,7 +455,7 @@ def gradient_check(trainer, batch, amp):
     )
 
 
-def save_reload_check(model, directory):
+def save_reload_check(model, directory, block_type=C3k2_DCRStrip):
     """Save and reload through YOLO in a fresh Python process, then verify ordinary and fused prediction."""
     directory = Path(directory)
     saved = copy.deepcopy(model).cpu().eval()
@@ -461,13 +465,13 @@ def save_reload_check(model, directory):
         {"model": saved, "train_args": vars(model.args) if not isinstance(model.args, dict) else model.args}, path
     )
     code = """
-import sys, torch, numpy as np
+import sys, importlib, torch, numpy as np
 from ultralytics import YOLO
-from ultralytics.nn.modules import C3k2_DCRStrip
+block_type = getattr(importlib.import_module(sys.argv[2]), sys.argv[3])
 torch.set_num_threads(4)
 m = YOLO(sys.argv[1])
-assert isinstance(m.model.model[4], C3k2_DCRStrip)
-assert m.model.model[4].dcr.enabled and m.model.model[4].dcr.use_contrast and m.model.model[4].dcr.adaptive_fusion
+assert type(m.model.model[4]) is block_type
+assert m.model.model[4].dcr.enabled
 x = torch.randn(1, 3, 64, 96)
 m.model.eval()
 with torch.no_grad():
@@ -480,7 +484,7 @@ assert len(result) == 1 and torch.isfinite(result[0].boxes.data).all()
 print('fresh-process YOLO reload, fuse, prediction passed')
 """
     result = subprocess.run(
-        [sys.executable, "-c", code, str(path)],
+        [sys.executable, "-c", code, str(path), block_type.__module__, block_type.__name__],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -602,7 +606,7 @@ def launcher_evidence(options, raw):
     return dict(verified=True, path=str(path), sha256=sha256(path), command=command, trainer="native DetectionTrainer")
 
 
-def preflight(config, evidence, directory):
+def preflight(config, evidence, directory, block_type=C3k2_DCRStrip):
     """Build the native trainer pipeline and perform disposable real-batch checks without running epochs."""
     directory.mkdir(parents=True, exist_ok=False)
     write_json(directory / "environment.json", evidence)
@@ -630,14 +634,14 @@ def preflight(config, evidence, directory):
     report = dict(optimizer=optimizer, real_batch=gradient_check(trainer, batch, bool(config["amp"])))
     ema = ModelEMA(trainer.model)
     ema.update(trainer.model)
-    assert isinstance(ema.ema.model[4], C3k2_DCRStrip)
+    assert isinstance(ema.ema.model[4], block_type)
     report["ema"] = True
-    report["reload"] = save_reload_check(trainer.model, directory)
+    report["reload"] = save_reload_check(trainer.model, directory, block_type)
     with torch.no_grad():
         block = trainer.model.model[4].dcr.eval()
         feature = torch.randn(1, 128, 17, 23, device=trainer.device)
         delta, gates = block.residual(feature)
-        report["diagnostics"] = dict(
+        report["synthetic_feature_check"] = dict(
             alpha=block.alpha.item(),
             gate_means=gates.mean((0, 2, 3)).cpu().tolist(),
             residual_main_norm_ratio=(block.alpha * delta).norm().item() / feature.norm().item(),
@@ -659,9 +663,20 @@ def final_model_audit(trainer):
     del trainer.initial_common
 
 
-def main(argv=None):
+def main(
+    argv=None,
+    *,
+    model=MODEL,
+    block_type=C3k2_DCRStrip,
+    module_config=None,
+    entrypoint=__file__,
+    name="yolo26n_b19_a1_dcrstrip_v1",
+    callbacks=None,
+):
     """Run isolated preflight or training; report missing evidence and fail without guessing."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    module_config = MODULE_CONFIG if module_config is None else module_config
+    entrypoint = Path(entrypoint).resolve()
+    parser = argparse.ArgumentParser(description=f"Audited b19 experiment: {block_type.__name__}")
     parser.add_argument(
         "--baseline-root", type=Path, required=True, help="Original b19 project root; never the A1 worktree"
     )
@@ -670,7 +685,7 @@ def main(argv=None):
     parser.add_argument("--pretrained-sha256", help="Original b19 initial digest; required if its old path is missing")
     parser.add_argument("--baseline-launcher", type=Path, help="Original expanded native b19 CLI command/script")
     parser.add_argument("--stage", choices=("preflight", "train"), required=True)
-    parser.add_argument("--name", default="yolo26n_b19_a1_dcrstrip_v1")
+    parser.add_argument("--name", default=name)
     parser.add_argument(
         "--project", type=Path, help="Independent A1 output project; defaults to this worktree/runs/detect"
     )
@@ -689,8 +704,8 @@ def main(argv=None):
     handler = logging.FileHandler(check_root / f"{options.stage}.log", encoding="utf-8")
     LOGGER.addHandler(handler)
     try:
-        structural_checks(check_root)
-        raw, config, evidence = resolve_recipe(options)
+        structural_checks(check_root, model, block_type)
+        raw, config, evidence = resolve_recipe(options, model)
         launcher = launcher_evidence(options, raw)
         evidence["launch_evidence"] = launcher
         # Fingerprint all package/entry source bytes, even before the final commit, and data manifest metadata.
@@ -699,6 +714,7 @@ def main(argv=None):
             + sorted((ROOT / "ultralytics/cfg").rglob("*.yaml"))
             + [
                 Path(__file__),
+                entrypoint,
                 Path(__file__).with_name("b19_reference.json"),
             ]
         )
@@ -718,7 +734,7 @@ def main(argv=None):
         probe.data = {"nc": 1, "channels": 3, "names": {0: "crack"}}
         weights, _ = load_checkpoint(evidence["initial_path"])
         init_seeds(config["seed"], deterministic=config["deterministic"])
-        probe.get_model(str(MODEL), weights, verbose=False)
+        probe.get_model(str(model), weights, verbose=False)
         write_json(check_root / "local_weight_audit.json", probe.weight_audit)
         del probe, weights
         issues = runtime_issues(config) if options.stage == "preflight" else []
@@ -747,13 +763,13 @@ def main(argv=None):
                 value = getattr(options, attr)
                 if value is not None:
                     command.extend(["--" + attr.replace("_", "-"), str(value)])
-            subprocess.run([sys.executable, str(Path(__file__)), *command], cwd=ROOT, check=True)
+            subprocess.run([sys.executable, str(entrypoint), *command], cwd=ROOT, check=True)
         if options.stage == "preflight":
             if not receipt.is_file():
                 if check_dir.exists():
                     # Preserve a failed attempt's logs; a new attempt never reuses its training state.
                     check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
-                preflight(config, evidence, check_dir)
+                preflight(config, evidence, check_dir, block_type)
                 write_json(check_dir / "passed.json", dict(fingerprint=signature, passed=True))
                 # A retry is referenced, not copied over earlier evidence.
                 if check_dir / "passed.json" != receipt:
@@ -771,12 +787,15 @@ def main(argv=None):
         provenance = trainer.save_dir / "provenance"
         shutil.copytree(Path(passed.get("report_dir", check_dir)), provenance)
         shutil.copy2(evidence["args_path"], provenance / "b19_original_args.yaml")
-        shutil.copy2(MODEL, provenance / MODEL.name)
+        shutil.copy2(model, provenance / model.name)
+        shutil.copy2(launcher["path"], provenance / "b19_launcher_expanded.txt")
         shutil.copy2(evidence["data_path"], provenance / "original_data.yaml")
         YAML.save(provenance / "a1_effective.yaml", config)
-        write_json(provenance / "module.json", MODULE_CONFIG)
+        write_json(provenance / "module.json", module_config)
         write_json(provenance / "resolved.json", evidence)
         trainer.add_callback("on_pretrain_routine_end", final_model_audit)
+        for event, callback in (callbacks or {}).items():
+            trainer.add_callback(event, callback)
         train_handler = logging.FileHandler(trainer.save_dir / "train.log", encoding="utf-8")
         LOGGER.addHandler(train_handler)
         try:
