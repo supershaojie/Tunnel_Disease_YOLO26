@@ -62,6 +62,7 @@ def test_best(run, data):
     observation = {}
 
     def capture_validation(validator):
+        shared.write_json(output / "predictions.json", validator.jdict)
         observation.update(
             args=vars(validator.args),
             speed=validator.speed,

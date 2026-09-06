@@ -150,7 +150,8 @@ def test_scalar_callback_before_epoch_exists(tmp_path):
     assert json.loads((tmp_path / "dcr_v2_scalars.jsonl").read_text())["epoch"] == 0
 
 
-def test_test_export_is_single_pass_and_fp32(tmp_path):
+@pytest.mark.parametrize("predictions", [[], [{"image_id": 1, "category_id": 0, "score": 0.25, "bbox": [1, 2, 3, 4]}]])
+def test_test_export_is_single_pass_and_fp32(tmp_path, predictions):
     """Capture the same val call's precise metrics and refuse a second evaluation into its directory."""
     from unittest.mock import MagicMock
 
@@ -162,8 +163,11 @@ def test_test_export_is_single_pass_and_fp32(tmp_path):
 
     def val(**kwargs):
         callback = model.add_callback.call_args.args[1]
-        callback(SimpleNamespace(args=get_cfg(overrides=kwargs), metrics=metrics, speed={"inference": 1.23}, seen=1202))
-        (tmp_path / "test/predictions.json").write_text("[]", encoding="utf-8")
+        callback(
+            SimpleNamespace(
+                args=get_cfg(overrides=kwargs), metrics=metrics, speed={"inference": 1.23}, seen=1202, jdict=predictions
+            )
+        )
         return metrics
 
     model.val.side_effect = val
@@ -179,6 +183,7 @@ def test_test_export_is_single_pass_and_fp32(tmp_path):
     assert args["rect"] and not args["augment"]
     report = json.loads((tmp_path / "test/metrics.json").read_text())
     assert report["results_dict"] == metrics.results_dict and report["targets"] == 1477
+    assert json.loads((tmp_path / "test/predictions.json").read_text()) == predictions
 
 
 def test_package_excludes_other_checkpoints_and_can_repackage(tmp_path):

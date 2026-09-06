@@ -86,7 +86,7 @@ OOM 传播原异常，不降低 batch 或切 CPU；输出原子占用，不覆�
 运行环境：Windows，Python 3.11.15，torch 2.7.1+cu118，Ultralytics 8.4.98，RTX 2060 6 GB。
 正式 b19 环境是 Python 3.12.3、torch 2.8.0+cu128、RTX 4090。
 
-已执行定向 v1/v2 测试共 35 项（v1 23 项，v2 12 项；其中后处理/打包使用明确标记的测试夹具）：形状/边界、forward_split、RNG、旁路全网 640×640/640×960、归一化门控、
+已执行定向 v1/v2 测试共 36 项（v1 23 项，v2 13 项；其中后处理/打包使用明确标记的测试夹具）：形状/边界、forward_split、RNG、旁路全网 640×640/640×960、归一化门控、
 CUDA AMP 内容 dtype、全部新参数梯度、原生检测 loss/MuSGD、EMA、fresh-process reload/fuse/predict。
 另核对真实 b19 args、launcher、同一权重哈希和 Trainer 重建。
 原生最终 `_setup_train`、final_model_audit 和开始标量回调实际通过；两张真实增强图片在 640 输入 CPU 下完成
@@ -127,7 +127,8 @@ CUDA AMP 内容 dtype、全部新参数梯度、原生检测 loss/MuSGD、EMA、
         echo 'y26_dcr_v2 already exists; inspect it, do not start a duplicate.' >&2
         exit 1
     fi
-    tmux new-session -d -s y26_dcr_v2 -c "$WORK" 'bash tools/experiments/server_b19_dcrstrip_v2.sh train'
+    tmux new-session -d -s y26_dcr_v2 -c "$WORK" -e "B19_PYTHON=$(command -v python)" \
+        'bash tools/experiments/server_b19_dcrstrip_v2.sh train'
     sleep 3
     tmux capture-pane -pt y26_dcr_v2 -S -50
 )
@@ -168,7 +169,7 @@ test 只加载验证集选出的 `best.pt`，一次 `YOLO.val` 导出 P/R/mAP50/
 图表、predictions.json、test.log。设置固定为 split=test、640、batch=32、workers=8、device=0、conf=0.001、
 iou=0.7、max_det=300、rect=True、augment=False。8.4.98 的 cfg 将旧 half=False 映射到 quantize=None；
 validator 仅在 quantize==16 时启用 fp16。本入口显式 quantize=None，即原 test 常规 FP32，无 TTA/INT8。
-test 子目录存在即拒绝再次评估，失败目录也保留以供检查；打包入口不会偷偷补跑 test。
+同次验证回调导出真实预测列表，零预测也写 `[]`。test 子目录存在即拒绝再次评估，失败目录也保留以供检查；打包入口不会偷偷补跑 test。
 
 训练中只在开始、50/100/150 轮及结束读取 alpha/beta 标量到 `dcr_v2_scalars.jsonl`，不额外取 batch 或 forward。
 诊断单独加载 best.pt，在 eval/no_grad FP32 下对排序固定的前四张真实 val 图执行无增强 640 letterbox，记录
