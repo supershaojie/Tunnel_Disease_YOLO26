@@ -21,6 +21,7 @@ from ultralytics.data.dataset import YOLODataset
 from ultralytics.nn.modules import SPPF, SPPF_SIR
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
+from ultralytics.utils.checks import check_version
 from ultralytics.utils.torch_utils import ModelEMA, init_seeds
 
 
@@ -149,6 +150,9 @@ def test_original_weight_trainer_and_fresh_process(tmp_path):
             run.reload_in_process(directory / "preflight.pt")
 
 
+@pytest.mark.skipif(
+    not check_version(torch.__version__, "2.7.0"), reason="SIR reload audit uses torch>=2.7 backend APIs"
+)
 def test_reload_context_restores_caller_on_failure():
     """A failing isolated check must not change training threads, RNG, AMP or backend policy."""
     rng = torch.get_rng_state()

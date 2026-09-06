@@ -49,7 +49,8 @@
 第一项同时验证故意破坏 router 权重或 BN 的 `num_batches_tracked` 时精确状态检查必须失败，并检查原模型与 RNG 未被改变。
 两条真实模型路径各有 714 项状态精确一致，所有未融合 raw 张量最大误差均为 0；
 融合解码最大绝对差为 9.1552734375e-5，原融合容差下超限元素为 0。
-Ruff 与交付 Bash 命令语法检查通过。未训练 epoch，未使用 held-out test 图，也未重跑 b19 或 DCR v2。
+Ruff 与交付 Bash 命令语法检查通过。恢复 context 的 API 专属测试限定 PyTorch>=2.7，以兼容仓库的旧版本 CI；
+本地 2.7 和服务器 2.8 都在适用范围内，生产预检没有跳过逻辑。未训练 epoch，未使用 held-out test 图，也未重跑 b19 或 DCR v2。
 
 本地证据位于 `runs/sir_development/reload_fix_before/diagnosis.json` 和 `reload_fix_verified/`。
 正式服务器预检会在其自身目录写入 `reload_reference_conditions.json`、`reload_check.json`、`reload_process.log`；
