@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
-from contextlib import redirect_stderr, redirect_stdout
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -429,21 +429,47 @@ def audit_optimizer(trainer):
     return actual
 
 
-def assert_close_tree(a, b, atol=1e-5, rtol=1e-5):
-    """Compare complete raw one-to-many/one-to-one output structures recursively."""
+def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None):
+    """Compare complete trees, reporting finite errors against the reference scale, never near-zero ratios."""
     if isinstance(a, torch.Tensor):
-        assert a.shape == b.shape and a.dtype == b.dtype
-        assert torch.allclose(a, b, atol=atol, rtol=rtol), "Raw output tensor values differ"
+        assert isinstance(b, torch.Tensor), f"{path}: expected tensor, got {type(b)}"
+        assert (a.shape, a.dtype, a.device) == (b.shape, b.dtype, b.device), (
+            f"{path}: reference shape/dtype/device={a.shape}/{a.dtype}/{a.device}; "
+            f"actual={b.shape}/{b.dtype}/{b.device}"
+        )
+        finite = torch.isfinite(a) & torch.isfinite(b)
+        delta = (a.double() - b.double()).abs()
+        scale = a[finite].double().abs().max().item() if finite.any() else 0.0
+        errors = delta[finite]
+        outside = (a != b) if atol == rtol == 0 else ~torch.isclose(b, a, atol=atol, rtol=rtol)
+        row = dict(
+            path=path,
+            shape=list(a.shape),
+            dtype=str(a.dtype),
+            device=str(a.device),
+            finite=finite.all().item(),
+            max_abs=errors.max().item() if errors.numel() else 0.0,
+            mean_abs=errors.mean().item() if errors.numel() else 0.0,
+            reference_max_abs=scale,
+            scale_floor=1e-6,
+            max_error_over_scale=(errors.max().item() if errors.numel() else 0.0) / max(scale, 1e-6),
+            outside_tolerance=(outside | ~finite).sum().item(),
+            atol=atol,
+            rtol=rtol,
+        )
+        if report is not None:
+            report.append(row)
+        assert row["finite"] and row["outside_tolerance"] == 0, json.dumps(row)
     elif isinstance(a, dict):
-        assert a.keys() == b.keys()
+        assert isinstance(b, dict) and a.keys() == b.keys(), f"{path}: dictionary keys differ"
         for key in a:
-            assert_close_tree(a[key], b[key], atol, rtol)
+            assert_close_tree(a[key], b[key], atol, rtol, f"{path}.{key}", report)
     elif isinstance(a, (tuple, list)):
-        assert type(a) is type(b) and len(a) == len(b)
-        for x, y in zip(a, b):
-            assert_close_tree(x, y, atol, rtol)
+        assert type(a) is type(b) and len(a) == len(b), f"{path}: sequence type/length differs"
+        for i, (x, y) in enumerate(zip(a, b)):
+            assert_close_tree(x, y, atol, rtol, f"{path}[{i}]", report)
     else:
-        assert a == b
+        assert a == b, f"{path}: reference={a!r}, actual={b!r}"
 
 
 def structural_checks(directory, model=MODEL, block_type=SPPF_SIR):
@@ -527,48 +553,168 @@ def gradient_check(trainer, batch, amp):
     )
 
 
+@contextmanager
+def reload_context():
+    """Own CPU reference/reload computation settings locally and restore the caller even on failure."""
+    threads = torch.get_num_threads()
+    precision = torch.get_float32_matmul_precision()
+    deterministic = torch.are_deterministic_algorithms_enabled()
+    warn_only = torch.is_deterministic_algorithms_warn_only_enabled()
+    try:
+        torch.set_num_threads(1)
+        torch.set_float32_matmul_precision("highest")
+        torch.use_deterministic_algorithms(True)
+        with torch.random.fork_rng(devices=[]), torch.no_grad(), autocast(
+            False, device="cpu"
+        ), torch.backends.mkldnn.flags(enabled=True, deterministic=True, allow_tf32=False):
+            yield
+    finally:
+        torch.set_num_threads(threads)
+        torch.set_float32_matmul_precision(precision)
+        torch.use_deterministic_algorithms(deterministic, warn_only=warn_only)
+
+
+def reload_tensor_info(tensor):
+    """Identify the actual input and non-state inference caches without printing their contents."""
+    return dict(
+        shape=list(tensor.shape),
+        dtype=str(tensor.dtype),
+        device=str(tensor.device),
+        sha256=hashlib.sha256(tensor.detach().cpu().contiguous().numpy().tobytes()).hexdigest(),
+    )
+
+
+def reload_attributes(model):
+    """Capture module identity, forward-affecting attributes and Detect caches outside state_dict."""
+    fields = (
+        "n",
+        "add",
+        "inplace",
+        "end2end",
+        "dynamic",
+        "export",
+        "format",
+        "max_det",
+        "agnostic_nms",
+        "xyxy",
+        "nc",
+        "reg_max",
+        "shape",
+        "stride",
+        "anchors",
+        "strides",
+        "eps",
+        "momentum",
+    )
+    result = {}
+    for name, module in model.named_modules():
+        attrs = dict(type=f"{type(module).__module__}.{type(module).__name__}", training=module.training)
+        for key in fields:
+            if hasattr(module, key):
+                value = getattr(module, key)
+                attrs[key] = reload_tensor_info(value) if isinstance(value, torch.Tensor) else value
+        result[name] = attrs
+    return result
+
+
+def reload_conditions(model, x):
+    """Record actual FP32 CPU conditions in both processes, including import paths and input digest."""
+    return dict(
+        python=sys.version,
+        executable=sys.executable,
+        torch=str(torch.__version__),
+        torch_path=torch.__file__,
+        ultralytics=ultralytics.__version__,
+        ultralytics_path=ultralytics.__file__,
+        threads=torch.get_num_threads(),
+        interop_threads=torch.get_num_interop_threads(),
+        omp=os.environ.get("OMP_NUM_THREADS"),
+        mkl=os.environ.get("MKL_NUM_THREADS"),
+        mkldnn=torch.backends.mkldnn.enabled,
+        mkldnn_deterministic=torch.backends.mkldnn.deterministic,
+        mkldnn_allow_tf32=torch.backends.mkldnn.allow_tf32,
+        float32_matmul_precision=torch.get_float32_matmul_precision(),
+        deterministic=torch.are_deterministic_algorithms_enabled(),
+        grad_enabled=torch.is_grad_enabled(),
+        cpu_autocast=torch.is_autocast_enabled("cpu"),
+        model_devices=sorted({str(t.device) for t in model.state_dict().values()}),
+        model_float_dtypes=sorted({str(t.dtype) for t in model.state_dict().values() if t.is_floating_point()}),
+        all_eval=all(not m.training for m in model.modules()),
+        input=reload_tensor_info(x),
+    )
+
+
+def reload_in_process(path, block_type=SPPF_SIR):
+    """Audit the independently saved snapshot against native YOLO loading before comparing any outputs."""
+    import numpy as np
+    from ultralytics import YOLO
+
+    path = Path(path)
+    reference = torch.load(path.with_name("reload_reference.pt"), map_location="cpu", weights_only=False)
+    report = dict(passed=False, state_exact=False, raw=[], fused=[])
+    try:
+        with reload_context():
+            m = YOLO(path)
+            assert type(m.model.model[9]) is block_type
+            assert sum(p.numel() for p in m.model.model[9].router.parameters()) == 14896
+            x = reference["x"]
+            report["conditions"] = reload_conditions(m.model, x)
+            assert_close_tree(reference["conditions"], report["conditions"], path="conditions")
+            assert_close_tree(reference["state"], m.model.state_dict(), 0, 0, path="state")
+            report.update(state_exact=True, state_keys=len(reference["state"]))
+            assert_close_tree(reference["attributes_before"], reload_attributes(m.model), path="attributes_before")
+            before = m.model(x)
+            assert_close_tree(reference["state"], m.model.state_dict(), 0, 0, path="state_after_forward")
+            assert_close_tree(reference["attributes_after"], reload_attributes(m.model), path="attributes_after")
+            assert_close_tree(reference["raw"], before, 0, 0, report=report["raw"])
+            m.fuse()
+            after = m.model(x)
+            # Native YOLO26 fuse removes one2many. Keep the entire retained raw branch and decoded output.
+            assert after[1]["one2many"] == {}
+            assert_close_tree(
+                before[1]["one2one"], after[1]["one2one"], 1e-4, 1e-4, path="fused.one2one", report=report["fused"]
+            )
+            assert_close_tree(before[0], after[0], 1e-4, 1e-4, path="fused.decoded", report=report["fused"])
+            result = m.predict(np.zeros((64, 96, 3), dtype=np.uint8), imgsz=96, device="cpu", verbose=False)
+            assert len(result) == 1 and torch.isfinite(result[0].boxes.data).all()
+            report["passed"] = True
+    finally:
+        write_json(path.with_name("reload_check.json"), report)
+    print("fresh-process exact state/raw reload, fuse, prediction passed")
+
+
 def save_reload_check(model, directory, block_type=SPPF_SIR):
-    """Save and reload through YOLO in a fresh Python process, then verify ordinary and fused prediction."""
+    """Serialize one FP16 EMA snapshot, retain its FP32 reference, then reload in a fresh process."""
     directory = Path(directory)
-    saved = copy.deepcopy(model).cpu().half().float().eval()
+    saved = copy.deepcopy(model).cpu().half().eval()
     saved.criterion = None
     path = directory / "preflight.pt"
     torch.save(
         {
-            "ema": copy.deepcopy(saved).half(),
+            "ema": saved,
             "model": None,
             "train_args": vars(model.args) if not isinstance(model.args, dict) else model.args,
         },
         path,
     )
-    with torch.no_grad():
-        x = torch.randn(1, 3, 64, 96)
-        torch.save({"x": x, "raw": saved(x)}, directory / "reload_reference.pt")
+    saved.float()  # This very snapshot, not a second file load, is the independent loader-FP32 reference.
+    with reload_context():
+        x = torch.randn(1, 3, 64, 96, device="cpu", dtype=torch.float32)
+        reference = dict(
+            x=x,
+            state={k: v.clone() for k, v in saved.state_dict().items()},
+            attributes_before=reload_attributes(saved),
+            conditions=reload_conditions(saved, x),
+        )
+        reference["raw"] = saved(x)
+        assert_close_tree(reference["state"], saved.state_dict(), 0, 0, path="snapshot_after_forward")
+        reference["attributes_after"] = reload_attributes(saved)
+        torch.save(reference, directory / "reload_reference.pt")
+        write_json(directory / "reload_reference_conditions.json", reference["conditions"])
     code = """
-import sys, importlib, torch, numpy as np
-from ultralytics import YOLO
-from tools.experiments.run_b19_sir_sppf import assert_close_tree
-block_type = getattr(importlib.import_module(sys.argv[2]), sys.argv[3])
-torch.set_num_threads(4)
-m = YOLO(sys.argv[1])
-assert type(m.model.model[9]) is block_type
-assert sum(p.numel() for p in m.model.model[9].router.parameters()) == 14896
-from pathlib import Path
-reference = torch.load(Path(sys.argv[1]).with_name("reload_reference.pt"), weights_only=False)
-x = reference["x"]
-m.model.eval()
-with torch.no_grad():
-    before = m.model(x)
-    assert_close_tree(reference["raw"], before, atol=0, rtol=0)
-    m.fuse()
-    after = m.model(x)
-# Native YOLO26 fuse removes one2many entirely. Compare the retained raw inference branch and decoded output.
-assert after[1]["one2many"] == {}
-assert_close_tree(before[1]["one2one"], after[1]["one2one"], atol=1e-4, rtol=1e-4)
-assert_close_tree(before[0], after[0], atol=1e-4, rtol=1e-4)
-result = m.predict(np.zeros((64, 96, 3), dtype=np.uint8), imgsz=96, device='cpu', verbose=False)
-assert len(result) == 1 and torch.isfinite(result[0].boxes.data).all()
-print('fresh-process YOLO reload, fuse, prediction passed')
+from tools.experiments.run_b19_sir_sppf import reload_in_process
+import sys, importlib
+reload_in_process(sys.argv[1], getattr(importlib.import_module(sys.argv[2]), sys.argv[3]))
 """
     result = subprocess.run(
         [sys.executable, "-c", code, str(path), block_type.__module__, block_type.__name__],
@@ -579,6 +725,7 @@ print('fresh-process YOLO reload, fuse, prediction passed')
     )
     print(result.stdout, end="")
     print(result.stderr, end="", file=sys.stderr)
+    (directory / "reload_process.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     result.check_returncode()
     return dict(
         path=str(path),
@@ -587,7 +734,9 @@ print('fresh-process YOLO reload, fuse, prediction passed')
         fuse=True,
         prediction=True,
         checkpoint_precision="FP16 EMA",
+        state_exact=True,
         reload_raw_equal=True,
+        diagnostics=str(directory / "reload_check.json"),
     )
 
 

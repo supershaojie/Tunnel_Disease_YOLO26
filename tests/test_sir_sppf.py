@@ -120,11 +120,78 @@ def native_probe(device="cpu"):
 
 def test_original_weight_trainer_and_fresh_process(tmp_path):
     """Compatible tensors and the nc-adapted head match; a new process can load, fuse and predict."""
+    torch.set_num_threads(1)  # The old fixture's 4/4 threads masked the entrypoint's 1/4 mismatch.
     trainer = native_probe()
     assert len(trainer.weight_audit["loaded_keys"]) == 606
     assert trainer.weight_audit["common_keys"] == 708
     assert trainer.weight_audit["all_common_tensors_equal"]
+    original = {k: v.clone() for k, v in trainer.model.state_dict().items()}
+    rng = torch.get_rng_state()
     run.save_reload_check(trainer.model, tmp_path)
+    assert torch.get_num_threads() == 1 and torch.equal(rng, torch.get_rng_state())
+    run.assert_close_tree(original, trainer.model.state_dict(), 0, 0, path="caller_state")
+    report = json.loads((tmp_path / "reload_check.json").read_text())
+    assert report["passed"] and report["state_exact"] and report["state_keys"] == 714
+    assert max(row["max_abs"] for row in report["raw"]) == 0
+    assert report["conditions"]["threads"] == 1
+    assert report["conditions"]["model_float_dtypes"] == ["torch.float32"]
+
+    # Tamper the serialized router and a BN counter independently; the original snapshot reference stays intact.
+    checkpoint = torch.load(tmp_path / "preflight.pt", weights_only=False)
+    for key in ("model.9.router.4.weight", "model.9.cv1.bn.num_batches_tracked"):
+        directory = tmp_path / key
+        directory.mkdir()
+        shutil.copy2(tmp_path / "reload_reference.pt", directory / "reload_reference.pt")
+        damaged = copy.deepcopy(checkpoint)
+        damaged["ema"].state_dict()[key].view(-1)[0] += 1
+        torch.save(damaged, directory / "preflight.pt")
+        with pytest.raises(AssertionError, match=rf"state\.{key}.*outside_tolerance"):
+            run.reload_in_process(directory / "preflight.pt")
+
+
+def test_reload_context_restores_caller_on_failure():
+    """A failing isolated check must not change training threads, RNG, AMP or backend policy."""
+    rng = torch.get_rng_state()
+    with torch.autocast("cpu", enabled=True):
+        before = (
+            torch.get_num_threads(),
+            torch.get_float32_matmul_precision(),
+            torch.are_deterministic_algorithms_enabled(),
+            torch.is_deterministic_algorithms_warn_only_enabled(),
+            torch.backends.mkldnn.enabled,
+            torch.backends.mkldnn.deterministic,
+            torch.backends.mkldnn.allow_tf32,
+            torch.is_autocast_enabled("cpu"),
+        )
+        with pytest.raises(RuntimeError, match="intentional probe failure"), run.reload_context():
+            assert torch.get_num_threads() == 1 and not torch.is_autocast_enabled("cpu")
+            torch.randn(3)
+            raise RuntimeError("intentional probe failure")
+        after = (
+            torch.get_num_threads(),
+            torch.get_float32_matmul_precision(),
+            torch.are_deterministic_algorithms_enabled(),
+            torch.is_deterministic_algorithms_warn_only_enabled(),
+            torch.backends.mkldnn.enabled,
+            torch.backends.mkldnn.deterministic,
+            torch.backends.mkldnn.allow_tf32,
+            torch.is_autocast_enabled("cpu"),
+        )
+        assert before == after and torch.equal(rng, torch.get_rng_state())
+
+
+def test_raw_error_diagnostics_reject_out_of_tolerance():
+    """A near-zero output error still fails, with a stable scale diagnostic and the exact tensor path."""
+    report = []
+    with pytest.raises(AssertionError, match=r"raw.one2one\[0\].*outside_tolerance"):
+        run.assert_close_tree(
+            {"one2one": [torch.tensor([0.0, 1.0])]}, {"one2one": [torch.tensor([1e-3, 1.0])]}, 1e-6, 1e-5, report=report
+        )
+    assert report[0]["outside_tolerance"] == 1
+    assert report[0]["max_error_over_scale"] == pytest.approx(1e-3)
+    assert report[0]["mean_abs"] == pytest.approx(5e-4)
+    with pytest.raises(AssertionError, match='"finite": false'):
+        run.assert_close_tree(torch.tensor([float("inf")]), torch.tensor([float("inf")]))
 
 
 def test_real_crack_gradients(tmp_path):
