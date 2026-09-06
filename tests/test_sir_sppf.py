@@ -266,10 +266,13 @@ def test_cli_import_preserves_native_thread_initialization():
     assert values == ["1 1", "1 1"]
 
 
-def test_package_preserves_applicable_patch_and_excludes_history(tmp_path):
+def test_package_preserves_applicable_patch_and_excludes_history(tmp_path, monkeypatch):
     """Check archive integrity and apply the raw patch in check-only mode against the committed index."""
     from tools.experiments import finish_b19_sir_sppf as finish
 
+    # A subtree from HEAD provides a real, nonempty tree diff even in a one-commit CI checkout.
+    # Only this synthetic archive fixture changes its base; production still requires recorded b19 history.
+    monkeypatch.setitem(run.REFERENCE, "source_commit", run.git("rev-parse", "HEAD:ultralytics/nn/modules"))
     fixture = tmp_path / "synthetic_package"
     for name in (
         "args.yaml",
