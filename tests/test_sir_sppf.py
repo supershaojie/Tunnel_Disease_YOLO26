@@ -1,0 +1,252 @@
+"""SIR formula, native initialization, fixed-budget failure, and inference contracts."""
+
+import copy
+import json
+import os
+import shutil
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+import pytest
+import torch
+import torch.nn as nn
+
+from tools.experiments import run_b19_sir_sppf as run
+from ultralytics.cfg import get_cfg
+from ultralytics.data.dataset import YOLODataset
+from ultralytics.nn.modules import SPPF, SPPF_SIR
+from ultralytics.nn.tasks import load_checkpoint
+from ultralytics.utils import YAML
+from ultralytics.utils.torch_utils import ModelEMA, init_seeds
+
+
+@pytest.fixture(autouse=True)
+def cpu_threads():
+    """Bound local verification threads without changing the experiment entry's training configuration."""
+    previous = torch.get_num_threads()
+    torch.set_num_threads(4)
+    yield
+    torch.set_num_threads(previous)
+
+
+@pytest.mark.parametrize(
+    "shape,shortcut,n", [((2, 32, 20, 20), True, 3), ((2, 32, 17, 23), False, 3), ((1, 32, 9, 13), True, 2)]
+)
+def test_identity_rng_and_nonzero_formula(shape, shortcut, n):
+    """An independent stacked cumsum reference distinguishes raw pooling, cumulative routing and identity gates."""
+    init_seeds(42)
+    original = SPPF(32, 32, 5, n, shortcut).eval()
+    after_original = torch.get_rng_state()
+    init_seeds(42)
+    candidate = SPPF_SIR(32, 32, 5, n, shortcut).eval()
+    assert torch.equal(after_original, torch.get_rng_state())
+    for key, tensor in original.state_dict().items():
+        assert torch.equal(tensor, candidate.state_dict()[key])
+    assert isinstance(candidate.cv1.act, nn.Identity)
+    x = torch.randn(shape)
+    with torch.no_grad():
+        assert torch.equal(original(x), candidate(x))
+        nn.init.normal_(candidate.router[-1].weight, std=0.2)
+        nn.init.normal_(candidate.router[-1].bias, std=0.2)
+        raw = [candidate.cv1(x)]
+        for _ in range(n):
+            raw.append(candidate.m(raw[-1]))
+        increments = torch.stack(raw[1:]) - torch.stack(raw[:-1])
+        assert increments.min() >= 0
+        gate = candidate.router(torch.cat([raw[0], *increments.unbind()], 1)).reshape(shape[0], n, 16, *shape[2:])
+        gate = gate.permute(1, 0, 2, 3, 4).tanh()
+        correction = (0.5 * gate * increments).cumsum(0)
+        calibrated = torch.stack(raw[1:]) + correction
+        previous = torch.cat([raw[0].unsqueeze(0), calibrated[:-1]])
+        torch.testing.assert_close(calibrated - previous, (1 + 0.5 * gate) * increments, atol=2e-6, rtol=2e-5)
+        assert calibrated.sub(previous).min() >= -2e-6
+        assert gate.min() >= -1 and gate.max() <= 1
+        expected = candidate.cv2(torch.cat([raw[0], *calibrated.unbind()], 1))
+        if shortcut:
+            expected = expected + x
+        torch.testing.assert_close(candidate(x), expected)
+        assert not torch.allclose(candidate(x), original(x))
+
+
+def test_actual_nano_graph(tmp_path):
+    """Only the ninth layer changes, with the required parameter budget and exact full raw output equality."""
+    report = run.structural_checks(tmp_path)
+    assert report["added_parameters"] == 14896
+    assert report["candidate_parameters"] == 2519086
+
+
+def baseline_root():
+    """Use the explicit accessible b19 files; no downloads or synthetic target substitution."""
+    root = os.environ.get("SIR_BASELINE_ROOT")
+    if not root:
+        pytest.skip("Set SIR_BASELINE_ROOT for real weights/data checks")
+    return Path(root)
+
+
+def sample_images(tmp_path):
+    """Copy two actual image/label pairs so disposable subset label caches never touch b19/v2 data."""
+    source = baseline_root() / "datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42"
+    images = sorted((source / "images/train").glob("*.jpg"))[:2]
+    assert len(images) == 2
+    for image in images:
+        for original in (image, source / "labels/train" / (image.stem + ".txt")):
+            target = tmp_path / original.relative_to(source)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(original, target)
+    return sorted((tmp_path / "images/train").glob("*.jpg"))
+
+
+def native_probe(device="cpu"):
+    """Build through the same native DetectionTrainer.get_model path used by formal train."""
+    root = baseline_root()
+    assert run.sha256(root / "yolo26n.pt") == run.PRETRAINED_SHA256
+    trainer = object.__new__(run.AuditedTrainer)
+    trainer.args = get_cfg(overrides={k: v for k, v in run.REFERENCE["args"].items() if k != "save_dir"})
+    trainer.data = dict(nc=1, channels=3, names={0: "crack"})
+    weights, _ = load_checkpoint(root / "yolo26n.pt")
+    init_seeds(42, deterministic=True)
+    trainer.model = trainer.get_model(str(run.MODEL), weights, verbose=False).to(device)
+    trainer.device = torch.device(device)
+    trainer.stride = 32
+    trainer.set_model_attributes()
+    trainer.optimizer = trainer.build_optimizer(trainer.model, "MuSGD", 0.01, 0.937, 0.0005)
+    trainer.ema = ModelEMA(trainer.model)
+    return trainer
+
+
+def test_original_weight_trainer_and_fresh_process(tmp_path):
+    """Compatible tensors and the nc-adapted head match; a new process can load, fuse and predict."""
+    trainer = native_probe()
+    assert len(trainer.weight_audit["loaded_keys"]) == 606
+    assert trainer.weight_audit["common_keys"] == 708
+    assert trainer.weight_audit["all_common_tensors_equal"]
+    run.save_reload_check(trainer.model, tmp_path)
+
+
+def test_real_crack_gradients(tmp_path):
+    """Use three small disposable updates, explicitly distinct from the required server batch=32 preflight."""
+    trainer = native_probe("cuda:0" if torch.cuda.is_available() else "cpu")
+    images = sample_images(tmp_path)
+    listing = tmp_path / "images.txt"
+    listing.write_text("\n".join(map(str, images)), encoding="utf-8")
+    data = YOLODataset(
+        img_path=str(listing), imgsz=640, batch_size=2, augment=True, hyp=trainer.args, data=trainer.data, cache=False
+    )
+    rows = []
+    for _ in range(3):
+        batch = data.collate_fn([data[0], data[1]])
+        rows.append(run.gradient_check(trainer, batch, trainer.device.type == "cuda"))
+    first = rows[0]["new_gradient_norms"]
+    assert all(v == 0 for k, v in first.items() if ".router.4." not in k)
+    assert all(v > 0 for v in rows[-1]["new_gradient_norms"].values())
+    assert isinstance(trainer.ema.ema.model[9], SPPF_SIR)
+    run.save_reload_check(trainer.ema.ema, tmp_path)
+    run.write_json(
+        run.ROOT / "runs/sir_development/local_real_gradient.json",
+        dict(formal_preflight=False, batch=2, device=str(trainer.device), rows=rows),
+    )
+
+
+def test_native_setup_oom_and_audit_rng(tmp_path):
+    """Inject OOM at the real catch boundary; verify no batch mutation, recovery pipeline or output suffix."""
+    root = baseline_root()
+    images = sample_images(tmp_path)
+    listing = tmp_path / "images.txt"
+    listing.write_text("\n".join(map(str, images)), encoding="utf-8")
+    data = tmp_path / "data.yaml"
+    YAML.save(data, dict(path=str(tmp_path), train=str(listing), val=str(listing), names={0: "crack"}))
+    config = {k: v for k, v in run.REFERENCE["args"].items() if k != "save_dir"}
+    config.update(
+        model=str(run.MODEL),
+        pretrained=str(root / "yolo26n.pt"),
+        data=str(data),
+        project=str(tmp_path),
+        name="native_setup",
+        device="cpu",
+        workers=0,
+        amp=False,
+        batch=2,
+        imgsz=64,
+        plots=False,
+    )
+    trainer = run.AuditedTrainer(overrides=config)
+
+    def audit(observed):
+        rng = torch.get_rng_state()
+        run.final_model_audit(observed)
+        assert torch.equal(rng, torch.get_rng_state())
+
+    trainer.add_callback("on_pretrain_routine_end", audit)
+    error = torch.cuda.OutOfMemoryError("injected SIR OOM")
+    with patch.object(trainer, "preprocess_batch", side_effect=error), patch.object(
+        trainer, "_build_train_pipeline", wraps=trainer._build_train_pipeline
+    ) as pipeline:
+        with pytest.raises(torch.cuda.OutOfMemoryError, match="injected SIR") as caught:
+            trainer.train()
+        assert caught.value is error and pipeline.call_count == 1
+    assert trainer.args.batch == trainer.batch_size == 2 and trainer._oom_retries == 0
+    assert trainer.save_dir == tmp_path / "native_setup"
+    assert not trainer.csv.exists() and not trainer.best.exists()
+    report = json.loads((trainer.save_dir / "provenance/final_optimizer.json").read_text())
+    assert report["name"] == "MuSGD"
+    assert sum(len(g["parameters"]) for g in report["router_groups"]) == 6
+    run.write_json(run.ROOT / "runs/sir_development/local_final_optimizer.json", report)
+    with pytest.raises(FileExistsError):
+        run.AuditedTrainer(overrides=config)
+    assert not (tmp_path / "native_setup2").exists()
+    for loader in (trainer.train_loader, trainer.test_loader):
+        loader.close()
+
+
+def test_snapshot_and_launcher_fallback(tmp_path):
+    """Missing history uses the attributed provided snapshot; it never turns into guessed defaults."""
+    path, raw = run.find_baseline(tmp_path, tmp_path / "missing/args.yaml")
+    assert path is None and raw == run.REFERENCE["args"]
+    assert run.launcher_evidence(SimpleNamespace(baseline_launcher=None), raw)["verified"]
+    changed = copy.deepcopy(raw)
+    changed["batch"] = 16
+    with pytest.raises(ValueError, match="differs"):
+        run.launcher_evidence(SimpleNamespace(baseline_launcher=None), changed)
+
+
+def test_completed_test_is_one_call_and_keeps_empty_json(tmp_path):
+    """Validate exact FP32 settings and single-call JSON output without accessing or tuning the test dataset."""
+    import numpy as np
+
+    from tools.experiments import finish_b19_sir_sppf as finish
+
+    data = tmp_path / "data.yaml"
+    data.write_text("test: images/test\n", encoding="utf-8")
+    metrics = SimpleNamespace(
+        results_dict={"metrics/precision(B)": 0.123456789}, box=SimpleNamespace(all_ap=np.zeros((1, 10)))
+    )
+
+    class Model:
+        def __init__(self):
+            self.model = SimpleNamespace(model=[None] * 9 + [SPPF_SIR(256, 256)])
+
+        def add_callback(self, name, callback):
+            self.callback = callback
+
+        def val(self, **kwargs):
+            assert kwargs["split"] == "test" and kwargs["exist_ok"] is False and kwargs["quantize"] is None
+            self.validator = SimpleNamespace(
+                args=SimpleNamespace(**kwargs),
+                jdict=[],
+                speed={},
+                seen=1202,
+                metrics=SimpleNamespace(nt_per_class=np.array([1477])),
+                save_dir=tmp_path / "test",
+                model=SimpleNamespace(fp16=False),
+            )
+            self.callback(self.validator)
+            return metrics
+
+    with patch.object(finish, "provenance", return_value={"weight": "fixture.pt"}), patch.object(
+        finish, "YOLO", return_value=Model()
+    ) as factory:
+        finish.test_best(tmp_path, data)
+        finish.test_best(tmp_path, data)
+        assert factory.call_count == 1
+    assert json.loads((tmp_path / "test/predictions.json").read_text()) == []

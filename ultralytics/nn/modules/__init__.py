@@ -107,6 +107,8 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .sir_sppf import SPPF_SIR
+
 __all__ = (
     "AIFI",
     "C1",
@@ -125,6 +127,7 @@ __all__ = (
     "SPP",
     "SPPELAN",
     "SPPF",
+    "SPPF_SIR",
     "A2C2f",
     "AConv",
     "ADown",
