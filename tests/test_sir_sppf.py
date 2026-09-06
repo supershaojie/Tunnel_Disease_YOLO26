@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -263,3 +264,42 @@ def test_cli_import_preserves_native_thread_initialization():
         result = subprocess.check_output([sys.executable, "-c", code], cwd=run.ROOT, env=env, text=True)
         values.append(result.strip().splitlines()[-1])
     assert values == ["1 1", "1 1"]
+
+
+def test_package_preserves_applicable_patch_and_excludes_history(tmp_path):
+    """Check archive integrity and apply the raw patch in check-only mode against the committed index."""
+    from tools.experiments import finish_b19_sir_sppf as finish
+
+    fixture = tmp_path / "synthetic_package"
+    for name in (
+        "args.yaml",
+        "results.csv",
+        "train.log",
+        "weights/best.pt",
+        "weights/last.pt",
+        "weights/epoch20.pt",
+        "test/metrics.json",
+        "test/predictions.json",
+        "diagnostics.json",
+        "val_metrics.json",
+        "completed.json",
+    ):
+        path = fixture / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"Synthetic archive contract fixture, not a training result\n")
+    output = tmp_path / "synthetic.tar.gz"
+    finish.package(fixture, output)
+    with tarfile.open(output) as archive:
+        names = archive.getnames()
+        patch = archive.extractfile("source.patch").read()
+    assert "run/weights/best.pt" in names
+    assert all(not name.endswith(("last.pt", "epoch20.pt", ".tar.gz")) for name in names)
+    assert output.with_name(output.name + ".sha256").read_text().split()[0] == run.sha256(output)
+    # The source patch is for HEAD. --cached checks that exact committed/staged state even while
+    # developing a subsequent worktree edit; --check performs no application or index mutation.
+    subprocess.run(
+        ["git", "-c", f"safe.directory={run.ROOT.as_posix()}", "apply", "--cached", "--check", "--reverse", "-"],
+        input=patch,
+        cwd=run.ROOT,
+        check=True,
+    )

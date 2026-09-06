@@ -252,7 +252,20 @@ def package(run, output):
         if path.is_file():
             files["run/" + path.name] = path
     patch = run / "source.patch"
-    patch.write_text(shared.git("diff", shared.REFERENCE["source_commit"], "HEAD"), encoding="utf-8")
+    patch.write_bytes(
+        subprocess.check_output(
+            [
+                "git",
+                "-c",
+                f"safe.directory={ROOT.as_posix()}",
+                "diff",
+                "--binary",
+                shared.REFERENCE["source_commit"],
+                "HEAD",
+            ],
+            cwd=ROOT,
+        )
+    )
     files["source.patch"] = patch
     files.update({"source/" + name: ROOT / name for name in source})
     # Bundle the exact Git source tree for an independently reconstructable checkout, without datasets/runs.

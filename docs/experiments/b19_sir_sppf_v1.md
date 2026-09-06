@@ -103,7 +103,7 @@ Y = cv2(concat(Z0,Zhat1,Zhat2,Zhat3)) + X  # 本轮启用原 shortcut
 ## 已执行验证与尚未完成事项
 
 本地环境：Windows，Python 3.11.15、PyTorch 2.7.1+cu118、Ultralytics 8.4.98、RTX 2060 6 GB。
-10 项定向测试通过：形状/累计公式/非负增量、零初始化与 RNG、完整图、真实权重 Trainer、真实裂缝样本 AMP 梯度、
+11 项定向测试通过：形状/累计公式/非负增量、零初始化与 RNG、完整图、真实权重 Trainer、真实裂缝样本 AMP 梯度、
 FP16 EMA 保存后新进程 FP32 加载/fuse/预测、原生最终设置/OOM/审计 RNG、历史快照与原生 Model.val 单次调用契约，以及干净子进程中的原 CLI 线程初始化。
 融合时原生 YOLO26 删除 one-to-many 分支，因此比较保留的原始 one-to-one 张量和解码输出（FP32 atol/rtol=1e-4）；
 保存前后未融合原始输出要求逐元素相同。
@@ -159,4 +159,4 @@ package 只整理已有结果，要求 test/diagnose 已完成。包含 best.pt�
 
 入口先导入 Ultralytics，再导入 torch，复用原 CLI 的 OMP 初始化；环境报告记录 OMP 和实际 torch 线程数。test 从 on_val_end 捕获实际输出目录和原生回写的精度参数，不假设 Model/Validator 持有不存在的 backend 属性。
 
-另已通过模拟打包契约检查：25 项文件摘要和 gzip CRC 全部一致，last/epoch 权重被排除；该模拟归档只验证程序行为，不是训练结果。草稿 PR #3 的 GitHub API 未返回任何 workflows/check-runs/自动审阅，因此没有将外部自动检查记为通过。
+另已通过模拟打包契约检查：归档文件摘要和 gzip CRC 全部一致，last/epoch 权重被排除，原始字节源码补丁通过 git apply --check 验证；该模拟归档只验证程序行为，不是训练结果。草稿 PR #3 的 GitHub API 未返回任何 workflows/check-runs/自动审阅，因此没有将外部自动检查记为通过。
