@@ -26,9 +26,10 @@ os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 os.environ.setdefault("YOLO_OFFLINE", "true")
 os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
 
-import torch
-
+# Match the native CLI: initialize Ultralytics environment settings before the torch thread pool.
 import ultralytics
+
+import torch
 from ultralytics.cfg import DEFAULT_CFG_DICT, get_cfg
 from ultralytics.data.utils import IMG_FORMATS, check_det_dataset
 from ultralytics.models.yolo.detect import DetectionTrainer
@@ -217,6 +218,8 @@ def resolve_recipe(options, model=MODEL):
         import_path=ultralytics.__file__,
         python=sys.version,
         executable=sys.executable,
+        omp_num_threads=os.environ.get("OMP_NUM_THREADS"),
+        torch_num_threads=torch.get_num_threads(),
         ultralytics=ultralytics.__version__,
         torch=torch.__version__,
         cuda=torch.version.cuda,

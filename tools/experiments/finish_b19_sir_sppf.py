@@ -105,6 +105,7 @@ def test_best(run, data):
         shared.write_json(output / "predictions.json", validator.jdict)
         observation.update(
             args=vars(validator.args),
+            save_dir=str(validator.save_dir),
             speed=validator.speed,
             images=validator.seen,
             targets=int(validator.metrics.nt_per_class.sum()),
@@ -118,8 +119,9 @@ def test_best(run, data):
             shared.TeeStream(sys.stderr, handler.stream)
         ):
             metrics = model.val(**settings)
-            assert model.validator.save_dir == output
-            assert observation["args"]["quantize"] is None and not model.validator.model.fp16
+            assert Path(observation["save_dir"]) == output
+            # BaseValidator writes the actual AutoBackend precision back into args.quantize.
+            assert observation["args"]["quantize"] is None
             result = dict(
                 evidence=evidence,
                 settings=settings,

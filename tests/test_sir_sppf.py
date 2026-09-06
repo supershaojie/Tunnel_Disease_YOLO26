@@ -4,6 +4,8 @@ import copy
 import json
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -215,6 +217,8 @@ def test_completed_test_is_one_call_and_keeps_empty_json(tmp_path):
     import numpy as np
 
     from tools.experiments import finish_b19_sir_sppf as finish
+    from ultralytics import YOLO
+    from ultralytics.cfg import get_save_dir
 
     data = tmp_path / "data.yaml"
     data.write_text("test: images/test\n", encoding="utf-8")
@@ -222,31 +226,40 @@ def test_completed_test_is_one_call_and_keeps_empty_json(tmp_path):
         results_dict={"metrics/precision(B)": 0.123456789}, box=SimpleNamespace(all_ap=np.zeros((1, 10)))
     )
 
-    class Model:
-        def __init__(self):
-            self.model = SimpleNamespace(model=[None] * 9 + [SPPF_SIR(256, 256)])
+    class Validator:
+        def __init__(self, args, _callbacks):
+            self.args = get_cfg(overrides=args)
+            self.save_dir = get_save_dir(self.args)
+            self.callbacks = _callbacks
+            self.metrics = metrics
+            self.metrics.nt_per_class = np.array([1477])
+            self.jdict, self.speed, self.seen = [], {}, 1202
 
-        def add_callback(self, name, callback):
-            self.callback = callback
+        def __call__(self, model):
+            assert self.args.split == "test" and not self.args.exist_ok and self.args.quantize is None
+            for callback in self.callbacks["on_val_end"]:
+                callback(self)
 
-        def val(self, **kwargs):
-            assert kwargs["split"] == "test" and kwargs["exist_ok"] is False and kwargs["quantize"] is None
-            self.validator = SimpleNamespace(
-                args=SimpleNamespace(**kwargs),
-                jdict=[],
-                speed={},
-                seen=1202,
-                metrics=SimpleNamespace(nt_per_class=np.array([1477])),
-                save_dir=tmp_path / "test",
-                model=SimpleNamespace(fp16=False),
-            )
-            self.callback(self.validator)
-            return metrics
+    # Exercise the actual Model.val orchestration. Neither the model nor validator owns the
+    # other's local object; only inference itself is stubbed to avoid consuming held-out test data.
+    model = YOLO(str(run.MODEL))
 
     with patch.object(finish, "provenance", return_value={"weight": "fixture.pt"}), patch.object(
-        finish, "YOLO", return_value=Model()
-    ) as factory:
+        finish, "YOLO", return_value=model
+    ) as factory, patch.object(model, "_smart_load", return_value=Validator):
         finish.test_best(tmp_path, data)
         finish.test_best(tmp_path, data)
         assert factory.call_count == 1
     assert json.loads((tmp_path / "test/predictions.json").read_text()) == []
+
+
+def test_cli_import_preserves_native_thread_initialization():
+    """A clean subprocess initializes the same default CPU thread budget as the original CLI."""
+    env = {k: v for k, v in os.environ.items() if k not in {"OMP_NUM_THREADS", "MKL_NUM_THREADS"}}
+    env["PYTHONPATH"] = str(run.ROOT)
+    values = []
+    for entry in ("ultralytics", "tools.experiments.run_b19_sir_sppf"):
+        code = f"import {entry}; import os,torch; print(os.environ['OMP_NUM_THREADS'],torch.get_num_threads())"
+        result = subprocess.check_output([sys.executable, "-c", code], cwd=run.ROOT, env=env, text=True)
+        values.append(result.strip().splitlines()[-1])
+    assert values == ["1 1", "1 1"]
