@@ -39,8 +39,6 @@ MODEL = common.MODEL
 class AuditedTrainer(DetectionTrainer):
     """Own only fixed-batch output and initialization audits; retain native training and optimization."""
 
-    block_type = C2PSA_RSC
-    layer = 10
     new_marker = ".attn.theta"
 
     def __init__(self, overrides, _callbacks=None):

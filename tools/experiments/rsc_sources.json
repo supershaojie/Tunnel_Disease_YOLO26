@@ -18,6 +18,7 @@
   },
   "papers": ["https://arxiv.org/html/2408.04357v1", "https://arxiv.org/html/2508.09983v1"],
   "novelty": "Geometric symmetrization and reciprocal attention have prior art; no first mathematical operator claim.",
-  "infrastructure_source_commit": "6f5f1e2",
-  "actual_b19_args": "E:/ditieyolo26跑结果/8.12离线在线/b19 200e/b19_yolo26n_e200_train_val_test_20260823_224153/train_run/args.yaml"
+  "infrastructure_source_commit": "6f5f1e26ef3abd1c0402a5f948ba4d6889ec49f9",
+  "actual_b19_args": "E:/ditieyolo26跑结果/8.12离线在线/b19 200e/b19_yolo26n_e200_train_val_test_20260823_224153/train_run/args.yaml",
+  "startup_excerpt_transform": "First 48 lines of actual archived startup log; trailing spaces and line endings normalized."
 }

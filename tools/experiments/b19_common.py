@@ -209,6 +209,12 @@ def resolve_recipe(options, model=MODEL):
     )
     for item in (data.parent / "metadata").iterdir():
         evidence.setdefault("dataset_metadata_sha256", {})[item.name] = sha256(item)
+    evidence["dataset_manifest"] = dataset_manifest(data)
+    return raw, effective, evidence
+
+
+def dataset_manifest(data):
+    """Bind fixed b19 splits to image stats and complete label content, including expected counts."""
     dataset = check_det_dataset(str(data), autodownload=False)
     manifest = {}
     for split, expected_count in REFERENCE["dataset_counts"].items():
@@ -238,8 +244,7 @@ def resolve_recipe(options, model=MODEL):
             targets=targets,
             image_stat_label_content_sha256=hashlib.sha256(json.dumps(entries).encode()).hexdigest(),
         )
-    evidence["dataset_manifest"] = manifest
-    return raw, effective, evidence
+    return manifest
 
 
 def audit_weights(baseline, candidate, weights, new_prefix="model.10.m.", layer=10):

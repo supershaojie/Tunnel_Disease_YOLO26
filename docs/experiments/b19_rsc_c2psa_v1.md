@@ -124,8 +124,8 @@ bash tools/experiments/server_b19_rsc_c2psa_v1.sh preflight
 All stages use the same script:
 
 ```bash
-tmux new-session -d -s y26_rsc_v1 -c "$WORK"
-tmux set-option -t y26_rsc_v1 remain-on-exit on
+tmux new-session -d -s y26_rsc_v1 -c "$WORK" &&
+tmux set-option -t y26_rsc_v1 remain-on-exit on &&
 tmux send-keys -t y26_rsc_v1 'bash tools/experiments/server_b19_rsc_c2psa_v1.sh train; rc=$?; printf "RSC training exit=%s\n" "$rc"' C-m
 tmux attach -t y26_rsc_v1
 ```

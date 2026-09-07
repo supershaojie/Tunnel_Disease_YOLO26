@@ -111,6 +111,7 @@ def completed_run(run):
     assert original["evidence"]["source_sha256"] == common.source_hashes(), "Experiment source changed since training"
     data = Path(YAML.load(run / "args.yaml")["data"]).resolve()
     assert common.sha256(data) == original["evidence"]["data_sha256"]
+    assert common.dataset_manifest(data) == original["evidence"]["dataset_manifest"], "Dataset changed since training"
     return data
 
 
@@ -238,6 +239,7 @@ def package(run, data):
     if output.exists():
         raise FileExistsError(f"Preserving existing package: {output}")
     staging = Path(tempfile.mkdtemp(prefix=f"{NAME}_package_", dir=bundles))
+    staged_archive = staging / output.name
     with (staging / "source.tar").open("wb") as stream:
         subprocess.run(
             ["git", "-c", f"safe.directory={ROOT.as_posix()}", "archive", "HEAD"], cwd=ROOT, stdout=stream, check=True
@@ -274,14 +276,14 @@ def package(run, data):
         {name: dict(bytes=p.stat().st_size, sha256=common.sha256(p)) for name, p in selected.items()},
     )
     selected["checksums.json"] = staging / "checksums.json"
-    with tarfile.open(output, "w:gz") as archive:
+    with tarfile.open(staged_archive, "w:gz") as archive:
         for name, path in sorted(selected.items()):
             archive.add(path, arcname=f"{NAME}/{name}", recursive=False)
     # Verify archive payload, not just the source files that were added.
     import hashlib
 
     manifest = json.loads((staging / "checksums.json").read_text())
-    with tarfile.open(output) as archive:
+    with tarfile.open(staged_archive) as archive:
         for name, row in manifest.items():
             stream = archive.extractfile(f"{NAME}/{name}")
             digest = hashlib.sha256()
@@ -290,6 +292,8 @@ def package(run, data):
                 digest.update(chunk)
                 size += len(chunk)
             assert digest.hexdigest() == row["sha256"] and size == row["bytes"]
+    # Same-filesystem hard link publishes only a complete verified archive and refuses an existing destination.
+    output.hardlink_to(staged_archive)
     receipt = dict(
         path=str(output), bytes=output.stat().st_size, sha256=common.sha256(output), verified_files=len(manifest)
     )
