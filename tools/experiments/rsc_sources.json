@@ -1,0 +1,24 @@
+{
+  "requested_zip": "4a990cbe-2e0f-43bc-abc7-529003a3a9dc.zip",
+  "zip_found": false,
+  "extracted_references_read": [
+    {
+      "path": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\MALA_2025ICCV.py",
+      "sha256": "0dad62c223222cba3ccea69a10564a1538c55f612e9129f7ac7822a261159231"
+    },
+    {
+      "path": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\MultipoleAttention_2025ICCV.py",
+      "sha256": "4384b51d42ad84b443181c02b3f6ab898118a1a286ae96a3d1d5f7bc4c7317cb"
+    }
+  ],
+  "archive_identity": "Cannot establish that the discovered extracted files are byte-identical to the requested ZIP.",
+  "mechanism_notes": {
+    "MALA": "ELU-positive Q/K, RoPE and reassociated K-transpose V linear attention; not used by RSC.",
+    "MultipoleAttention": "Multiscale window attention with down/up sampling; not used by RSC."
+  },
+  "papers": ["https://arxiv.org/html/2408.04357v1", "https://arxiv.org/html/2508.09983v1"],
+  "novelty": "Geometric symmetrization and reciprocal attention have prior art; no first mathematical operator claim.",
+  "infrastructure_source_commit": "6f5f1e26ef3abd1c0402a5f948ba4d6889ec49f9",
+  "actual_b19_args": "E:/ditieyolo26跑结果/8.12离线在线/b19 200e/b19_yolo26n_e200_train_val_test_20260823_224153/train_run/args.yaml",
+  "startup_excerpt_transform": "First 48 lines of actual archived startup log; trailing spaces and line endings normalized."
+}
