@@ -90,10 +90,24 @@ device=0, cache=False, original MuSGD, losses and every augmentation field. No e
 reduction, epoch extension or output overwrite is performed.
 
 `train` automatically invokes missing preflight in a child process; the formal process builds a fresh native trainer
-and seed. Receipts bind model/code/config/initial weight/data manifest/environment and hashed checks. Three disposable
-real augmented batch=32 updates test QKV/gate/FFN gradients, actual MuSGD groups/updates and EMA; unit-scale AMP backward
-is a gradient probe, while formal training keeps the native GradScaler. The preflight records per-step timing, allocated
-and reserved peaks. It initially requires 8 GiB free and checks 2 GiB remaining reserve after probing; starting formal
+and seed. Receipts bind model/code/config/initial weight/data manifest/environment and hashed checks. RPCA explicitly
+binds a bounded audit of at most 16 disposable real batch=32 tensors. It uses the native scheduler, warmup, accumulation,
+GradScaler, gradient clipping, MuSGD and EMA ordering. The SIR v1/v2 three-batch default is unchanged. The audit stops
+as soon as the zero-initialized last weight has a task-driven update and subsequent finite, nonzero task gradients
+have been observed for every gate parameter. A nonzero gradient, an attempted step, a completed optimizer call, and a
+changed parameter are recorded separately. Initial scaler overflows can skip steps; persistent overflow fails at the cap.
+Zero first-step early gradients and isolated later zero gradients are allowed; disconnected gradients are rejected.
+
+Each batch rewrites `checks.json`, including on failure: group LR/momentum/decay and optimizer membership, accumulation,
+scale before/after, skip status, unscaled pre-clip gradient None/finite/norm/nonzero statistics, last-convolution input/output
+dtypes and scaled backward statistics, FP32 and compute-cast last weights, optimizer-boundary parameter deltas, and first
+nonzero task-gradient/update indices. Pending accumulation gradients are explicitly marked as still scaled and are not
+unscaled early. Gate replacement or parameter mutation outside the optimizer is rejected. Only small summaries are saved.
+`diagnostic_batch_seconds` includes synchronized forward/backward/update and diagnostic overhead, excluding JSON I/O;
+it is not a pure training-throughput measurement. A gate audit success does not create a receipt: EMA/reload/environment
+checks must also succeed before the shared entry writes the fingerprint-bound `passed.json`.
+
+The preflight records allocated and reserved peaks. It initially requires 8 GiB free and checks 2 GiB remaining reserve after probing; starting formal
 training rechecks measured reserved peak plus 2 GiB. Other GPU jobs are only listed, not stopped; complete GPU idleness
 is not required. Memory availability can change concurrently; an OOM stops without changing the recipe.
 
@@ -143,6 +157,39 @@ Local validation runs on Windows, Python 3.11.15, PyTorch 2.7.1+cu118, RTX 2060 
 the server batch=32 requirement. Probability references cover 20x20, 19x21, 20x16, 1x7, 7x1 and 1x1; full-model checks
 cover 640x640 and 640x512. Tests also cover repetition/head variation, native RNG/state, exact bypass, gradient linkage,
 new-process reload/fusion/predict, corrupted state rejection, diagnostic summaries, package and shell contracts.
+
+### AMP preflight fix for failed commit 4e76f43
+
+Local validation passed all 60 RPCA/SIR v1/v2 tests; the final diagnostic-field adjustment passed another 11 targeted
+checks. [The AMP fix evidence](b19_rpca_c2psa_v1_amp_validation.json) records the measured batches and source hashes.
+
+The failed call chain was RPCA `main` -> shared `main` -> shared `preflight` -> unit-scale `gradient_check`.
+It was checking the RPCA training gate, despite the old error calling it a router. The old check ran exactly three
+backwards and direct optimizer steps. It warmed LR/momentum but bypassed GradScaler and accumulation. The first weight
+LR was zero; with a zero last weight, early gate gradients were necessarily zero before an effective last-weight update.
+
+Local reproduction uses the original checkpoint, two real augmented 640px training images, and the archived 789-batch
+warmup timing (8414 images / batch 32). It is not an AutoDL batch=32 result. On the third unit-scale backward, the last
+weight had 32 nonzero FP32 elements and 29 nonzero FP16 elements. Nevertheless, its input's actual FP16 backward gradient
+was entirely zero. Recomputing just that derivative in FP32 with the **same already-FP16-rounded weights and incoming
+gradient** gave norm `2.3435614e-8` with 12794 nonzero elements; casting it to FP16 erased every element. This distinguishes
+backward rounding from the partial forward weight underflow: the latter did not erase the whole last weight.
+
+The native-scaled path establishes finite nonzero earlier gate task gradients within the fixed budget after actual
+last-weight updates, including startup overflow skips. The local run completed two optimizer calls in nine batches;
+the first task-driven last-weight update was batch 7. Earlier gate gradients first appeared at batch 8, when overflow
+elsewhere still skipped the step; batch 9 had finite gradients and a completed update. The report distinguishes first
+observed unscaled gradients from first gradients at completed finite updates.
+No gate/attention implementation, initialization, gamma formula,
+inference precision, formal AMP setting, LR, or b19 recipe was changed. Regression tests also inject a detached early
+graph, missing optimizer parameter, perpetual overflow, zero LR, decay-only motion, forward reinitialization, transient
+overflow elsewhere in the model, and accumulation-boundary overflow. Native optimizer/model/EMA/scaler states are
+compared against an independent replay through `BaseTrainer.optimizer_step`.
+
+The new source/commit fingerprint invalidates the old preflight cache without deleting failed checks, logs or attempt
+directories. Retry the existing detached RPCA worktree only after its own stage lock and live process check show idle;
+use the existing `y26_rpca_v1` shell and run `preflight` followed by `train`. Each stage starts a new Python process;
+the training process reinitializes from `yolo26n.pt` and seed 42 and never consumes the disposable preflight checkpoint.
 
 No SSH configuration or running SSH connection was found. The actual server preflight, one formal run, independent
 FP32 val/test, trained diagnostics and final result archive remain to be executed on AutoDL. No training metric or

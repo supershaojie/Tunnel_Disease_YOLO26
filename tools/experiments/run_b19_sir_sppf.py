@@ -923,20 +923,8 @@ def launcher_evidence(options, raw):
     return dict(verified=True, path=str(path), sha256=sha256(path), command=command, trainer="native DetectionTrainer")
 
 
-def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=AuditedTrainer):
-    """Use full native setup, then three disposable real batch=32 AMP updates; never run an epoch."""
-    directory.mkdir(parents=True, exist_ok=False)
-    write_json(directory / "environment.json", evidence)
-    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
-    trainer.add_callback("on_pretrain_routine_end", final_model_audit)
-    trainer._setup_train()
-    if len(trainer.train_loader.dataset) != REFERENCE["dataset_counts"]["train"]:
-        raise ValueError("Training dataset count differs from archived b19.")
-    if len(trainer.test_loader.dataset) != REFERENCE["dataset_counts"]["val"]:
-        raise ValueError("Validation dataset count differs from archived b19.")
-    write_json(directory / "weights.json", trainer.weight_audit)
-    torch.cuda.reset_peak_memory_stats(trainer.device)
-    report = dict(optimizer=audit_optimizer(trainer), execution_conditions=computation_conditions(), real_batches=[])
+def preflight_batches(trainer, report, directory):
+    """Retain SIR v1/v2's three-batch gradient check as the default preflight policy."""
     loader = iter(trainer.train_loader)
     warmup = max(round(trainer.args.warmup_epochs * len(trainer.train_loader)), 100)
     for step in range(3):
@@ -949,12 +937,32 @@ def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=Aud
                     trainer.args.warmup_momentum
                     + (trainer.args.momentum - trainer.args.warmup_momentum) * step / warmup
                 )
-        report["real_batches"].append(gradient_check(trainer, next(loader), bool(config["amp"])))
+        report["real_batches"].append(gradient_check(trainer, next(loader), bool(trainer.args.amp)))
     norms = report["real_batches"][-1]["new_gradient_norms"]
     assert all(v > 0 for v in norms.values()), f"Earlier router layers did not learn: {norms}"
+    return 3
+
+
+def preflight(
+    config, evidence, directory, block_type=SPPF_SIR, trainer_type=AuditedTrainer, batch_check=preflight_batches
+):
+    """Use full native setup and an explicitly bound disposable batch audit; never run an epoch."""
+    directory.mkdir(parents=True, exist_ok=False)
+    write_json(directory / "environment.json", evidence)
+    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
+    trainer.add_callback("on_pretrain_routine_end", final_model_audit)
+    trainer._setup_train()
+    if len(trainer.train_loader.dataset) != REFERENCE["dataset_counts"]["train"]:
+        raise ValueError("Training dataset count differs from archived b19.")
+    if len(trainer.test_loader.dataset) != REFERENCE["dataset_counts"]["val"]:
+        raise ValueError("Validation dataset count differs from archived b19.")
+    write_json(directory / "weights.json", trainer.weight_audit)
+    torch.cuda.reset_peak_memory_stats(trainer.device)
+    report = dict(optimizer=audit_optimizer(trainer), execution_conditions=computation_conditions(), real_batches=[])
+    attempts = batch_check(trainer, report, directory)
     assert type(trainer.ema.ema.model[trainer.layer]) is block_type
     assert set(trainer.model.state_dict()) == set(trainer.ema.ema.state_dict())
-    assert trainer.ema.updates == 3
+    assert trainer.ema.updates == attempts  # Native EMA also advances when GradScaler skips an optimizer step.
     assert all(torch.isfinite(t).all() for t in trainer.ema.ema.state_dict().values())
     report["ema"] = True
     report["reload"] = save_reload_check(
@@ -1033,6 +1041,7 @@ def main(
     source_files=(),
     structure_check=structural_checks,
     module_config=MODULE_CONFIG,
+    batch_check=preflight_batches,
 ):
     """Resolve and run the sole candidate; missing server evidence never becomes a passing receipt."""
     block_type = trainer_type.block_type
@@ -1134,7 +1143,7 @@ def main(
                 if check_dir.exists():
                     # Preserve a failed attempt's logs; a new attempt never reuses its training state.
                     check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
-                preflight(config, evidence, check_dir, block_type, trainer_type)
+                preflight(config, evidence, check_dir, block_type, trainer_type, batch_check)
                 write_json(
                     check_dir / "passed.json",
                     dict(fingerprint=signature, passed=True, checks_sha256=sha256(check_dir / "checks.json")),

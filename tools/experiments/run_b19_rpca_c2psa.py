@@ -5,6 +5,8 @@
 import copy
 import math
 import sys
+import time
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -14,6 +16,7 @@ sys.path.insert(0, str(ROOT))
 from tools.experiments import run_b19_sir_sppf as shared
 
 import torch
+import numpy as np
 
 from ultralytics.models.yolo.detect import DetectionTrainer
 from ultralytics.nn.modules import C2PSA_RPCA, C3k2, SPPF
@@ -142,6 +145,228 @@ def structural_checks(directory, model=MODEL, block_type=C2PSA_RPCA):
     return report
 
 
+def tensor_stats(tensor):
+    """Keep small, JSON-finite summaries, including the distinction between absent and zero gradients."""
+    if tensor is None:
+        return dict(is_none=True, finite=None, norm=None, nonzero=0, dtype=None)
+    tensor = tensor.detach()
+    finite = bool(torch.isfinite(tensor).all())
+    return dict(
+        is_none=False,
+        finite=finite,
+        norm=tensor.double().norm().item() if finite else None,
+        nonzero=tensor.count_nonzero().item(),
+        dtype=str(tensor.dtype),
+        max_abs=tensor.abs().max().item() if finite else None,
+        elements=tensor.numel(),
+    )
+
+
+def preflight_batches(trainer, report, directory):
+    """Observe at most 16 real batches using native first-epoch AMP/MuSGD ordering, saving failures too."""
+    state = report["gate_preflight"] = dict(
+        status="running",
+        max_batches=16,
+        attempted_steps=0,
+        completed_steps=0,
+        gate_updates=0,
+        first_task_weight_update=None,
+        first_nonzero_gradient={},
+        first_effective_gradient={},
+    )
+    handles = []
+    try:
+        gate = trainer.model.model[10].m[0].gate
+        params = {k: p for k, p in trainer.model.named_parameters() if ".gate." in k}
+        required = {
+            k: p for k, p in trainer.model.named_parameters() if any(marker in k for marker in trainer.gradient_markers)
+        }
+        groups = {id(p): i for i, g in enumerate(trainer.optimizer.param_groups) for p in g["params"]}
+        state["optimizer_membership"] = {k: groups.get(id(p)) for k, p in params.items()}
+        if len(params) != 6 or any(id(p) not in groups or not p.requires_grad for p in params.values()):
+            raise AssertionError("RPCA gate parameters missing from optimizer or not trainable")
+        if trainer.optimizer.state or gate[-1].weight.count_nonzero():
+            raise AssertionError("RPCA preflight must start with a fresh optimizer and zero last weight")
+
+        def completed_step(optimizer, args, kwargs):
+            state["completed_steps"] += 1  # The hook is not called for GradScaler's skipped steps.
+
+        def last_conv(module, inputs, output):
+            row["last_conv"] = dict(
+                input_dtype=str(inputs[0].dtype),
+                output_dtype=str(output.dtype),
+                weight=tensor_stats(module.weight),
+                weight_in_compute_dtype=tensor_stats(module.weight.to(output.dtype)),
+            )
+            for name, tensor in (("input", inputs[0]), ("output", output)):
+                if tensor.requires_grad:
+
+                    def record_gradient(gradient, name=name):
+                        row["last_conv"][name + "_scaled_gradient"] = tensor_stats(gradient)
+
+                    tensor.register_hook(record_gradient)
+
+        handles = [trainer.optimizer.register_step_post_hook(completed_step), gate[-1].register_forward_hook(last_conv)]
+        nb = len(trainer.train_loader)
+        nw = max(round(trainer.args.warmup_epochs * nb), 100) if trainer.args.warmup_epochs > 0 else -1
+        state["warmup_batches"] = nw
+        trainer.epoch = 0
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            trainer.scheduler.step()  # Same first-epoch scheduling order as BaseTrainer._do_train.
+        trainer._model_train()
+        trainer.optimizer.zero_grad()
+        loader = iter(trainer.train_loader)
+        last_opt_step = -1
+        for ni in range(min(16, nb)):
+            if trainer.device.type == "cuda":
+                torch.cuda.synchronize(trainer.device)
+            started = time.perf_counter()
+            row = dict(
+                batch=ni + 1,
+                iteration=ni,
+                scale_before=trainer.scaler.get_scale(),
+                skipped=None,
+                attempt=state["attempted_steps"],
+                optimizer_update=state["completed_steps"],
+            )
+            report["real_batches"].append(row)
+            try:
+                current = dict(trainer.model.named_parameters())
+                if any(current.get(k) is not p for k, p in params.items()):
+                    raise AssertionError("RPCA gate was replaced during preflight")
+                if ni <= nw:
+                    trainer.accumulate = max(
+                        1, int(np.interp(ni, [0, nw], [1, trainer.args.nbs / trainer.batch_size]).round())
+                    )
+                    for group in trainer.optimizer.param_groups:
+                        start = trainer.args.warmup_bias_lr if group.get("param_group") == "bias" else 0.0
+                        group["lr"] = float(np.interp(ni, [0, nw], [start, group["initial_lr"] * trainer.lf(0)]))
+                        if "momentum" in group:
+                            group["momentum"] = float(
+                                np.interp(ni, [0, nw], [trainer.args.warmup_momentum, trainer.args.momentum])
+                            )
+                row["accumulate"] = trainer.accumulate
+                row["groups"] = [
+                    dict(
+                        index=i,
+                        kind=g.get("param_group"),
+                        lr=g["lr"],
+                        momentum=g.get("momentum"),
+                        weight_decay=g["weight_decay"],
+                        gate_parameters=[k for k, p in params.items() if groups[id(p)] == i],
+                    )
+                    for i, g in enumerate(trainer.optimizer.param_groups)
+                ]
+                forward_parameters = {k: p.detach().clone() for k, p in params.items()}
+                with shared.autocast(enabled=trainer.amp, device=trainer.device.type):
+                    batch = trainer.preprocess_batch(next(loader))
+                    loss, items = trainer.model(batch)
+                    total = loss.sum()
+                row.update(
+                    loss=tensor_stats(total),
+                    components=items.detach().cpu().tolist(),
+                    image_shape=list(batch["img"].shape),
+                    targets=batch["cls"].numel(),
+                )
+                if not torch.isfinite(total) or not row["targets"]:
+                    raise AssertionError("Nonfinite task loss or unlabeled RPCA preflight batch")
+                trainer.scaler.scale(total).backward()
+                attempted = ni - last_opt_step >= trainer.accumulate
+                row["attempted_step"] = attempted
+                if attempted:
+                    trainer.scaler.unscale_(trainer.optimizer)  # Exactly once, before recording and clipping.
+                row["gradient_units"] = "unscaled" if attempted else "scaled_accumulation"
+                gradients = row["gradients"] = {k: tensor_stats(p.grad) for k, p in required.items()}
+                if attempted:
+                    for key in params:
+                        if gradients[key]["finite"] and gradients[key]["nonzero"]:
+                            state["first_nonzero_gradient"].setdefault(key, ni + 1)
+                nonfinite = [
+                    k
+                    for k, p in trainer.model.named_parameters()
+                    if p.grad is not None and not torch.isfinite(p.grad).all()
+                ]
+                row["nonfinite_gradient_parameters"] = nonfinite
+                if any(g["is_none"] for g in gradients.values()):
+                    raise AssertionError("Disconnected required RPCA task gradient")
+                if any(not torch.equal(p, forward_parameters[k]) for k, p in params.items()):
+                    raise AssertionError("RPCA gate parameters changed outside the optimizer step")
+                before = {k: p.detach().clone() for k, p in params.items()}
+                if attempted:
+                    state["attempted_steps"] += 1
+                    completed_before = state["completed_steps"]
+                    # Match BaseTrainer.optimizer_step; task statistics above exclude clipping/decay/momentum.
+                    row["global_norm_before_clip"] = tensor_stats(
+                        torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), 10.0)
+                    )
+                    trainer.scaler.step(trainer.optimizer)
+                    trainer.scaler.update()
+                    row["skipped"] = state["completed_steps"] == completed_before
+                    trainer.optimizer.zero_grad()
+                    if trainer.ema:
+                        trainer.ema.update(trainer.model)
+                    last_opt_step = ni  # Native accumulation counts attempted updates, including scaler skips.
+                row.update(
+                    attempt=state["attempted_steps"],
+                    optimizer_update=state["completed_steps"],
+                    scale_after=trainer.scaler.get_scale(),
+                )
+                row["parameter_deltas"] = {k: tensor_stats(p - before[k]) for k, p in params.items()}
+                row["last_weight_after"] = tensor_stats(gate[-1].weight)
+                row["last_weight_after_compute_cast"] = tensor_stats(
+                    gate[-1].weight.to(getattr(torch, row["last_conv"]["output_dtype"].split(".")[-1]))
+                )
+                if not all(torch.isfinite(p).all() for p in trainer.model.parameters()):
+                    raise AssertionError("Nonfinite parameters after RPCA optimizer update")
+                if attempted and nonfinite and not (row["skipped"] and row["scale_after"] < row["scale_before"]):
+                    raise AssertionError("Nonfinite task gradients without a native GradScaler overflow skip")
+                if attempted and not row["skipped"]:
+                    if any(s["nonzero"] for s in row["parameter_deltas"].values()):
+                        state["gate_updates"] += 1
+                    last_key = "model.10.m.0.gate.4.weight"
+                    if (
+                        state["first_task_weight_update"] is None
+                        and row["parameter_deltas"][last_key]["nonzero"]
+                        and gradients[last_key]["nonzero"]
+                    ):
+                        # Zero-origin weight + fresh optimizer + task gradient proves this is not decay-only motion.
+                        state["first_task_weight_update"] = ni + 1
+                    for key in params:
+                        if gradients[key]["finite"] and gradients[key]["nonzero"]:
+                            state["first_effective_gradient"].setdefault(key, ni + 1)
+                    first_update = state["first_task_weight_update"]
+                    if (
+                        first_update is not None
+                        and ni + 1 > first_update
+                        and all(k in state["first_effective_gradient"] for k in params)
+                    ):
+                        if not all(
+                            any(g["nonzero"] for k, g in gradients.items() if marker in k)
+                            for marker in trainer.gradient_markers
+                        ):
+                            raise AssertionError("Required RPCA attention/FFN task gradients remain zero")
+                        state["status"] = "passed"
+                        return state["attempted_steps"]
+            finally:
+                if trainer.device.type == "cuda":
+                    torch.cuda.synchronize(trainer.device)
+                row["diagnostic_batch_seconds"] = (
+                    time.perf_counter() - started
+                )  # Includes statistics, excludes JSON I/O.
+                shared.write_json(directory / "checks.json", report)
+        raise AssertionError(
+            "RPCA gate did not establish finite task gradients and effective updates within 16 real batches"
+        )
+    except Exception as error:
+        state.update(status="failed", error=f"{type(error).__name__}: {error}")
+        raise
+    finally:
+        for handle in handles:
+            handle.remove()
+        shared.write_json(directory / "checks.json", report)
+
+
 def main(argv=None):
     """Bind the RPCA architecture, trainer, child entry and fingerprints explicitly without replacing globals."""
     return shared.main(
@@ -153,6 +378,7 @@ def main(argv=None):
         source_files=SOURCE_FILES,
         structure_check=structural_checks,
         module_config=MODULE_CONFIG,
+        batch_check=preflight_batches,
     )
 
 

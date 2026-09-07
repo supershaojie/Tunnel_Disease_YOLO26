@@ -6,6 +6,7 @@ import math
 import os
 import shutil
 import subprocess
+import warnings
 from unittest.mock import patch
 
 import pytest
@@ -21,6 +22,197 @@ from ultralytics.data.dataset import YOLODataset
 from ultralytics.nn.modules import C2PSA, C2PSA_RPCA
 from ultralytics.nn.modules.rpca_c2psa import PSABlock_RPCA, calibrated_probabilities, region_group, region_ungroup
 from ultralytics.utils import YAML
+from ultralytics.utils.torch_utils import ModelEMA
+
+
+def prepare_preflight(trainer, loader, batch_size):
+    """Supply the native setup fields without invoking an epoch or claiming full server setup."""
+    trainer.train_loader = loader
+    trainer.batch_size = batch_size
+    trainer.accumulate = max(round(trainer.args.nbs / batch_size), 1)
+    trainer.epochs = trainer.args.epochs
+    trainer.amp = trainer.device.type == "cuda"
+    trainer.freeze_layer_names = [".dfl"]
+    trainer.scaler = torch.amp.GradScaler(trainer.device.type, enabled=True)
+    trainer._setup_scheduler()
+    return trainer
+
+
+class ProbeLoader:
+    """Lazily supply labeled batches with the archived epoch length for warmup timing."""
+
+    def __init__(self, batch):
+        self.batch = batch
+
+    def __len__(self):
+        return math.ceil(8414 / 32)
+
+    def __iter__(self):
+        for _ in range(len(self)):
+            yield self.batch()
+
+
+def small_preflight():
+    """Exercise the actual RPCA block and MuSGD on CPU for controlled graph/overflow fault injection."""
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.model = torch.nn.ModuleList([torch.nn.Identity() for _ in range(10)] + [C2PSA_RPCA(128, 128)])
+
+        def forward(self, batch):
+            loss = self.model[10](batch["img"]).square().mean()
+            return loss, loss.detach().reshape(1)
+
+    torch.manual_seed(42)
+    trainer = object.__new__(run.AuditedTrainer)
+    trainer.args = copy.deepcopy(
+        shared.get_cfg(overrides={k: v for k, v in shared.REFERENCE["args"].items() if k != "save_dir"})
+    )
+    trainer.model = Model()
+    trainer.device = torch.device("cpu")
+    trainer.preprocess_batch = lambda b: b
+    trainer.optimizer = trainer.build_optimizer(trainer.model, "MuSGD", 0.01, 0.937, 0.0005)
+    trainer.ema = ModelEMA(trainer.model)
+    batch = dict(img=torch.randn(2, 128, 3, 3), cls=torch.ones(2))
+    return prepare_preflight(trainer, ProbeLoader(lambda: batch), 32)
+
+
+def test_preflight_zero_start_and_native_steps(tmp_path):
+    """Zero task gradients at initialization and zero weight LR are valid; later actual updates unlock the graph."""
+    trainer = small_preflight()
+    reference = small_preflight()
+    report = dict(real_batches=[])
+    with patch.object(trainer.scaler, "unscale_", wraps=trainer.scaler.unscale_) as unscale:
+        attempts = run.preflight_batches(trainer, report, tmp_path)
+    rows, state = report["real_batches"], report["gate_preflight"]
+    assert len(rows) == attempts == unscale.call_count == trainer.ema.updates == 3
+    assert rows[0]["last_weight_after"]["nonzero"] == 0
+    assert all(
+        g["norm"] == 0 and not g["is_none"]
+        for k, g in rows[0]["gradients"].items()
+        if ".gate." in k and ".gate.4." not in k
+    )
+    assert state["first_task_weight_update"] == 2 and state["completed_steps"] == 3
+    assert all(v == 3 for k, v in state["first_nonzero_gradient"].items() if ".gate.4." not in k)
+    assert json.loads((tmp_path / "checks.json").read_text())["gate_preflight"]["status"] == "passed"
+
+    # Independently replay the archived first-epoch schedule with the actual BaseTrainer optimizer_step.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        reference.scheduler.step()
+    reference._model_train()
+    reference.optimizer.zero_grad()
+    loader = iter(reference.train_loader)
+    for iteration in range(len(rows)):
+        for group in reference.optimizer.param_groups:
+            start = reference.args.warmup_bias_lr if group["param_group"] == "bias" else 0
+            group["lr"] = start + (group["initial_lr"] - start) * iteration / 789
+            group["momentum"] = 0.8 + (0.937 - 0.8) * iteration / 789
+        loss, _ = reference.model(next(loader))
+        reference.scaler.scale(loss.sum()).backward()
+        reference.optimizer_step()
+    shared.assert_close_tree(trainer.model.state_dict(), reference.model.state_dict(), 0, 0)
+    shared.assert_close_tree(trainer.optimizer.state_dict(), reference.optimizer.state_dict(), 0, 0)
+    shared.assert_close_tree(trainer.ema.ema.state_dict(), reference.ema.ema.state_dict(), 0, 0)
+    assert trainer.scaler.state_dict() == reference.scaler.state_dict()
+
+
+@pytest.mark.parametrize("fault", ["detach", "omit", "nonfinite", "no_update", "zero_task", "reinitialize"])
+def test_preflight_failures_preserve_evidence(tmp_path, fault):
+    """A broken graph, omitted gate, persistent scaler overflow or zero LR cannot produce a passing report."""
+    trainer = small_preflight()
+    gate = trainer.model.model[10].m[0].gate
+    if fault == "detach":
+        gate[3].register_forward_hook(lambda m, args, output: output.detach())
+    elif fault == "omit":
+        for group in trainer.optimizer.param_groups:
+            group["params"] = [p for p in group["params"] if p is not gate[0].weight]
+    elif fault == "nonfinite":
+        gate[-1].weight.register_hook(lambda g: torch.full_like(g, float("inf")))
+    elif fault in {"no_update", "reinitialize"}:
+        trainer.lf = lambda epoch: 0.0
+        trainer.args.warmup_bias_lr = 0.0
+        if fault == "reinitialize":
+
+            def reinitialize(module, inputs):
+                torch.nn.init.normal_(module[-1].weight, std=0.02)
+
+            gate.register_forward_pre_hook(reinitialize)
+    else:
+        forward = trainer.model.forward
+        trainer.model.forward = lambda batch: tuple(item * 0 for item in forward(batch))
+    report = dict(real_batches=[])
+    with pytest.raises(AssertionError):
+        run.preflight_batches(trainer, report, tmp_path)
+    saved = json.loads((tmp_path / "checks.json").read_text())
+    assert saved["gate_preflight"]["status"] == "failed"
+    assert not (tmp_path / "passed.json").exists()
+    if fault in {"nonfinite", "no_update", "zero_task"}:
+        assert len(saved["real_batches"]) == 16
+        assert saved["gate_preflight"]["first_task_weight_update"] is None
+    if fault == "nonfinite":
+        assert saved["gate_preflight"]["completed_steps"] == 0
+        assert all(r["skipped"] and r["scale_after"] < r["scale_before"] for r in saved["real_batches"])
+    if fault == "detach":
+        assert saved["real_batches"][0]["gradients"]["model.10.m.0.gate.0.weight"]["is_none"]
+    if fault == "zero_task":
+        assert saved["gate_preflight"]["gate_updates"] > 0  # Weight decay alone must not satisfy task evidence.
+    if fault == "reinitialize":
+        assert "outside the optimizer" in saved["gate_preflight"]["error"]
+        assert saved["gate_preflight"]["completed_steps"] == 0
+
+
+def test_preflight_scaler_skip_then_recover(tmp_path):
+    """Finite gate gradients alone cannot certify an update when another parameter overflows."""
+    trainer = small_preflight()
+    calls = 0
+
+    def overflow_once(gradient):
+        nonlocal calls
+        calls += 1
+        return torch.full_like(gradient, float("inf")) if calls <= 3 else gradient
+
+    trainer.model.model[10].cv2.conv.weight.register_hook(overflow_once)
+    report = dict(real_batches=[])
+    run.preflight_batches(trainer, report, tmp_path)
+    state, rows = report["gate_preflight"], report["real_batches"]
+    assert state["attempted_steps"] == 5 and state["completed_steps"] == 2
+    assert state["first_task_weight_update"] == 4
+    assert state["first_nonzero_gradient"]["model.10.m.0.gate.4.weight"] == 1
+    assert state["first_effective_gradient"]["model.10.m.0.gate.4.weight"] == 4
+    assert all(r["skipped"] and r["last_weight_after"]["nonzero"] == 0 for r in rows[:3])
+    assert all(g["finite"] for g in rows[0]["gradients"].values())
+
+
+@pytest.mark.parametrize("overflow", [False, True])
+def test_preflight_accumulation_and_sir_default(tmp_path, overflow):
+    """Accumulation preserves scaled gradients until the native step boundary; SIR retains its three-step default."""
+    trainer = small_preflight()
+    trainer.args.warmup_epochs = 0
+    if overflow:
+        calls = 0
+
+        def overflow_first(gradient):
+            nonlocal calls
+            calls += 1
+            return torch.full_like(gradient, float("inf")) if calls == 1 else gradient
+
+        trainer.model.model[10].cv2.conv.weight.register_hook(overflow_first)
+    report = dict(real_batches=[])
+    with patch.object(trainer.scaler, "unscale_", wraps=trainer.scaler.unscale_) as unscale:
+        assert run.preflight_batches(trainer, report, tmp_path) == (3 if overflow else 2)
+    rows = report["real_batches"]
+    assert len(rows) == (6 if overflow else 4) and unscale.call_count == len(rows) // 2
+    assert [r["attempted_step"] for r in rows] == [False, True] * (len(rows) // 2)
+    assert rows[0]["gradient_units"] == "scaled_accumulation" and rows[1]["gradient_units"] == "unscaled"
+    if overflow:
+        assert rows[0]["nonfinite_gradient_parameters"] and rows[1]["skipped"]
+    assert shared.preflight.__defaults__[-1] is shared.preflight_batches
+    legacy = dict(real_batches=[])
+    with patch.object(shared, "gradient_check", return_value=dict(new_gradient_norms={"router": 1.0})) as check:
+        assert shared.preflight_batches(small_preflight(), legacy, tmp_path) == 3
+    assert len(legacy["real_batches"]) == check.call_count == 3
 
 
 @pytest.fixture(autouse=True)
@@ -154,7 +346,7 @@ def test_full_graph(tmp_path):
 
 
 def test_real_pretrained_amp_musgd_ema_reload(tmp_path):
-    """Three actual augmented batch=2 updates are local evidence, never a formal batch=32 server receipt."""
+    """Real augmented batch=2 tensors and archived warmup timing are local evidence, never a server receipt."""
     torch.set_num_threads(1)
     trainer = fixtures.native_probe(
         "cuda:0" if torch.cuda.is_available() else "cpu", trainer_type=run.AuditedTrainer, model=run.MODEL
@@ -170,13 +362,13 @@ def test_real_pretrained_amp_musgd_ema_reload(tmp_path):
     )
     if trainer.device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
-    rows = [
-        shared.gradient_check(trainer, data.collate_fn([data[0], data[1]]), trainer.device.type == "cuda")
-        for _ in range(3)
-    ]
-    assert all(v == 0 for k, v in rows[0]["new_gradient_norms"].items() if ".gate.4." not in k)
-    assert all(v > 0 for v in rows[-1]["new_gradient_norms"].values())
-    assert trainer.ema.updates == 3 and type(trainer.ema.ema.model[10]) is C2PSA_RPCA
+    prepare_preflight(trainer, ProbeLoader(lambda: data.collate_fn([data[0], data[1]])), 32)
+    audit = dict(real_batches=[])
+    attempts = run.preflight_batches(trainer, audit, tmp_path)
+    rows = audit["real_batches"]
+    assert len(rows) <= 16 and audit["gate_preflight"]["first_task_weight_update"] < len(rows)
+    assert all(g["finite"] and g["nonzero"] for k, g in rows[-1]["gradients"].items() if ".gate." in k)
+    assert trainer.ema.updates == attempts and type(trainer.ema.ema.model[10]) is C2PSA_RPCA
     shared.save_reload_check(trainer.ema.ema, tmp_path, C2PSA_RPCA, 10, ".gate.", 2258)
     report = json.loads((tmp_path / "reload_check.json").read_text())
     assert report["state_keys"] == 714 and max(r["max_abs"] for r in report["raw"]) == 0
@@ -194,7 +386,8 @@ def test_real_pretrained_amp_musgd_ema_reload(tmp_path):
             batch=2,
             imgsz=640,
             device=str(trainer.device),
-            rows=rows,
+            preflight=audit,
+            warmup_reference_batch=32,
             peak_allocated_bytes=torch.cuda.max_memory_allocated() if trainer.device.type == "cuda" else None,
             weights=trainer.weight_audit,
             reload=report,
