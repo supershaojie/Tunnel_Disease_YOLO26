@@ -64,7 +64,7 @@ def completed_run(run):
     return record
 
 
-def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, output=None, capture=None):
+def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, output=None, capture=None, layer=9):
     """Evaluate once in FP32; store exact metrics and JSON from that same evaluation."""
     evidence = provenance(run) if evidence is None else evidence
     evidence["data_sha256"] = shared.sha256(data)
@@ -98,12 +98,17 @@ def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, ou
         raise FileExistsError(f"Conflicting test evidence, preserving: {output}")
     output.mkdir(parents=True, exist_ok=False)
     model = YOLO(evidence["weight"])
-    assert type(model.model.model[9]) is block_type
+    assert type(model.model.model[layer]) is block_type
     observation = {}
 
     def capture_validation(validator):
         shared.write_json(output / "predictions.json", validator.jdict)
+        tensors = list(validator.model.model.parameters())
+        assert tensors and all(p.dtype == torch.float32 for p in tensors)
+        assert validator.args.split == split
         observation.update(
+            actual_parameter_dtype="torch.float32",
+            actual_split=validator.args.split,
             args=vars(validator.args),
             save_dir=str(validator.save_dir),
             speed=validator.speed,
@@ -207,7 +212,7 @@ def diagnose(run, data):
     )
 
 
-def package(run, output, *, source_files=(), required_files=None, evidence=None, exclude_dirs=()):
+def package(run, output, *, source_files=(), required_files=None, evidence=None, exclude_dirs=(), include_last=False):
     """Include only current-run evidence and source dependencies, then verify every archived file hash."""
     if output.exists():
         raise FileExistsError(output)
@@ -238,7 +243,10 @@ def package(run, output, *, source_files=(), required_files=None, evidence=None,
         if any(folder in path.parents for folder in exclude_dirs):
             continue
         if path.is_file() and path != run / "package_manifest.json":
-            if path.suffix == ".pt" and path != run / "weights/best.pt":
+            if path.suffix == ".pt" and path not in {
+                run / "weights/best.pt",
+                *([run / "weights/last.pt"] if include_last else []),
+            }:
                 continue
             if path.suffix in {".yaml", ".json", ".jsonl", ".csv", ".log", ".txt", ".png", ".jpg", ".pt"}:
                 files["run/" + path.relative_to(run).as_posix()] = path

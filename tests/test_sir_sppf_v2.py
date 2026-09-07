@@ -18,6 +18,7 @@ import torch.nn as nn
 from tests import test_sir_sppf as v1_tests
 from tools.experiments import finish_b19_sir_sppf as common_finish
 from tools.experiments import finish_b19_sir_sppf_v2 as finish
+from tools.experiments import run_b19_rpca_c2psa as rpca
 from tools.experiments import run_b19_sir_sppf as shared
 from tools.experiments import run_b19_sir_sppf_v2 as run
 from ultralytics import YOLO
@@ -149,7 +150,8 @@ def test_native_optimizer_oom_and_rng(tmp_path):
     v1_tests.test_native_setup_oom_and_audit_rng(tmp_path, trainer_type=run.AuditedTrainer, model=run.MODEL)
 
 
-def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path):
+@pytest.mark.parametrize("experiment", [run, rpca])
+def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path, experiment):
     """Exercise actual Model.val orchestration twice, stub only inference, and never consume held-out test images."""
     data = tmp_path / "data.yaml"
     data.write_text("val: images/val\ntest: images/test\n", encoding="utf-8")
@@ -172,6 +174,7 @@ def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path):
             self.jdict, self.speed = [], {}
 
         def __call__(self, model):
+            self.model = SimpleNamespace(model=model)
             assert self.args.batch == 32 and self.args.imgsz == 640 and self.args.workers == 8
             assert self.args.conf == 0.001 and self.args.iou == 0.7 and self.args.max_det == 300
             assert self.args.quantize is None and self.args.rect and not self.args.augment
@@ -183,16 +186,16 @@ def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path):
                 callback(self)
 
     def model_factory(path):
-        model = YOLO(str(run.MODEL))
+        model = YOLO(str(experiment.MODEL))
         model._smart_load = lambda key: Validator
         return model
 
     with patch.object(finish, "provenance", return_value=evidence), patch.object(
         common_finish, "YOLO", side_effect=model_factory
     ):
-        finish.evaluate_best(tmp_path, data)
+        finish.evaluate_best(tmp_path, data, experiment)
         first = json.loads((tmp_path / "evaluation.json").read_text())
-        finish.evaluate_best(tmp_path, data)
+        finish.evaluate_best(tmp_path, data, experiment)
         assert calls == ["val", "test"]
         for split, item in first["reports"].items():
             record = json.loads((tmp_path / item["path"]).read_text())
@@ -201,12 +204,12 @@ def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path):
             assert record["confusion_matrix"]["confidence"] == 0.25
             assert (tmp_path / item["path"]).with_name("predictions.json").read_text().strip() == "[]"
         evidence["weight_sha256"] = "different checkpoint"
-        finish.evaluate_best(tmp_path, data)
+        finish.evaluate_best(tmp_path, data, experiment)
         assert calls == ["val", "test", "val", "test"]
         assert len(list((tmp_path / "evaluation").glob("*/metrics.json"))) == 4
         current = json.loads((tmp_path / "evaluation.json").read_text())
         (tmp_path / current["reports"]["val"]["path"]).with_name("BoxPR_curve.png").write_bytes(b"damaged plot")
-        finish.evaluate_best(tmp_path, data)
+        finish.evaluate_best(tmp_path, data, experiment)
         assert calls == ["val", "test", "val", "test", "val"]
         assert len(list((tmp_path / "evaluation").glob("*/metrics.json"))) == 5
 
@@ -235,7 +238,8 @@ def test_v2_entry_binds_all_version_dependencies():
     assert shared.AuditedTrainer.block_type is SPPF_SIR and shared.MODEL.name.endswith("v1.yaml")
 
 
-def test_v2_package_current_reports_and_source(tmp_path):
+@pytest.mark.parametrize("experiment", [run, rpca])
+def test_v2_package_current_reports_and_source(tmp_path, experiment):
     """Verify a synthetic light archive includes both FP32 reports and v2 inheritance, excluding old outputs."""
     fixture = tmp_path / "synthetic_run"
     evidence = dict(status="", version=2)
@@ -277,14 +281,24 @@ def test_v2_package_current_reports_and_source(tmp_path):
     with patch.object(finish, "provenance", return_value=evidence), patch.object(
         finish, "evaluate_best", side_effect=AssertionError("package must not evaluate")
     ):
-        finish.package(fixture, tmp_path / "data.yaml", output)
+        finish.package(
+            fixture,
+            tmp_path / "data.yaml",
+            output,
+            experiment=experiment,
+            include_last=experiment is rpca,
+            source_files=("ultralytics/nn/modules/rpca_c2psa.py",) if experiment is rpca else (),
+        )
     with tarfile.open(output) as archive:
         names = archive.getnames()
         assert "run/weights/best.pt" in names
         assert "run/evaluation/val/metrics.json" in names and "run/evaluation/test/metrics.json" in names
         assert "source/ultralytics/nn/modules/sir_sppf.py" in names
         assert "source/ultralytics/nn/modules/sir_sppf_v2.py" in names
-        assert all("evaluation/old" not in name and not name.endswith(("last.pt", "epoch20.pt")) for name in names)
+        assert all("evaluation/old" not in name and not name.endswith("epoch20.pt") for name in names)
+        assert ("run/weights/last.pt" in names) == (experiment is rpca)
+        if experiment is rpca:
+            assert "source/ultralytics/nn/modules/rpca_c2psa.py" in names
     assert output.with_name(output.name + ".sha256").read_text().split()[0] == shared.sha256(output)
 
 

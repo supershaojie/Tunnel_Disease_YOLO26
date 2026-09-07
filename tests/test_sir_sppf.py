@@ -308,6 +308,7 @@ def test_completed_test_is_one_call_and_keeps_empty_json(tmp_path):
             self.jdict, self.speed, self.seen = [], {}, 1202
 
         def __call__(self, model):
+            self.model = SimpleNamespace(model=model)
             assert self.args.split == "test" and not self.args.exist_ok and self.args.quantize is None
             for callback in self.callbacks["on_val_end"]:
                 callback(self)
