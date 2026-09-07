@@ -107,7 +107,11 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .rsc_c2psa import Attention_RSC, C2PSA_RSC
+
 __all__ = (
+    "Attention_RSC",
+    "C2PSA_RSC",
     "AIFI",
     "C1",
     "C2",
