@@ -108,6 +108,7 @@ from .transformer import (
 )
 
 from .sir_sppf import SPPF_SIR
+from .sir_sppf_v2 import SPPF_SIR_V2
 
 __all__ = (
     "AIFI",
@@ -128,6 +129,7 @@ __all__ = (
     "SPPELAN",
     "SPPF",
     "SPPF_SIR",
+    "SPPF_SIR_V2",
     "A2C2f",
     "AConv",
     "ADown",

@@ -64,14 +64,14 @@ def completed_run(run):
     return record
 
 
-def test_best(run, data):
+def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, output=None, capture=None):
     """Evaluate once in FP32; store exact metrics and JSON from that same evaluation."""
-    evidence = provenance(run)
+    evidence = provenance(run) if evidence is None else evidence
     evidence["data_sha256"] = shared.sha256(data)
-    output = run / "test"
+    output = run / "test" if output is None else output
     settings = dict(
         data=str(data),
-        split="test",
+        split=split,
         imgsz=640,
         batch=32,
         workers=8,
@@ -84,8 +84,8 @@ def test_best(run, data):
         quantize=None,
         plots=True,
         save_json=True,
-        project=str(run),
-        name="test",
+        project=str(output.parent),
+        name=output.name,
         exist_ok=False,
         save_dir=str(output),
     )
@@ -93,12 +93,12 @@ def test_best(run, data):
     if receipt.is_file():
         previous = json.loads(receipt.read_text(encoding="utf-8"))
         if previous["settings"] == settings and previous["evidence"] == evidence:
-            print(f"Reusing completed test: {receipt}")
+            print(f"Reusing completed {split}: {receipt}")
             return previous
         raise FileExistsError(f"Conflicting test evidence, preserving: {output}")
-    output.mkdir(exist_ok=False)
+    output.mkdir(parents=True, exist_ok=False)
     model = YOLO(evidence["weight"])
-    assert type(model.model.model[9]) is SPPF_SIR
+    assert type(model.model.model[9]) is block_type
     observation = {}
 
     def capture_validation(validator):
@@ -110,9 +110,11 @@ def test_best(run, data):
             images=validator.seen,
             targets=int(validator.metrics.nt_per_class.sum()),
         )
+        if capture is not None:
+            observation.update(capture(validator))
 
     model.add_callback("on_val_end", capture_validation)
-    handler = logging.FileHandler(output / "test.log", encoding="utf-8")
+    handler = logging.FileHandler(output / f"{split}.log", encoding="utf-8")
     LOGGER.addHandler(handler)
     try:
         with redirect_stdout(shared.TeeStream(sys.stdout, handler.stream)), redirect_stderr(
@@ -205,30 +207,36 @@ def diagnose(run, data):
     )
 
 
-def package(run, output):
+def package(run, output, *, source_files=(), required_files=None, evidence=None, exclude_dirs=()):
     """Include only current-run evidence and source dependencies, then verify every archived file hash."""
     if output.exists():
         raise FileExistsError(output)
-    required = [
-        "args.yaml",
-        "results.csv",
-        "train.log",
-        "weights/best.pt",
-        "test/metrics.json",
-        "test/predictions.json",
-        "diagnostics.json",
-        "val_metrics.json",
-        "completed.json",
-    ]
+    required = (
+        required_files
+        if required_files is not None
+        else [
+            "args.yaml",
+            "results.csv",
+            "train.log",
+            "weights/best.pt",
+            "test/metrics.json",
+            "test/predictions.json",
+            "diagnostics.json",
+            "val_metrics.json",
+            "completed.json",
+        ]
+    )
     for name in required:
         if not (run / name).is_file():
             raise FileNotFoundError(run / name)
-    shared.write_json(run / "environment.json", provenance(run))
+    shared.write_json(run / "environment.json", provenance(run) if evidence is None else evidence)
     (run / "pip-freeze.txt").write_text(
         subprocess.check_output([sys.executable, "-m", "pip", "freeze"], text=True), encoding="utf-8"
     )
     files = {}
     for path in run.rglob("*"):
+        if any(folder in path.parents for folder in exclude_dirs):
+            continue
         if path.is_file() and path != run / "package_manifest.json":
             if path.suffix == ".pt" and path != run / "weights/best.pt":
                 continue
@@ -246,8 +254,12 @@ def package(run, output):
         "tools/experiments/b19_reference.json",
         "docs/experiments/b19_sir_sppf_v1.md",
         "tests/test_sir_sppf.py",
-    ]
-    for suffix in ("train.exit_status", "train.process_status.json", "train.console.log"):
+    ] + list(source_files)
+    for suffix in (
+        f"{stage}.{extension}"
+        for stage in ("preflight", "train", "test", "diagnose")
+        for extension in ("exit_status", "process_status.json", "console.log")
+    ):
         path = run.parent / f"{run.name}_{suffix}"
         if path.is_file():
             files["run/" + path.name] = path
@@ -267,7 +279,7 @@ def package(run, output):
         )
     )
     files["source.patch"] = patch
-    files.update({"source/" + name: ROOT / name for name in source})
+    files.update({"source/" + Path(name).as_posix(): ROOT / name for name in source})
     # Bundle the exact Git source tree for an independently reconstructable checkout, without datasets/runs.
     source_archive = run / "source.tar"
     subprocess.run(
@@ -286,14 +298,12 @@ def package(run, output):
     )
     files["source.tar"] = source_archive
     # Retain all core evidence and best.pt; bound optional plots before writing a light package.
-    size = sum(p.stat().st_size for p in files.values())
-    if size > 150 * 1024**2:
+    optional = [n for n, p in files.items() if p.suffix.lower() in {".png", ".jpg"} and "batch" in p.name]
+    for name in optional[8:]:
+        del files[name]
+    if sum(p.stat().st_size for p in files.values()) > 150 * 1024**2:
         print("Largest package inputs:", sorted(((p.stat().st_size, n) for n, p in files.items()), reverse=True)[:12])
-        optional = [n for n, p in files.items() if p.suffix.lower() in {".png", ".jpg"} and "batch" in p.name]
-        for name in optional[8:]:
-            del files[name]
-        if sum(p.stat().st_size for p in files.values()) > 150 * 1024**2:
-            raise ValueError("Core package inputs still exceed 150 MiB; inspect listed files before packaging")
+        raise ValueError("Core package inputs still exceed 150 MiB; inspect listed files before packaging")
     if output in [p.resolve() for p in files.values()]:
         raise ValueError("Archive must not contain itself")
     manifest = {name: shared.sha256(path) for name, path in files.items()}
@@ -316,7 +326,11 @@ def package(run, output):
             pass  # Read through the gzip footer and CRC.
     digest = shared.sha256(output)
     output.with_name(output.name + ".sha256").write_text(f"{digest}  {output.name}\n", encoding="utf-8")
-    print(json.dumps(dict(archive=str(output), sha256=digest, verified_files=len(manifest))))
+    print(
+        json.dumps(
+            dict(archive=str(output), size_bytes=output.stat().st_size, sha256=digest, verified_files=len(manifest))
+        )
+    )
 
 
 def main(argv=None):
