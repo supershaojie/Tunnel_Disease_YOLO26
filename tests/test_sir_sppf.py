@@ -101,16 +101,16 @@ def sample_images(tmp_path):
     return sorted((tmp_path / "images/train").glob("*.jpg"))
 
 
-def native_probe(device="cpu"):
+def native_probe(device="cpu", *, trainer_type=run.AuditedTrainer, model=run.MODEL):
     """Build through the same native DetectionTrainer.get_model path used by formal train."""
     root = baseline_root()
     assert run.sha256(root / "yolo26n.pt") == run.PRETRAINED_SHA256
-    trainer = object.__new__(run.AuditedTrainer)
+    trainer = object.__new__(trainer_type)
     trainer.args = get_cfg(overrides={k: v for k, v in run.REFERENCE["args"].items() if k != "save_dir"})
     trainer.data = dict(nc=1, channels=3, names={0: "crack"})
     weights, _ = load_checkpoint(root / "yolo26n.pt")
     init_seeds(42, deterministic=True)
-    trainer.model = trainer.get_model(str(run.MODEL), weights, verbose=False).to(device)
+    trainer.model = trainer.get_model(str(model), weights, verbose=False).to(device)
     trainer.device = torch.device(device)
     trainer.stride = 32
     trainer.set_model_attributes()
@@ -222,7 +222,7 @@ def test_real_crack_gradients(tmp_path):
     )
 
 
-def test_native_setup_oom_and_audit_rng(tmp_path):
+def test_native_setup_oom_and_audit_rng(tmp_path, *, trainer_type=run.AuditedTrainer, model=run.MODEL):
     """Inject OOM at the real catch boundary; verify no batch mutation, recovery pipeline or output suffix."""
     root = baseline_root()
     images = sample_images(tmp_path)
@@ -232,7 +232,7 @@ def test_native_setup_oom_and_audit_rng(tmp_path):
     YAML.save(data, dict(path=str(tmp_path), train=str(listing), val=str(listing), names={0: "crack"}))
     config = {k: v for k, v in run.REFERENCE["args"].items() if k != "save_dir"}
     config.update(
-        model=str(run.MODEL),
+        model=str(model),
         pretrained=str(root / "yolo26n.pt"),
         data=str(data),
         project=str(tmp_path),
@@ -244,7 +244,7 @@ def test_native_setup_oom_and_audit_rng(tmp_path):
         imgsz=64,
         plots=False,
     )
-    trainer = run.AuditedTrainer(overrides=config)
+    trainer = trainer_type(overrides=config)
 
     def audit(observed):
         rng = torch.get_rng_state()
@@ -267,7 +267,7 @@ def test_native_setup_oom_and_audit_rng(tmp_path):
     assert sum(len(g["parameters"]) for g in report["router_groups"]) == 6
     run.write_json(run.ROOT / "runs/sir_development/local_final_optimizer.json", report)
     with pytest.raises(FileExistsError):
-        run.AuditedTrainer(overrides=config)
+        trainer_type(overrides=config)
     assert not (tmp_path / "native_setup2").exists()
     for loader in (trainer.train_loader, trainer.test_loader):
         loader.close()

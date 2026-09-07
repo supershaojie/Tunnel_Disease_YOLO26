@@ -33,7 +33,7 @@ import torch
 from ultralytics.cfg import DEFAULT_CFG_DICT, get_cfg
 from ultralytics.data.utils import IMG_FORMATS, check_det_dataset
 from ultralytics.models.yolo.detect import DetectionTrainer
-from ultralytics.nn.modules import C3k2, SPPF_SIR
+from ultralytics.nn.modules import C2PSA, C3k2, SPPF_SIR
 from ultralytics.nn.tasks import DetectionModel, load_checkpoint
 from ultralytics.utils import LOGGER, YAML
 from ultralytics.utils.torch_utils import autocast, init_seeds
@@ -326,6 +326,8 @@ def audit_weights(baseline, candidate, weights):
 class AuditedTrainer(DetectionTrainer):
     """Use native trainer reconstruction and optimizer construction, with equality audits at both boundaries."""
 
+    block_type = SPPF_SIR
+
     def __init__(self, overrides, _callbacks=None):
         """Atomically own one output directory using the native explicit save_dir extension."""
         output = Path(overrides["project"]) / overrides["name"]
@@ -367,7 +369,8 @@ class AuditedTrainer(DetectionTrainer):
         }
         assert self.weight_audit["baseline_parameters"] == 2504190
         assert self.weight_audit["candidate_parameters"] == 2519086
-        assert type(candidate.model[4]) is C3k2 and type(candidate.model[9]) is SPPF_SIR
+        assert type(candidate.model[4]) is C3k2 and type(candidate.model[9]) is self.block_type
+        assert type(candidate.model[10]) is C2PSA
         # Native model construction performs a zero-image stride probe and updates BN identically in both models.
         with torch.random.fork_rng(devices=[]), torch.no_grad():
             baseline.eval()
@@ -472,15 +475,17 @@ def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None):
         assert a == b, f"{path}: reference={a!r}, actual={b!r}"
 
 
-def structural_checks(directory, model=MODEL, block_type=SPPF_SIR):
+@torch.random.fork_rng(devices=[])
+def structural_checks(directory, model=MODEL, block_type=SPPF_SIR, nc=80):
     """Check only layer 9 changed, nano dimensions, parameter counts, and complete zero-router outputs."""
     original = YAML.load(ROOT / "ultralytics/cfg/models/26/yolo26.yaml")
     expected = copy.deepcopy(original)
-    expected["backbone"][9][2] = "SPPF_SIR"
+    expected["backbone"][9][2] = block_type.__name__
+    expected["nc"] = nc
     assert YAML.load(model) == expected
-    init_seeds(42)
+    torch.random.default_generator.manual_seed(42)
     baseline = DetectionModel(baseline_architecture(), verbose=False).eval()
-    init_seeds(42)
+    torch.random.default_generator.manual_seed(42)
     candidate = DetectionModel(str(model), nc=1, verbose=False).eval()
     audit = audit_weights(baseline, candidate, None)
     assert audit["baseline_parameters"] == 2504190 and audit["added_parameters"] == 14896
@@ -488,6 +493,7 @@ def structural_checks(directory, model=MODEL, block_type=SPPF_SIR):
     assert candidate.yaml["scale"] == "n"
     assert [i for i, m in enumerate(candidate.model) if isinstance(m, block_type)] == [9]
     assert type(candidate.model[4]) is C3k2
+    assert type(candidate.model[10]) is C2PSA and candidate.model[-1].nc == 1
     assert candidate.model[9].n == 3 and candidate.model[9].add
     assert candidate.model[9].cv1.conv.in_channels == candidate.model[9].cv2.conv.out_channels == 256
     assert candidate.model[-1].f == baseline.model[-1].f == [16, 19, 22]
@@ -848,11 +854,11 @@ def launcher_evidence(options, raw):
     return dict(verified=True, path=str(path), sha256=sha256(path), command=command, trainer="native DetectionTrainer")
 
 
-def preflight(config, evidence, directory, block_type=SPPF_SIR):
+def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=AuditedTrainer):
     """Use full native setup, then three disposable real batch=32 AMP updates; never run an epoch."""
     directory.mkdir(parents=True, exist_ok=False)
     write_json(directory / "environment.json", evidence)
-    trainer = AuditedTrainer(overrides=dict(config, project=str(directory), name="check"))
+    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
     trainer.add_callback("on_pretrain_routine_end", final_model_audit)
     trainer._setup_train()
     if len(trainer.train_loader.dataset) != REFERENCE["dataset_counts"]["train"]:
@@ -876,7 +882,7 @@ def preflight(config, evidence, directory, block_type=SPPF_SIR):
         report["real_batches"].append(gradient_check(trainer, next(loader), bool(config["amp"])))
     norms = report["real_batches"][-1]["new_gradient_norms"]
     assert all(v > 0 for v in norms.values()), f"Earlier router layers did not learn: {norms}"
-    assert isinstance(trainer.ema.ema.model[9], block_type)
+    assert type(trainer.ema.ema.model[9]) is block_type
     assert set(trainer.model.model[9].router.state_dict()) == set(trainer.ema.ema.model[9].router.state_dict())
     report["ema"] = True
     report["reload"] = save_reload_check(trainer.ema.ema, directory, block_type)
@@ -897,7 +903,7 @@ def final_model_audit(trainer):
     router = trainer.model.model[9].router
     assert torch.count_nonzero(router[-1].weight) == torch.count_nonzero(router[-1].bias) == 0
     assert all(p.requires_grad for p in router.parameters())
-    assert isinstance(trainer.ema.ema.model[9], SPPF_SIR)
+    assert type(trainer.ema.ema.model[9]) is trainer.block_type
     write_json(trainer.save_dir / "provenance/final_optimizer.json", audit_optimizer(trainer))
     write_json(trainer.save_dir / "provenance/final_weight_audit.json", trainer.weight_audit)
     del trainer.initial_common
@@ -931,11 +937,29 @@ def record_completion(trainer):
     )
 
 
-def main(argv=None):
+def source_hashes(extra=()):
+    """Fingerprint model code, configuration, and explicit experiment entry dependencies."""
+    paths = (
+        sorted((ROOT / "ultralytics").rglob("*.py"))
+        + sorted((ROOT / "ultralytics/cfg").rglob("*.yaml"))
+        + [Path(__file__), Path(__file__).with_name("b19_reference.json"), *map(Path, extra)]
+    )
+    return {str(p.relative_to(ROOT)): sha256(p) for p in paths}
+
+
+def main(
+    argv=None,
+    *,
+    model=MODEL,
+    trainer_type=AuditedTrainer,
+    entrypoint=Path(__file__).resolve(),
+    name="yolo26n_b19_d1_sir_sppf_v1",
+    source_files=(),
+    structure_check=structural_checks,
+    module_config=MODULE_CONFIG,
+):
     """Resolve and run the sole SIR candidate; missing server evidence never becomes a passing receipt."""
-    model = MODEL
-    block_type = SPPF_SIR
-    entrypoint = Path(__file__).resolve()
+    block_type = trainer_type.block_type
     parser = argparse.ArgumentParser(description=f"Audited b19 experiment: {block_type.__name__}")
     parser.add_argument(
         "--baseline-root", type=Path, required=True, help="Original b19 project root; never the SIR worktree"
@@ -947,7 +971,7 @@ def main(argv=None):
     )
     parser.add_argument("--baseline-launcher", type=Path, help="Original expanded native b19 CLI command/script")
     parser.add_argument("--stage", choices=("preflight", "train"), required=True)
-    parser.add_argument("--name", default="yolo26n_b19_d1_sir_sppf_v1")
+    parser.add_argument("--name", default=name)
     parser.add_argument(
         "--project", type=Path, help="Independent SIR output project; defaults to this worktree/runs/detect"
     )
@@ -969,22 +993,19 @@ def main(argv=None):
     handler = logging.FileHandler(check_root / f"{options.stage}.log", encoding="utf-8")
     LOGGER.addHandler(handler)
     try:
-        structural_checks(check_root, model, block_type)
+        structure_check(check_root, model, block_type)
         raw, config, evidence = resolve_recipe(options, model)
         launcher = launcher_evidence(options, raw)
         evidence["launch_evidence"] = launcher
         # Fingerprint all package/entry source bytes, even before the final commit, and data manifest metadata.
-        source_paths = (
-            sorted((ROOT / "ultralytics").rglob("*.py"))
-            + sorted((ROOT / "ultralytics/cfg").rglob("*.yaml"))
-            + [
-                Path(__file__),
+        evidence["source_sha256"] = source_hashes(
+            [
+                entrypoint,
                 Path(__file__).with_name("server_b19_sir_sppf_v1.sh"),
                 Path(__file__).with_name("finish_b19_sir_sppf.py"),
-                Path(__file__).with_name("b19_reference.json"),
+                *source_files,
             ]
         )
-        evidence["source_sha256"] = {str(p.relative_to(ROOT)): sha256(p) for p in source_paths}
         signature = hashlib.sha256(json.dumps([config, evidence], sort_keys=True).encode()).hexdigest()
         check_dir = check_root / signature[:20]
         write_json(check_root / "resolved.json", dict(config=config, evidence=evidence, fingerprint=signature))
@@ -995,7 +1016,7 @@ def main(argv=None):
             )
         )
         # Always audit native Trainer.get_model locally, even if the server environment or launch evidence is missing.
-        probe = object.__new__(AuditedTrainer)
+        probe = object.__new__(trainer_type)
         probe.args = get_cfg(overrides=config)
         probe.data = {"nc": 1, "channels": 3, "names": {0: "crack"}}
         weights, _ = load_checkpoint(evidence["initial_path"])
@@ -1029,13 +1050,15 @@ def main(argv=None):
                 value = getattr(options, attr)
                 if value is not None:
                     command.extend(["--" + attr.replace("_", "-"), str(value)])
-            subprocess.run([sys.executable, str(entrypoint), *command], cwd=ROOT, check=True)
+            result = subprocess.run([sys.executable, str(entrypoint), *command], cwd=ROOT)
+            write_json(check_root / "preflight_process_status.json", dict(python=result.returncode, stage="preflight"))
+            result.check_returncode()
         if options.stage == "preflight":
             if not receipt.is_file():
                 if check_dir.exists():
                     # Preserve a failed attempt's logs; a new attempt never reuses its training state.
                     check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
-                preflight(config, evidence, check_dir, block_type)
+                preflight(config, evidence, check_dir, block_type, trainer_type)
                 write_json(check_dir / "passed.json", dict(fingerprint=signature, passed=True))
                 # A retry is referenced, not copied over earlier evidence.
                 if check_dir / "passed.json" != receipt:
@@ -1049,7 +1072,7 @@ def main(argv=None):
         if issues:
             raise RuntimeError("Resources/environment changed after preflight: " + "; ".join(issues))
         # Start from the b19 seed in a fresh trainer; no disposable batch/model/optimizer/EMA is reused.
-        trainer = AuditedTrainer(overrides=config)
+        trainer = trainer_type(overrides=config)
         provenance = trainer.save_dir / "provenance"
         shutil.copytree(Path(passed.get("report_dir", check_dir)), provenance)
         shutil.copy2(evidence["args_path"], provenance / "b19_original_args.yaml")
@@ -1057,7 +1080,7 @@ def main(argv=None):
         shutil.copy2(launcher["path"], provenance / "b19_launcher_expanded.txt")
         shutil.copy2(evidence["data_path"], provenance / "original_data.yaml")
         YAML.save(provenance / "sir_effective.yaml", config)
-        write_json(provenance / "module.json", MODULE_CONFIG)
+        write_json(provenance / "module.json", module_config)
         write_json(provenance / "resolved.json", evidence)
         trainer.add_callback("on_pretrain_routine_end", final_model_audit)
         trainer.add_callback("on_train_end", record_completion)
