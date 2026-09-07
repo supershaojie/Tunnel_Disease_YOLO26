@@ -75,5 +75,67 @@
     "bash -n",
     "fresh-process EMA reload",
     "source baseline kept at4a1b167"
-  ]
+  ],
+  "validator_fix_regression": {
+    "scope": "LOCAL SYNTHETIC WINDOWS RTX2060 ONLY; no RTX4090 TF32 or real-data server pass claimed",
+    "base_commit": "1e9ad5aae54e5d7e849bf403f33ca6fa2586ab54",
+    "tests": {
+      "passed": 14,
+      "skipped": 1,
+      "skip": "Unchanged evaluation/diagnose/package integration opt-in"
+    },
+    "log": "runs/dsd_development/dsd_fix_regression_v2.log",
+    "native_training_fixture": {
+      "batch": 2,
+      "imgsz": 128,
+      "amp": true,
+      "optimizer": "MuSGD",
+      "grad_scaler": true,
+      "warmup_accumulation_clipping_ema": true
+    },
+    "validator_input": [32, 3, 128, 160],
+    "validator_cases": {
+      "ambient_native": {
+        "equivalent_at_1e_4": true,
+        "p3_p4_p5_gpu_fusion_max_abs": [
+          0.00010395050048828125, 7.581710815429688e-5, 2.193450927734375e-5
+        ]
+      },
+      "ambient_dsd": {
+        "equivalent_at_1e_4": true,
+        "p3_p4_p5_gpu_fusion_max_abs": [
+          0.00010013580322265625, 7.581710815429688e-5, 2.193450927734375e-5
+        ]
+      },
+      "strict_native": {
+        "equivalent_at_1e_4": true,
+        "p3_p4_p5_gpu_fusion_max_abs": [
+          0.00010395050048828125, 7.581710815429688e-5, 2.193450927734375e-5
+        ]
+      },
+      "strict_dsd": {
+        "equivalent_at_1e_4": true,
+        "p3_p4_p5_gpu_fusion_max_abs": [
+          0.00010013580322265625, 7.581710815429688e-5, 2.193450927734375e-5
+        ]
+      }
+    },
+    "source_unchanged": true,
+    "settings_restored": true,
+    "rng_restored": true,
+    "injected_P4_fusion_error": {
+      "correctly_rejected": true,
+      "strict_native_still_passed": true,
+      "failure_report_preserved": true,
+      "source_and_settings_restored": true
+    },
+    "source_sha256": {
+      "tools/experiments/dsd_validator.py": "6f864e49cd1b1bd5d9cd7fba5f5037a9eb6eae0c38050e0c1ead1d22be3ef512",
+      "tools/experiments/dsd_preflight.py": "7653e564f1d760590e95f227a0d14d36f6878d535cccb2520f4dc1d80e958ad7",
+      "tools/experiments/b19_common.py": "c4fc7a752cbf71413ae775140267fa3c8bfd731957f899ac7f60deafe68ac27b",
+      "tools/experiments/run_b19_dsd_head.py": "3bb68ee58a1ba37ba1d67a781d10ffb2944a2061c00f5e4d231595f91a190969",
+      "tests/test_dsd_head.py": "bbf6848a5a4163ebde1ee74710201e0d390fb32fd294ac1d491a7ec73bd5da04"
+    },
+    "server_rerun": "Required; user executes unchanged real b19 batch=32 preflight. Existing failed attempts remain intact."
+  }
 }

@@ -27,6 +27,7 @@ SOURCE_FILES = tuple(
         "tools/experiments/b19_common.py",
         "tools/experiments/b19_finish.py",
         "tools/experiments/dsd_preflight.py",
+        "tools/experiments/dsd_validator.py",
         "tools/experiments/finish_b19_dsd_head.py",
         "tools/experiments/server_b19_dsd_head_v1.sh",
         "tools/experiments/b19_launcher_expanded.txt",

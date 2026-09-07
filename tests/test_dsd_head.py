@@ -13,7 +13,8 @@ import pytest
 import torch
 
 from tools.experiments import b19_common as shared
-from tools.experiments.dsd_preflight import preflight_batches, routing_checks, validator_check
+from tools.experiments.dsd_preflight import preflight_batches, routing_checks
+from tools.experiments.dsd_validator import model_identity, raw_comparison, validator_check
 from tools.experiments.run_b19_dsd_head import MODEL, AuditedTrainer, structural_checks
 from ultralytics.cfg import get_cfg
 from ultralytics.nn.modules import DSDAdapter
@@ -125,8 +126,46 @@ def test_reject_recipe_changes_and_missing_record(tmp_path):
         shared.resolve_recipe(SimpleNamespace(baseline_root=tmp_path, baseline_args=path))
 
 
+def test_comparison_precision_restored_on_error():
+    """The diagnostic owns fusion/forward precision and restores even non-default caller policy after failure."""
+    original = shared.computation_conditions()
+    try:
+        torch.set_float32_matmul_precision("high")
+        torch.backends.cudnn.allow_tf32 = True
+        ambient = shared.computation_conditions()
+        with pytest.raises(RuntimeError, match="diagnostic failure"):
+            with shared.reload_context(device="cuda" if torch.cuda.is_available() else "cpu"):
+                assert torch.get_float32_matmul_precision() == "highest"
+                assert not torch.backends.cuda.matmul.allow_tf32 and not torch.backends.cudnn.allow_tf32
+                raise RuntimeError("diagnostic failure")
+        assert shared.computation_conditions() == ambient
+    finally:
+        torch.set_float32_matmul_precision(original["float32_matmul_precision"])
+        torch.backends.cudnn.allow_tf32 = original["cudnn_allow_tf32"]
+
+
+def test_all_scales_reported_after_first_mismatch():
+    """A P3 failure must not hide P4/P5 or scores; use the reported server anchor counts."""
+    before = dict(
+        boxes=torch.zeros(32, 4, 5292),
+        scores=torch.zeros(32, 1, 5292),
+        feats=[torch.zeros(32, 1, h, w) for h, w in ((56, 72), (28, 36), (14, 18))],
+    )
+    after = copy.deepcopy(before)
+    after["boxes"][..., :4032] = 1
+    after["boxes"][0, 0, 4032] = 0.4
+    after["scores"][0, 0, -1] = 0.1
+    rows = []
+    raw_comparison(before, after, rows, "injected")
+    by_path = {r["path"]: r for r in rows}
+    assert by_path["injected.P3.boxes"]["outside_tolerance"] == 516096
+    assert by_path["injected.P4.boxes"]["outside_tolerance"] == 1
+    assert by_path["injected.P5.boxes"]["outside_tolerance"] == 0
+    assert by_path["injected.P5.scores"]["outside_tolerance"] == 1
+
+
 @pytest.mark.skipif(os.environ.get("DSD_RUN_NATIVE_SMOKE") != "1", reason="Explicit local native CUDA smoke")
-def test_native_amp_updates_and_validator(tmp_path):
+def test_native_amp_updates_and_validator(tmp_path, monkeypatch):
     """Development-only batch=2/128 smoke; never creates a server batch=32 preflight receipt."""
     if not torch.cuda.is_available():
         pytest.skip("CUDA required")
@@ -165,7 +204,42 @@ def test_native_amp_updates_and_validator(tmp_path):
         assert len(report["adapter_preflight"]["first_effective_gradient"]) == 12
         assert set(trainer.model.state_dict()) == set(trainer.ema.ema.state_dict())
         # The Validator itself still receives an actual batch=32 in FP32 through its native loader/backend.
-        assert validator_check(trainer.ema.ema, trainer, tmp_path)["passed"]
+        identity = model_identity(trainer.ema.ema)
+        conditions = shared.computation_conditions()
+        result = validator_check(trainer.ema.ema, trainer, tmp_path)
+        assert result["passed"] and result["settings_restored"] and result["source_unchanged"]
+        assert set(result["cases"]) == {"ambient_native", "ambient_dsd", "strict_native", "strict_dsd"}
+        assert all(c["equivalent_at_1e_4"] for k, c in result["cases"].items() if k.startswith("strict"))
+        for name, case in result["cases"].items():
+            assert case["images"] == 32 and case["input"]["dtype"] == "torch.float32"
+            assert case["same_state_and_independent_storage"] and case["reference_unchanged"]
+            assert len(case["scale_shapes"]) == 3
+            if "dsd" in name:
+                assert len(case["adapter_calls"]) == 2 and all(c["changed"] > 0 for c in case["adapter_calls"])
+        assert model_identity(trainer.ema.ema) == identity and shared.computation_conditions() == conditions
+
+        # Deliberate P4 implementation error MUST fail strict validation and retain the complete diagnostic.
+        from ultralytics.nn.modules import DSDDetect
+
+        native_fuse = DSDDetect.fuse
+
+        def broken_fuse(head):
+            native_fuse(head)
+            with torch.no_grad():
+                head.one2one_cv2[1][-1].bias.add_(0.1)
+
+        monkeypatch.setattr(DSDDetect, "fuse", broken_fuse)
+        failure_dir = tmp_path / "injected_failure"
+        failure_dir.mkdir()
+        with pytest.raises(AssertionError, match="Validator numerical contract failed"):
+            validator_check(trainer.ema.ema, trainer, failure_dir)
+        failed = json.loads((failure_dir / "validator_check.json").read_text())
+        assert not failed["passed"] and failed["source_unchanged"] and failed["settings_restored"]
+        assert failed["cases"]["strict_native"]["equivalent_at_1e_4"]
+        assert any(
+            r["path"] == "gpu_fused.P4.boxes" and r["outside_tolerance"] > 0
+            for r in failed["cases"]["strict_dsd"]["comparisons"]
+        )
     finally:
         for name in ("train_loader", "test_loader"):
             loader = getattr(trainer, name, None)

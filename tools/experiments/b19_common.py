@@ -453,8 +453,8 @@ def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None):
 
 
 @contextmanager
-def reload_context():
-    """Own CPU reference/reload computation settings locally and restore the caller even on failure."""
+def reload_context(device="cpu"):
+    """Own reference/reload arithmetic, including fusion, and restore the caller even on failure."""
     threads = torch.get_num_threads()
     precision = torch.get_float32_matmul_precision()
     deterministic = torch.are_deterministic_algorithms_enabled()
@@ -464,7 +464,7 @@ def reload_context():
         torch.set_float32_matmul_precision("highest")
         torch.use_deterministic_algorithms(True)
         with torch.random.fork_rng(devices=[]), torch.no_grad(), autocast(
-            False, device="cpu"
+            False, device=device
         ), torch.backends.mkldnn.flags(enabled=True, deterministic=True), torch.backends.cudnn.flags(
             enabled=True, benchmark=False, deterministic=True, allow_tf32=False
         ):
@@ -813,7 +813,7 @@ def preflight(config, evidence, directory, block_type=DSDDetect, trainer_type=Au
     assert trainer.ema.updates == attempts  # Native EMA also advances when GradScaler skips an optimizer step.
     assert all(torch.isfinite(t).all() for t in trainer.ema.ema.state_dict().values())
     report["ema"] = True
-    from tools.experiments.dsd_preflight import validator_check
+    from tools.experiments.dsd_validator import validator_check
 
     report["validator"] = validator_check(trainer.ema.ema, trainer, directory)
     report["reload"] = save_reload_check(

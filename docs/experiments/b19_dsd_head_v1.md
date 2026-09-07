@@ -93,10 +93,51 @@ Zero first-layer gradients before the zero final projection learns are expected.
 task path within 64 batches fails with evidence. Native early warmup may still use accumulation=1; the exact
 observed accumulation is logged, without accelerating the schedule.
 
-Preflight also checks one actual validation batch=32 through the real FP32 Validator/AutoBackend, comparing the
-retained raw branch and decoded anchors against an unfused reference. A separate process reloads an FP16 EMA
+Preflight also checks one actual validation batch=32 through the real FP32 Validator/AutoBackend with the
+numerical controls below. A separate process reloads an FP16 EMA
 snapshot, checks exact state and raw outputs under matched CPU FP32 conditions, fuses it and runs prediction.
 Near-tied top-k outputs are compared by anchor identity in the small reload probe.
+
+### Validator numerical controls
+
+The failure reported at `1e9ad5aae54e5d7e849bf403f33ca6fa2586ab54` compared two independent copies of the
+**same post-update DSD EMA**, not an updated DSD against its initial native baseline. Both were FP32/eval,
+but the check did not own the arithmetic policy during GPU fusion and forward. PyTorchBackend fuses a supplied
+GPU module in place; native Conv/BN folding uses `torch.mm`. The usual CPU checkpoint route folds before GPU
+transfer. A tensor's FP32 dtype alone does not rule out TF32 in either matrix multiplication or convolution.
+See the [PyTorch CUDA precision documentation](https://docs.pytorch.org/docs/2.8/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices).
+The server's raw-box error cannot be explained by decode cancellation or top-k ordering. The old log alone
+does not uniquely establish whether weight folding or convolution execution caused it.
+
+`dsd_validator.py` now owns the comparison lifecycle. It removes the old first-mismatch-only hook and reuses
+the existing reference arithmetic context and tensor comparison reporter. The added controls are necessary
+to distinguish state/implementation errors from backend arithmetic; deleting the assertion cannot provide
+that evidence. No model, native fusion implementation, training option or evaluation recipe is changed.
+
+- One native b19 Detect graph receives the exact common EMA parameters **and BN buffers**. It is a numerical
+  control, not an independently trained b19 or an adapter-off training ablation. Initial equality still uses
+  fresh, untrained native/DSD models in the separate initialization checks.
+- Native and DSD each run the real Validator with automatic GPU fusion, an unfused reference and a separate
+  CPU-fused reference transferred to the GPU. Every comparison uses the same complete FP32 batch=32, verified
+  by the input hash. Model state hashes, modes, gradient flags and independent storage are checked.
+- All controls run under ambient precision and again under strict FP32 with autocast and both TF32 switches
+  disabled **before fusion**. The context restores precision, deterministic settings, threads and RNG on success
+  or failure. Formal AMP/MuSGD training remains unchanged and starts in its own freshly seeded process.
+- `validator_check.json` retains every scale's actual feature shape, box element count, boxes/scores/features
+  errors, GPU-versus-CPU fused state errors and graph/head layer errors. Layer traces retain the first and worst
+  box/score images from complete batch forwards to limit diagnostic memory. No batch is reduced. The report
+  is also written on failure, within the new preflight evidence directory; previous evidence is preserved.
+- Acceptance keeps the original raw `atol=rtol=1e-4` for **both** strict native and strict DSD comparisons.
+  Dense box tolerances are propagated through the existing affine decoder. Repeated unfused forwards and
+  real Validator/fused forwards must match exactly, including in ambient mode; native postprocessing must
+  match its own dense predictions exactly. Ambient fusion discrepancies are retained as failed numerical
+  comparisons, never relabelled equivalent or accepted via a larger tolerance.
+- The fused one-to-one adapter is observed on the actual Validator call and its repeat. Existing detach,
+  independent optimizer/EMA, effective-update gradient and fresh-process save/reload checks remain mandatory.
+
+Local synthetic regression injects a deliberate P4 fusion error: strict validation must reject it, leave the
+source EMA/settings unchanged and retain the scale reports. The Windows RTX2060 lacks TF32 tensor cores;
+local success cannot establish the cause of the RTX4090 failure or stand in for the user's real-data preflight.
 
 Formal training uses a separate process from disposable preflight state and native trainer seeding is repeated.
 Only this experiment's lock is acquired. Other GPU jobs are reported and remain running. The server must match
