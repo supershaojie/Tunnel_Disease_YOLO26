@@ -1,0 +1,79 @@
+{
+  "scope": "Local Windows development validation; NOT a successful fixed server preflight and NOT trained experiment results.",
+  "tested_implementation": "4dfd38dc1db847975fe8924737b1bb52b1dbea52",
+  "core_tests": {
+    "passed": 11,
+    "skipped": 1,
+    "log": "runs/dsd_development/pytest"
+  },
+  "native_cuda_smoke": {
+    "passed": true,
+    "batch": 2,
+    "imgsz": 128,
+    "synthetic_images": 128,
+    "optimizer": "MuSGD",
+    "amp": true,
+    "grad_scaler": true,
+    "clipping": 10,
+    "ema": true,
+    "observed_accumulation": [1, 2],
+    "actual_optimizer_steps": 2,
+    "attempted_optimizer_steps": 7,
+    "first_task_weight_update": {
+      "model.23.reg_adapter.coeff.4.weight": 4,
+      "model.23.one2one_reg_adapter.coeff.4.weight": 4
+    },
+    "later_finite_nonzero_gradient": {
+      "model.23.reg_adapter.coeff.0.weight": 10,
+      "model.23.reg_adapter.coeff.0.bias": 10,
+      "model.23.reg_adapter.coeff.2.weight": 10,
+      "model.23.reg_adapter.coeff.2.bias": 10,
+      "model.23.reg_adapter.coeff.4.weight": 10,
+      "model.23.reg_adapter.coeff.4.bias": 10,
+      "model.23.one2one_reg_adapter.coeff.0.weight": 10,
+      "model.23.one2one_reg_adapter.coeff.0.bias": 10,
+      "model.23.one2one_reg_adapter.coeff.2.weight": 10,
+      "model.23.one2one_reg_adapter.coeff.2.bias": 10,
+      "model.23.one2one_reg_adapter.coeff.4.weight": 10,
+      "model.23.one2one_reg_adapter.coeff.4.bias": 10
+    },
+    "validator": {
+      "passed": true,
+      "images": 32,
+      "precision": "FP32",
+      "input_shapes": [[32, 3, 128, 160]],
+      "fused_one2one_verified": true,
+      "dense_decoded_close": true,
+      "split": "val"
+    }
+  },
+  "fp32_finish_smoke": {
+    "passed": true,
+    "val_images": 32,
+    "test_images": 32,
+    "fixed_diagnostic_images": 16,
+    "archive_size": 14631361,
+    "archive_sha256": "1952803db8ea4a5623aafea8516697363b349b78b86dd158919b7c63e8c54717",
+    "archive_scope": "SYNTHETIC TEST FIXTURE; not a training result"
+  },
+  "real_b19_local_recipe": {
+    "args_launcher_data_original_weights_audited": true,
+    "common_items": 708,
+    "transferred_items": 606,
+    "local_process_exit": 2,
+    "formal_server_preflight_passed": false,
+    "reasons": [
+      "RTX2060 6GiB, not RTX4090",
+      "Python3.11.15, not3.12.3",
+      "torch2.7.1+cu118, not2.8.0+cu128",
+      "free memory below8GiB"
+    ]
+  },
+  "checks": [
+    "Ruff0.11.13",
+    "Prettier3.6.2",
+    "bash -n",
+    "fresh-process EMA reload",
+    "source baseline kept at4a1b167"
+  ]
+}

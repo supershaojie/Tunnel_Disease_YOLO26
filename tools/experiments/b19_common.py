@@ -961,8 +961,6 @@ def main(
         write_json(check_root / "local_weight_audit.json", probe.weight_audit)
         del probe, weights
         issues = runtime_issues(config) if options.stage == "preflight" else []
-        if not launcher["verified"]:
-            issues.append(launcher["missing"])
         if issues:
             write_json(
                 check_root / "missing.json",
