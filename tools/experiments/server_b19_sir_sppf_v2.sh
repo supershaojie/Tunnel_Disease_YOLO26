@@ -3,7 +3,8 @@
 set -euo pipefail
 WORK="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 BASE=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26
-NAME=yolo26n_b19_d1_sir_sppf_v2
+NAME="${EXPERIMENT_NAME:-yolo26n_b19_d1_sir_sppf_v2}"
+ENTRY="${EXPERIMENT_ENTRY:-sir_sppf_v2}"
 PROJECT="$WORK/runs/detect"
 RUN="$PROJECT/$NAME"
 STAGE="${1:-train}"
@@ -25,12 +26,17 @@ if [[ "$STAGE" == train && -e "$RUN" ]]; then
     exit 3
 fi
 ATTEMPT="$(mktemp -d "$PROJECT/${NAME}_${STAGE}.attempt.XXXXXXXX")"
+for suffix in exit_status process_status.json; do
+    current="$PROJECT/${NAME}_${STAGE}.$suffix"
+    if [[ -f "$current" ]]; then mv -- "$current" "$ATTEMPT/previous.$suffix"; fi
+done
+printf '%s\n' "$ATTEMPT" > "$PROJECT/${NAME}_${STAGE}.current_attempt"
 date -Is > "$ATTEMPT/started.txt"
-git rev-parse HEAD > "$ATTEMPT/commit.txt"
+git -c "safe.directory=$WORK" rev-parse HEAD > "$ATTEMPT/commit.txt"
 run_stage() {
     case "$STAGE" in
         preflight|train)
-            "$B19_PYTHON" -u "$WORK/tools/experiments/run_b19_sir_sppf_v2.py" \
+            "$B19_PYTHON" -u "$WORK/tools/experiments/run_b19_${ENTRY}.py" \
                 --baseline-root "$BASE" \
                 --baseline-args "$BASE/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42/args.yaml" \
                 --pretrained "$BASE/yolo26n.pt" \
@@ -39,7 +45,7 @@ run_stage() {
                 --stage "$STAGE" --name "$NAME" --project "$PROJECT"
             ;;
         test|diagnose|package)
-            "$B19_PYTHON" -u "$WORK/tools/experiments/finish_b19_sir_sppf_v2.py" --stage "$STAGE" --run "$RUN"
+            "$B19_PYTHON" -u "$WORK/tools/experiments/finish_b19_${ENTRY}.py" --stage "$STAGE" --run "$RUN"
             ;;
     esac
 }

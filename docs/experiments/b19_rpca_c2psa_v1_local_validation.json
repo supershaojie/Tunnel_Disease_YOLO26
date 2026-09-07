@@ -1,0 +1,79 @@
+{
+  "local_only": true,
+  "formal_preflight": false,
+  "tests_passed": 50,
+  "environment": {
+    "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Jun 11 2026, 15:12:53) [MSC v.1942 64 bit (AMD64)]",
+    "executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
+    "torch": "2.7.1+cu118",
+    "torch_path": "D:\\miniconda3\\envs\\yolo26\\Lib\\site-packages\\torch\\__init__.py",
+    "ultralytics": "8.4.98",
+    "ultralytics_path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rpca-c2psa-v1\\ultralytics\\__init__.py",
+    "threads": 1,
+    "interop_threads": 6,
+    "omp": "1",
+    "mkl": null,
+    "mkldnn": true,
+    "mkldnn_deterministic": true,
+    "mkldnn_allow_tf32": null,
+    "float32_matmul_precision": "highest",
+    "matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "deterministic": true,
+    "deterministic_warn_only": false,
+    "grad_enabled": false,
+    "cpu_autocast": false,
+    "model_devices": ["cpu"],
+    "model_float_dtypes": ["torch.float32"],
+    "all_eval": true,
+    "input": {
+      "shape": [1, 3, 64, 96],
+      "dtype": "torch.float32",
+      "device": "cpu",
+      "sha256": "67e7a5c183638e099a318aebc063df25e750cd75120fe379172538eec42c6349"
+    }
+  },
+  "common_tensors": 708,
+  "pretrained_tensors": 606,
+  "baseline_parameters": 2504190,
+  "rpca_parameters": 2506448,
+  "added_parameters": 2258,
+  "real_data_probe": {
+    "batch": 2,
+    "imgsz": 640,
+    "amp": true,
+    "optimizer": "MuSGD",
+    "steps": 3,
+    "losses": [22.10883331298828, 24.720947265625, 21.961776733398438],
+    "seconds": [18.543164500002604, 1.5326296999992337, 1.1623236999985238],
+    "peak_allocated_bytes": 401231872,
+    "third_step_gate_gradients": {
+      "model.10.m.0.gate.0.weight": 4.056388570461422e-5,
+      "model.10.m.0.gate.0.bias": 4.385703050502343e-6,
+      "model.10.m.0.gate.2.weight": 8.003907169040758e-6,
+      "model.10.m.0.gate.2.bias": 1.199964481202187e-5,
+      "model.10.m.0.gate.4.weight": 0.006136036477982998,
+      "model.10.m.0.gate.4.bias": 0.015371384099125862
+    }
+  },
+  "reload": {
+    "state_tensors": 714,
+    "raw_max_abs": 0.0,
+    "fused_by_anchor_max_abs": 8.392333984375e-5
+  },
+  "server_pending": [
+    "batch32/imgsz640/AMP/MuSGD preflight on RTX4090",
+    "one 200 epoch/patience60 training",
+    "independent FP32 val and test",
+    "trained validation diagnosis",
+    "final result archive"
+  ],
+  "native_fp32_validator_smoke": {
+    "source": "two copied real training images in temporary val/test splits",
+    "actual_images_per_split": 2,
+    "actual_parameter_dtype": "torch.float32",
+    "full_val_test_metrics": false
+  }
+}

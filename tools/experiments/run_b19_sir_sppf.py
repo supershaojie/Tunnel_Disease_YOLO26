@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import traceback
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -107,10 +108,10 @@ def architecture_signature(cfg):
 
 
 def resolve_recipe(options, model=MODEL):
-    """Validate the archived b19 recipe and classify every allowed SIR difference."""
+    """Validate the archived b19 recipe and classify every allowed candidate difference."""
     root = options.baseline_root.resolve()
     if Path(ultralytics.__file__).resolve().parent != ROOT / "ultralytics":
-        raise RuntimeError(f"Ultralytics import is outside the SIR worktree: {ultralytics.__file__}")
+        raise RuntimeError(f"Ultralytics import is outside the experiment worktree: {ultralytics.__file__}")
     path, raw = find_baseline(root, options.baseline_args)
     recovered = path is None
     if recovered:
@@ -158,7 +159,7 @@ def resolve_recipe(options, model=MODEL):
     if options.pretrained_sha256.lower() != PRETRAINED_SHA256 or sha256(source) != PRETRAINED_SHA256:
         raise ValueError("Initial weight does not match the supplied original b19 SHA-256.")
     if source.name.lower() in {"best.pt", "last.pt"}:
-        raise ValueError("Do not initialize SIR from a b19 trained checkpoint.")
+        raise ValueError("Do not initialize an experiment from a b19 trained checkpoint.")
     # Native check_amp resolves this literal filename in cwd. Seed its cache with the verified original,
     # so a fresh worktree never downloads a different auxiliary checkpoint during native trainer setup.
     amp_weight = ROOT / "yolo26n.pt"
@@ -190,7 +191,7 @@ def resolve_recipe(options, model=MODEL):
         exist_ok=False,
     )
     effective = vars(get_cfg(overrides=effective))
-    differences = {k: {"b19": raw.get(k), "sir": v} for k, v in effective.items() if raw.get(k) != v}
+    differences = {k: {"b19": raw.get(k), "candidate": v} for k, v in effective.items() if raw.get(k) != v}
     illegal = set(differences) - metadata_keys
     # New default fields must be exposed rather than silently accepted across source versions.
     if illegal:
@@ -218,8 +219,7 @@ def resolve_recipe(options, model=MODEL):
         import_path=ultralytics.__file__,
         python=sys.version,
         executable=sys.executable,
-        omp_num_threads=os.environ.get("OMP_NUM_THREADS"),
-        torch_num_threads=torch.get_num_threads(),
+        numerical_backend=computation_conditions(),
         ultralytics=ultralytics.__version__,
         torch=torch.__version__,
         cuda=torch.version.cuda,
@@ -270,7 +270,7 @@ def resolve_recipe(options, model=MODEL):
     return raw, effective, evidence
 
 
-def audit_weights(baseline, candidate, weights):
+def audit_weights(baseline, candidate, weights, new_prefix="model.9.router.", layer=9):
     """Require every common initialized tensor and every matching source tensor to be identical."""
     bsd, csd = baseline.state_dict(), candidate.state_dict()
     source = weights.float().state_dict() if weights is not None else {}
@@ -280,7 +280,9 @@ def audit_weights(baseline, candidate, weights):
     loaded, unmatched = [], {}
     for key, tensor in source.items():
         if key not in csd:
-            unmatched[key] = "absent in both target-nc baseline and SIR" if key not in bsd else "unexpected missing key"
+            unmatched[key] = (
+                "absent in both target-nc baseline and candidate" if key not in bsd else "unexpected missing key"
+            )
         elif tensor.shape != csd[key].shape:
             if not key.startswith("model.23."):
                 raise AssertionError(f"Non-head shape mismatch: {key}")
@@ -294,7 +296,7 @@ def audit_weights(baseline, candidate, weights):
                 raise AssertionError(f"Matching pretrained tensor was not loaded: {key}")
             loaded.append(key)
     new = {k: list(v.shape) for k, v in candidate.named_parameters() if k not in bsd}
-    if not new or any(not k.startswith("model.9.router.") for k in new):
+    if not new or any(not k.startswith(new_prefix) for k in new):
         raise AssertionError(f"Unexpected added parameter locations: {new}")
     groups = {}
     for group, indices in (("backbone", range(11)), ("neck", range(11, 23)), ("head", range(23, 24))):
@@ -314,7 +316,8 @@ def audit_weights(baseline, candidate, weights):
         groups=groups,
         unmatched_source_keys=unmatched,
         new_parameters=new,
-        target_original_keys=[k for k in bsd if k.startswith("model.9.")],
+        target_original_keys=[k for k in bsd if k.startswith(f"model.{layer}.")],
+        common_tensor_keys=list(bsd),
         all_common_tensors_equal=True,
         rng_strategy="fork CPU RNG only for new CPU branch construction",
         baseline_parameters=sum(p.numel() for p in baseline.parameters()),
@@ -327,6 +330,16 @@ class AuditedTrainer(DetectionTrainer):
     """Use native trainer reconstruction and optimizer construction, with equality audits at both boundaries."""
 
     block_type = SPPF_SIR
+    layer = 9
+    new_marker = ".router."
+    new_parameters = 14896
+    gradient_markers = ("model.9.router.",)
+
+    def validate_new(self):
+        """Check the candidate-specific initialization after native trainer setup."""
+        router = self.model.model[self.layer].router
+        assert torch.count_nonzero(router[-1].weight) == torch.count_nonzero(router[-1].bias) == 0
+        assert all(p.requires_grad for p in router.parameters())
 
     def __init__(self, overrides, _callbacks=None):
         """Atomically own one output directory using the native explicit save_dir extension."""
@@ -351,7 +364,7 @@ class AuditedTrainer(DetectionTrainer):
         if value:
             error = sys.exc_info()[1]
             if error is None:
-                raise RuntimeError("SIR fixed-batch training forbids memory recovery retries")
+                raise RuntimeError("Experiment fixed-batch training forbids memory recovery retries")
             raise error
 
     def get_dataset(self):
@@ -393,7 +406,9 @@ def audit_optimizer(trainer):
     """Check the final optimizer includes the router and all effective new parameters, and matches native b19 settings."""
     ids = {id(p) for group in trainer.optimizer.param_groups for p in group["params"]}
     missing = [
-        k for k, p in trainer.model.named_parameters() if ".router." in k and (id(p) not in ids or not p.requires_grad)
+        k
+        for k, p in trainer.model.named_parameters()
+        if trainer.new_marker in k and (id(p) not in ids or not p.requires_grad)
     ]
     if missing:
         raise AssertionError(f"Router parameters missing/frozen in final optimizer: {missing}")
@@ -421,7 +436,7 @@ def audit_optimizer(trainer):
             parameters=[
                 k
                 for k, p in trainer.model.named_parameters()
-                if k.startswith("model.9.router.") and any(p is q for q in group["params"])
+                if trainer.new_marker in k and any(p is q for q in group["params"])
             ],
         )
         for i, group in enumerate(trainer.optimizer.param_groups)
@@ -519,6 +534,9 @@ def structural_checks(directory, model=MODEL, block_type=SPPF_SIR, nc=80):
 
 def gradient_check(trainer, batch, amp):
     """Check real labeled AMP loss and gradients, including the initially zero earlier router gradients."""
+    if trainer.device.type == "cuda":
+        torch.cuda.synchronize(trainer.device)
+    started = time.perf_counter()
     trainer.model.train()
     trainer.optimizer.zero_grad(set_to_none=True)
     batch = trainer.preprocess_batch(batch)
@@ -536,21 +554,26 @@ def gradient_check(trainer, batch, amp):
     for key, p in trainer.model.named_parameters():
         if p.grad is not None and not torch.isfinite(p.grad).all():
             raise AssertionError(f"Nonfinite gradient: {key}")
-        if key.startswith("model.9.router."):
+        if any(marker in key for marker in trainer.gradient_markers):
             if p.grad is None:
-                raise AssertionError(f"Disconnected router gradient: {key}")
+                raise AssertionError(f"Disconnected required gradient: {key}")
             norms[key] = p.grad.float().norm().item()
-    if not all(norms[k] > 0 for k in norms if ".router.4." in k):
+    if not all(norms[k] > 0 for k in norms if trainer.new_marker + "4." in k):
         raise AssertionError(f"Router output layer has no gradient: {norms}")
     torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), 10.0)
     trainer.optimizer.step()
     trainer.ema.update(trainer.model)
     if not all(torch.isfinite(p).all() for p in trainer.model.parameters()):
         raise AssertionError("Nonfinite model after native optimizer step.")
+    assert all(any(v > 0 for k, v in norms.items() if marker in k) for marker in trainer.gradient_markers)
+    if trainer.device.type == "cuda":
+        torch.cuda.synchronize(trainer.device)
     return dict(
         loss=total.item(),
         components=items.detach().cpu().tolist(),
-        new_gradient_norms=norms,
+        new_gradient_norms={k: v for k, v in norms.items() if trainer.new_marker in k},
+        gradient_norms=norms,
+        seconds=time.perf_counter() - started,
         amp=amp,
         gradient_scale=1,
         optimizer_step=True,
@@ -572,7 +595,9 @@ def reload_context():
         torch.use_deterministic_algorithms(True)
         with torch.random.fork_rng(devices=[]), torch.no_grad(), autocast(
             False, device="cpu"
-        ), torch.backends.mkldnn.flags(enabled=True, deterministic=True, allow_tf32=False):
+        ), torch.backends.mkldnn.flags(enabled=True, deterministic=True, allow_tf32=False), torch.backends.cudnn.flags(
+            enabled=True, benchmark=False, deterministic=True, allow_tf32=False
+        ):
             yield
     finally:
         torch.set_num_threads(threads)
@@ -594,6 +619,11 @@ def reload_attributes(model):
     """Capture module identity, forward-affecting attributes and Detect caches outside state_dict."""
     fields = (
         "n",
+        "enabled",
+        "num_heads",
+        "head_dim",
+        "key_dim",
+        "scale",
         "add",
         "inplace",
         "end2end",
@@ -623,6 +653,26 @@ def reload_attributes(model):
     return result
 
 
+def computation_conditions():
+    """Describe reusable backend policy without model-specific tensors or transient inference mode."""
+    return dict(
+        threads=torch.get_num_threads(),
+        interop_threads=torch.get_num_interop_threads(),
+        omp=os.environ.get("OMP_NUM_THREADS"),
+        mkl=os.environ.get("MKL_NUM_THREADS"),
+        mkldnn=torch.backends.mkldnn.enabled,
+        mkldnn_deterministic=torch.backends.mkldnn.deterministic,
+        mkldnn_allow_tf32=torch.backends.mkldnn.allow_tf32,
+        float32_matmul_precision=torch.get_float32_matmul_precision(),
+        matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
+        cudnn_allow_tf32=torch.backends.cudnn.allow_tf32,
+        cudnn_benchmark=torch.backends.cudnn.benchmark,
+        cudnn_deterministic=torch.backends.cudnn.deterministic,
+        deterministic=torch.are_deterministic_algorithms_enabled(),
+        deterministic_warn_only=torch.is_deterministic_algorithms_warn_only_enabled(),
+    )
+
+
 def reload_conditions(model, x):
     """Record actual FP32 CPU conditions in both processes, including import paths and input digest."""
     return dict(
@@ -632,15 +682,7 @@ def reload_conditions(model, x):
         torch_path=torch.__file__,
         ultralytics=ultralytics.__version__,
         ultralytics_path=ultralytics.__file__,
-        threads=torch.get_num_threads(),
-        interop_threads=torch.get_num_interop_threads(),
-        omp=os.environ.get("OMP_NUM_THREADS"),
-        mkl=os.environ.get("MKL_NUM_THREADS"),
-        mkldnn=torch.backends.mkldnn.enabled,
-        mkldnn_deterministic=torch.backends.mkldnn.deterministic,
-        mkldnn_allow_tf32=torch.backends.mkldnn.allow_tf32,
-        float32_matmul_precision=torch.get_float32_matmul_precision(),
-        deterministic=torch.are_deterministic_algorithms_enabled(),
+        **computation_conditions(),
         grad_enabled=torch.is_grad_enabled(),
         cpu_autocast=torch.is_autocast_enabled("cpu"),
         model_devices=sorted({str(t.device) for t in model.state_dict().values()}),
@@ -650,7 +692,7 @@ def reload_conditions(model, x):
     )
 
 
-def reload_in_process(path, block_type=SPPF_SIR):
+def reload_in_process(path, block_type=SPPF_SIR, layer=9, new_marker=".router.", new_parameters=14896):
     """Audit the independently saved snapshot against native YOLO loading before comparing any outputs."""
     import numpy as np
     from ultralytics import YOLO
@@ -661,8 +703,8 @@ def reload_in_process(path, block_type=SPPF_SIR):
     try:
         with reload_context():
             m = YOLO(path)
-            assert type(m.model.model[9]) is block_type
-            assert sum(p.numel() for p in m.model.model[9].router.parameters()) == 14896
+            assert type(m.model.model[layer]) is block_type
+            assert sum(p.numel() for k, p in m.model.named_parameters() if new_marker in k) == new_parameters
             x = reference["x"]
             report["conditions"] = reload_conditions(m.model, x)
             assert_close_tree(reference["conditions"], report["conditions"], path="conditions")
@@ -680,7 +722,7 @@ def reload_in_process(path, block_type=SPPF_SIR):
             assert_close_tree(
                 before[1]["one2one"], after[1]["one2one"], 1e-4, 1e-4, path="fused.one2one", report=report["fused"]
             )
-            assert_close_tree(before[0], after[0], 1e-4, 1e-4, path="fused.decoded", report=report["fused"])
+            assert_fused_predictions(m.model.model[-1], before, after, report["fused"])
             result = m.predict(np.zeros((64, 96, 3), dtype=np.uint8), imgsz=96, device="cpu", verbose=False)
             assert len(result) == 1 and torch.isfinite(result[0].boxes.data).all()
             report["passed"] = True
@@ -689,7 +731,24 @@ def reload_in_process(path, block_type=SPPF_SIR):
     print("fresh-process exact state/raw reload, fuse, prediction passed")
 
 
-def save_reload_check(model, directory, block_type=SPPF_SIR):
+def assert_fused_predictions(head, before, after, report):
+    """Compare all decoded anchors and all selected boxes by anchor identity, including near-tied scores."""
+    decoded = [head._inference(output[1]["one2one"]).permute(0, 2, 1) for output in (before, after)]
+    assert_close_tree(decoded[0], decoded[1], 1e-4, 1e-4, path="fused.dense_decoded", report=report)
+    indices = [head.get_topk_index(value[..., 4:], head.max_det)[2].squeeze(-1) for value in decoded]
+    # The 64x96 single-class reload probe retains all 126 anchors; no selection boundary is discarded.
+    assert head.nc == 1 and decoded[0].shape[1] <= head.max_det
+    for output, value, index in zip((before, after), decoded, indices):
+        assert_close_tree(head.postprocess(value), output[0], 0, 0, path="fused.native_postprocess", report=report)
+        assert torch.equal(index.sort(-1).values, torch.arange(value.shape[1]).expand_as(index))
+    aligned = [
+        output[0].gather(1, index.argsort(-1).unsqueeze(-1).expand_as(output[0]))
+        for output, index in zip((before, after), indices)
+    ]
+    assert_close_tree(aligned[0], aligned[1], 1e-4, 1e-4, path="fused.decoded_by_anchor", report=report)
+
+
+def save_reload_check(model, directory, block_type=SPPF_SIR, layer=9, new_marker=".router.", new_parameters=14896):
     """Serialize one FP16 EMA snapshot, retain its FP32 reference, then reload in a fresh process."""
     directory = Path(directory)
     saved = copy.deepcopy(model).cpu().half().eval()
@@ -720,10 +779,20 @@ def save_reload_check(model, directory, block_type=SPPF_SIR):
     code = """
 from tools.experiments.run_b19_sir_sppf import reload_in_process
 import sys, importlib
-reload_in_process(sys.argv[1], getattr(importlib.import_module(sys.argv[2]), sys.argv[3]))
+reload_in_process(sys.argv[1], getattr(importlib.import_module(sys.argv[2]), sys.argv[3]), int(sys.argv[4]), sys.argv[5], int(sys.argv[6]))
 """
     result = subprocess.run(
-        [sys.executable, "-c", code, str(path), block_type.__module__, block_type.__name__],
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(path),
+            block_type.__module__,
+            block_type.__name__,
+            str(layer),
+            new_marker,
+            str(new_parameters),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -854,19 +923,8 @@ def launcher_evidence(options, raw):
     return dict(verified=True, path=str(path), sha256=sha256(path), command=command, trainer="native DetectionTrainer")
 
 
-def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=AuditedTrainer):
-    """Use full native setup, then three disposable real batch=32 AMP updates; never run an epoch."""
-    directory.mkdir(parents=True, exist_ok=False)
-    write_json(directory / "environment.json", evidence)
-    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
-    trainer.add_callback("on_pretrain_routine_end", final_model_audit)
-    trainer._setup_train()
-    if len(trainer.train_loader.dataset) != REFERENCE["dataset_counts"]["train"]:
-        raise ValueError("Training dataset count differs from archived b19.")
-    if len(trainer.test_loader.dataset) != REFERENCE["dataset_counts"]["val"]:
-        raise ValueError("Validation dataset count differs from archived b19.")
-    write_json(directory / "weights.json", trainer.weight_audit)
-    report = dict(optimizer=audit_optimizer(trainer), real_batches=[])
+def preflight_batches(trainer, report, directory):
+    """Retain SIR v1/v2's three-batch gradient check as the default preflight policy."""
     loader = iter(trainer.train_loader)
     warmup = max(round(trainer.args.warmup_epochs * len(trainer.train_loader)), 100)
     for step in range(3):
@@ -879,15 +937,43 @@ def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=Aud
                     trainer.args.warmup_momentum
                     + (trainer.args.momentum - trainer.args.warmup_momentum) * step / warmup
                 )
-        report["real_batches"].append(gradient_check(trainer, next(loader), bool(config["amp"])))
+        report["real_batches"].append(gradient_check(trainer, next(loader), bool(trainer.args.amp)))
     norms = report["real_batches"][-1]["new_gradient_norms"]
     assert all(v > 0 for v in norms.values()), f"Earlier router layers did not learn: {norms}"
-    assert type(trainer.ema.ema.model[9]) is block_type
-    assert set(trainer.model.model[9].router.state_dict()) == set(trainer.ema.ema.model[9].router.state_dict())
+    return 3
+
+
+def preflight(
+    config, evidence, directory, block_type=SPPF_SIR, trainer_type=AuditedTrainer, batch_check=preflight_batches
+):
+    """Use full native setup and an explicitly bound disposable batch audit; never run an epoch."""
+    directory.mkdir(parents=True, exist_ok=False)
+    write_json(directory / "environment.json", evidence)
+    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
+    trainer.add_callback("on_pretrain_routine_end", final_model_audit)
+    trainer._setup_train()
+    if len(trainer.train_loader.dataset) != REFERENCE["dataset_counts"]["train"]:
+        raise ValueError("Training dataset count differs from archived b19.")
+    if len(trainer.test_loader.dataset) != REFERENCE["dataset_counts"]["val"]:
+        raise ValueError("Validation dataset count differs from archived b19.")
+    write_json(directory / "weights.json", trainer.weight_audit)
+    torch.cuda.reset_peak_memory_stats(trainer.device)
+    report = dict(optimizer=audit_optimizer(trainer), execution_conditions=computation_conditions(), real_batches=[])
+    attempts = batch_check(trainer, report, directory)
+    assert type(trainer.ema.ema.model[trainer.layer]) is block_type
+    assert set(trainer.model.state_dict()) == set(trainer.ema.ema.state_dict())
+    assert trainer.ema.updates == attempts  # Native EMA also advances when GradScaler skips an optimizer step.
+    assert all(torch.isfinite(t).all() for t in trainer.ema.ema.state_dict().values())
     report["ema"] = True
-    report["reload"] = save_reload_check(trainer.ema.ema, directory, block_type)
+    report["reload"] = save_reload_check(
+        trainer.ema.ema, directory, block_type, trainer.layer, trainer.new_marker, trainer.new_parameters
+    )
     report["peak_cuda_memory_bytes"] = torch.cuda.max_memory_allocated(trainer.device)
+    report["peak_cuda_reserved_bytes"] = torch.cuda.max_memory_reserved(trainer.device)
+    report["remaining_free_bytes"] = torch.cuda.mem_get_info(trainer.device)[0]
     write_json(directory / "checks.json", report)
+    if report["remaining_free_bytes"] < 2 * 1024**3:
+        raise RuntimeError("Preflight leaves less than 2 GiB GPU headroom; preserve other jobs and start later")
     for loader in (trainer.train_loader, trainer.test_loader):
         loader.close()
     return report
@@ -900,10 +986,8 @@ def final_model_audit(trainer):
     changed = [k for k, v in trainer.initial_common.items() if not torch.equal(v, trainer.model.state_dict()[k].cpu())]
     if changed:
         raise AssertionError(f"Common tensors changed before the first formal batch: {changed}")
-    router = trainer.model.model[9].router
-    assert torch.count_nonzero(router[-1].weight) == torch.count_nonzero(router[-1].bias) == 0
-    assert all(p.requires_grad for p in router.parameters())
-    assert type(trainer.ema.ema.model[9]) is trainer.block_type
+    trainer.validate_new()
+    assert type(trainer.ema.ema.model[trainer.layer]) is trainer.block_type
     write_json(trainer.save_dir / "provenance/final_optimizer.json", audit_optimizer(trainer))
     write_json(trainer.save_dir / "provenance/final_weight_audit.json", trainer.weight_audit)
     del trainer.initial_common
@@ -957,12 +1041,13 @@ def main(
     source_files=(),
     structure_check=structural_checks,
     module_config=MODULE_CONFIG,
+    batch_check=preflight_batches,
 ):
-    """Resolve and run the sole SIR candidate; missing server evidence never becomes a passing receipt."""
+    """Resolve and run the sole candidate; missing server evidence never becomes a passing receipt."""
     block_type = trainer_type.block_type
     parser = argparse.ArgumentParser(description=f"Audited b19 experiment: {block_type.__name__}")
     parser.add_argument(
-        "--baseline-root", type=Path, required=True, help="Original b19 project root; never the SIR worktree"
+        "--baseline-root", type=Path, required=True, help="Original b19 project root; never the experiment worktree"
     )
     parser.add_argument("--baseline-args", type=Path, help="Explicit original b19 args.yaml (wins over discovery)")
     parser.add_argument("--pretrained", type=Path, help="Relocated copy of the SAME resolved initial checkpoint")
@@ -973,7 +1058,7 @@ def main(
     parser.add_argument("--stage", choices=("preflight", "train"), required=True)
     parser.add_argument("--name", default=name)
     parser.add_argument(
-        "--project", type=Path, help="Independent SIR output project; defaults to this worktree/runs/detect"
+        "--project", type=Path, help="Independent experiment output project; defaults to this worktree/runs/detect"
     )
     arguments = sys.argv[1:] if argv is None else argv
     if not arguments:
@@ -987,7 +1072,7 @@ def main(
     os.chdir(ROOT)
     project = (options.project or ROOT / "runs/detect").resolve()
     if options.stage == "train" and (project / options.name).exists():
-        raise FileExistsError(f"SIR output already exists; no second run or overwrite: {project / options.name}")
+        raise FileExistsError(f"Experiment output already exists; no second run or overwrite: {project / options.name}")
     check_root = project / f"{options.name}_preflight"
     check_root.mkdir(parents=True, exist_ok=True)
     handler = logging.FileHandler(check_root / f"{options.stage}.log", encoding="utf-8")
@@ -1058,17 +1143,42 @@ def main(
                 if check_dir.exists():
                     # Preserve a failed attempt's logs; a new attempt never reuses its training state.
                     check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
-                preflight(config, evidence, check_dir, block_type, trainer_type)
-                write_json(check_dir / "passed.json", dict(fingerprint=signature, passed=True))
+                preflight(config, evidence, check_dir, block_type, trainer_type, batch_check)
+                write_json(
+                    check_dir / "passed.json",
+                    dict(fingerprint=signature, passed=True, checks_sha256=sha256(check_dir / "checks.json")),
+                )
                 # A retry is referenced, not copied over earlier evidence.
                 if check_dir / "passed.json" != receipt:
-                    write_json(receipt, dict(fingerprint=signature, passed=True, report_dir=str(check_dir)))
+                    write_json(
+                        receipt,
+                        dict(
+                            fingerprint=signature,
+                            passed=True,
+                            report_dir=str(check_dir),
+                            checks_sha256=sha256(check_dir / "checks.json"),
+                        ),
+                    )
+            passed = json.loads(receipt.read_text(encoding="utf-8"))
+            checks = Path(passed.get("report_dir", check_dir)) / "checks.json"
+            if (
+                not passed.get("passed")
+                or passed.get("fingerprint") != signature
+                or passed.get("checks_sha256") != sha256(checks)
+            ):
+                raise RuntimeError("Preflight receipt or evidence mismatch")
             print(f"Preflight passed: {receipt}")
             return 0
         passed = json.loads(receipt.read_text(encoding="utf-8"))
         if passed.get("fingerprint") != signature or not passed.get("passed"):
             raise RuntimeError("Stale/mismatched preflight receipt.")
+        checks = Path(passed.get("report_dir", check_dir)) / "checks.json"
+        if passed.get("checks_sha256") != sha256(checks):
+            raise RuntimeError("Preflight evidence checksum mismatch")
         issues = runtime_issues(config)
+        required_memory = json.loads(checks.read_text(encoding="utf-8"))["peak_cuda_reserved_bytes"] + 2 * 1024**3
+        if torch.cuda.is_available() and torch.cuda.mem_get_info(0)[0] < required_memory:
+            issues.append(f"Need measured preflight peak plus 2 GiB reserve: {required_memory} bytes")
         if issues:
             raise RuntimeError("Resources/environment changed after preflight: " + "; ".join(issues))
         # Start from the b19 seed in a fresh trainer; no disposable batch/model/optimizer/EMA is reused.
@@ -1079,7 +1189,9 @@ def main(
         shutil.copy2(model, provenance / model.name)
         shutil.copy2(launcher["path"], provenance / "b19_launcher_expanded.txt")
         shutil.copy2(evidence["data_path"], provenance / "original_data.yaml")
-        YAML.save(provenance / "sir_effective.yaml", config)
+        YAML.save(provenance / "effective.yaml", config)
+        shutil.copy2(check_root / "structural.json", provenance / "structural.json")
+        shutil.copy2(check_root / "local_weight_audit.json", provenance / "initialization.json")
         write_json(provenance / "module.json", module_config)
         write_json(provenance / "resolved.json", evidence)
         trainer.add_callback("on_pretrain_routine_end", final_model_audit)
@@ -1098,7 +1210,7 @@ def main(
         finally:
             LOGGER.removeHandler(train_handler)
             train_handler.close()
-        print(f"SIR completed; validation-selected weights and provenance: {trainer.save_dir}")
+        print(f"Experiment completed; validation-selected weights and provenance: {trainer.save_dir}")
         return 0
     except Exception:
         text = traceback.format_exc()

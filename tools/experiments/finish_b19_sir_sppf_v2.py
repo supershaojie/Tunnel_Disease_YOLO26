@@ -34,13 +34,18 @@ EVAL_ARTIFACTS = (
 )
 
 
-def provenance(run, data):
+def provenance(run, data, experiment=run_v2):
     """Bind reports to v2 code, best weight, effective data file, and current image/label manifests."""
     evidence = common.provenance(run)
     evidence["source_sha256"] = shared.source_hashes(
-        (*run_v2.SOURCE_FILES, Path(common.__file__), ROOT / "tools/experiments/server_b19_sir_sppf_v1.sh")
+        (*experiment.SOURCE_FILES, Path(common.__file__), ROOT / "tools/experiments/server_b19_sir_sppf_v1.sh")
     )
-    evidence.update(version=2, data=str(data), data_sha256=shared.sha256(data))
+    evidence.update(
+        version=experiment.MODULE_CONFIG["version"],
+        experiment=experiment.NAME,
+        data=str(data),
+        data_sha256=shared.sha256(data),
+    )
     cfg = check_det_dataset(str(data), autodownload=False)
     manifest = {}
     for split in COUNTS:
@@ -54,6 +59,15 @@ def provenance(run, data):
     return evidence
 
 
+def artifacts_match(folder, record, required=()):
+    """Verify every declared artifact and any mandatory core artifacts before reuse or packaging."""
+    artifacts = record.get("artifacts", {})
+    return all(
+        (folder / name).is_file() and shared.sha256(folder / name) == artifacts.get(name)
+        for name in set(required) | set(artifacts)
+    )
+
+
 def report_directory(run, stage, evidence):
     """Reuse matching completed reports; preserve failed or different evidence in separate directories."""
     digest = hashlib.sha256(json.dumps([stage, evidence], sort_keys=True).encode()).hexdigest()
@@ -62,12 +76,8 @@ def report_directory(run, stage, evidence):
     for candidate in (primary, *sorted(parent.glob(primary.name + "-retry-*"))):
         if (candidate / "metrics.json").is_file():
             record = json.loads((candidate / "metrics.json").read_text(encoding="utf-8"))
-            artifacts = record.get("artifacts", {})
             required = EVAL_ARTIFACTS if stage in COUNTS else ()
-            if record.get("evidence") == evidence and all(
-                (candidate / name).is_file() and shared.sha256(candidate / name) == artifacts.get(name)
-                for name in required
-            ):
+            if record.get("evidence") == evidence and artifacts_match(candidate, record, required):
                 return candidate
     candidate = primary
     attempt = 1
@@ -77,9 +87,9 @@ def report_directory(run, stage, evidence):
     return candidate
 
 
-def evaluate_best(run, data):
+def evaluate_best(run, data, experiment=run_v2):
     """Run one independent FP32 val and test each, preserving full precision and native matrix thresholds."""
-    evidence = provenance(run, data)
+    evidence = provenance(run, data) if experiment is run_v2 else provenance(run, data, experiment)
     records = {}
     for split, counts in COUNTS.items():
 
@@ -110,7 +120,14 @@ def evaluate_best(run, data):
 
         output = report_directory(run, split, evidence)
         record = common.test_best(
-            run, data, split=split, block_type=SPPF_SIR_V2, evidence=evidence.copy(), output=output, capture=capture
+            run,
+            data,
+            split=split,
+            block_type=experiment.AuditedTrainer.block_type,
+            evidence=evidence.copy(),
+            output=output,
+            capture=capture,
+            layer=experiment.AuditedTrainer.layer,
         )
         record["artifacts"] = {name: shared.sha256(output / name) for name in EVAL_ARTIFACTS}
         shared.write_json(output / "metrics.json", record)
@@ -192,9 +209,9 @@ def diagnose(run, data):
     )
 
 
-def package(run, data, output):
+def package(run, data, output, experiment=run_v2, source_files=(), include_last=False):
     """Package existing matching evaluation and diagnosis, never invoking training or evaluation."""
-    evidence = provenance(run, data)
+    evidence = provenance(run, data) if experiment is run_v2 else provenance(run, data, experiment)
     if evidence["status"]:
         raise RuntimeError("Commit tracked source changes before packaging: source.tar must match the evaluated code")
     index = json.loads((run / "evaluation.json").read_text(encoding="utf-8"))
@@ -209,6 +226,8 @@ def package(run, data, output):
     detail = json.loads((run / diagnostic["path"]).read_text(encoding="utf-8"))
     assert {k: v for k, v in detail["evidence"].items() if k != "samples"} == evidence
     assert all(shared.sha256(path) == digest for path, digest in detail["evidence"]["samples"])
+    diagnostic_folder = (run / diagnostic["path"]).parent
+    assert artifacts_match(diagnostic_folder, detail)
     required = [
         "args.yaml",
         "results.csv",
@@ -219,12 +238,15 @@ def package(run, data, output):
         "evaluation.json",
         "diagnostics.json",
     ]
+    required += [str((diagnostic_folder / name).relative_to(run)) for name in detail.get("artifacts", {})]
+    if include_last:
+        required.append("weights/last.pt")
     required += [str(path.relative_to(run) / "metrics.json") for path in selected]
     for split in COUNTS:
         folder = (run / index["reports"][split]["path"]).parent
         report = json.loads((folder / "metrics.json").read_text(encoding="utf-8"))
         assert report["evidence"] == evidence
-        assert all(shared.sha256(folder / name) == report["artifacts"][name] for name in EVAL_ARTIFACTS)
+        assert artifacts_match(folder, report, EVAL_ARTIFACTS)
         required += [str((folder / name).relative_to(run)) for name in EVAL_ARTIFACTS]
     common.package(
         run,
@@ -232,14 +254,16 @@ def package(run, data, output):
         required_files=required,
         evidence=evidence,
         exclude_dirs=tuple(p for p in (run / "evaluation").iterdir() if p not in selected),
-        source_files=[str(p.relative_to(ROOT)) for p in run_v2.SOURCE_FILES]
+        source_files=[str(p.relative_to(ROOT)) for p in experiment.SOURCE_FILES]
         + [
             "ultralytics/nn/modules/sir_sppf_v2.py",
             "ultralytics/cfg/models/26/yolo26n-sir-sppf-v2.yaml",
             "tests/test_sir_sppf_v2.py",
             "docs/experiments/b19_sir_sppf_v2.md",
             "docs/experiments/b19_sir_sppf_reload_fix.md",
-        ],
+        ]
+        + list(source_files),
+        include_last=include_last,
     )
 
 

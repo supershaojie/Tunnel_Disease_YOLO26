@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import json
 import logging
+import os
 import subprocess
 import sys
 import tarfile
@@ -31,6 +32,21 @@ from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import LOGGER, YAML
 
 
+def evaluation_conditions():
+    """Bind FP32 evaluation to the mapped CUDA device and actual reusable backend policy."""
+    return dict(
+        cuda_visible_devices=os.environ.get("CUDA_VISIBLE_DEVICES"),
+        cuda_device=dict(
+            logical_device=0,
+            name=torch.cuda.get_device_name(0),
+            uuid=str(getattr(torch.cuda.get_device_properties(0), "uuid", "unavailable")),
+        )
+        if torch.cuda.is_available()
+        else None,
+        backend=shared.computation_conditions(),
+    )
+
+
 def provenance(run):
     """Identify the selected checkpoint and the exact source/environment used for postprocessing."""
     path = run / "weights/best.pt"
@@ -44,6 +60,7 @@ def provenance(run):
         cuda=torch.version.cuda,
         ultralytics=ultralytics.__version__,
         import_path=ultralytics.__file__,
+        execution_conditions=evaluation_conditions(),
         source_sha256={
             str(p.relative_to(ROOT)): shared.sha256(p)
             for p in (MODEL, Path(__file__), ROOT / "ultralytics/nn/modules/sir_sppf.py")
@@ -64,7 +81,7 @@ def completed_run(run):
     return record
 
 
-def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, output=None, capture=None):
+def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, output=None, capture=None, layer=9):
     """Evaluate once in FP32; store exact metrics and JSON from that same evaluation."""
     evidence = provenance(run) if evidence is None else evidence
     evidence["data_sha256"] = shared.sha256(data)
@@ -98,12 +115,22 @@ def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, ou
         raise FileExistsError(f"Conflicting test evidence, preserving: {output}")
     output.mkdir(parents=True, exist_ok=False)
     model = YOLO(evidence["weight"])
-    assert type(model.model.model[9]) is block_type
+    assert type(model.model.model[layer]) is block_type
     observation = {}
+    execution_conditions = evaluation_conditions()
 
     def capture_validation(validator):
         shared.write_json(output / "predictions.json", validator.jdict)
+        tensors = list(model.model.parameters())
+        assert tensors and all(p.dtype == torch.float32 for p in tensors)
+        assert validator.args.split == split
+        actual_conditions = evaluation_conditions()
+        shared.assert_close_tree(execution_conditions, actual_conditions, path="evaluation_conditions")
         observation.update(
+            execution_conditions=actual_conditions,
+            actual_parameter_devices=sorted({str(p.device) for p in tensors}),
+            actual_parameter_dtype="torch.float32",
+            actual_split=validator.args.split,
             args=vars(validator.args),
             save_dir=str(validator.save_dir),
             speed=validator.speed,
@@ -207,7 +234,7 @@ def diagnose(run, data):
     )
 
 
-def package(run, output, *, source_files=(), required_files=None, evidence=None, exclude_dirs=()):
+def package(run, output, *, source_files=(), required_files=None, evidence=None, exclude_dirs=(), include_last=False):
     """Include only current-run evidence and source dependencies, then verify every archived file hash."""
     if output.exists():
         raise FileExistsError(output)
@@ -238,7 +265,10 @@ def package(run, output, *, source_files=(), required_files=None, evidence=None,
         if any(folder in path.parents for folder in exclude_dirs):
             continue
         if path.is_file() and path != run / "package_manifest.json":
-            if path.suffix == ".pt" and path != run / "weights/best.pt":
+            if path.suffix == ".pt" and path not in {
+                run / "weights/best.pt",
+                *([run / "weights/last.pt"] if include_last else []),
+            }:
                 continue
             if path.suffix in {".yaml", ".json", ".jsonl", ".csv", ".log", ".txt", ".png", ".jpg", ".pt"}:
                 files["run/" + path.relative_to(run).as_posix()] = path

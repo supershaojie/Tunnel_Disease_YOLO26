@@ -107,6 +107,7 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .rpca_c2psa import Attention_RPCA, C2PSA_RPCA, PSABlock_RPCA
 from .sir_sppf import SPPF_SIR
 from .sir_sppf_v2 import SPPF_SIR_V2
 
@@ -115,6 +116,9 @@ __all__ = (
     "C1",
     "C2",
     "C2PSA",
+    "C2PSA_RPCA",
+    "PSABlock_RPCA",
+    "Attention_RPCA",
     "C3",
     "C3TR",
     "CBAM",
