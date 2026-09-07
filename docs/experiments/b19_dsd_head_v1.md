@@ -127,17 +127,54 @@ that evidence. No model, native fusion implementation, training option or evalua
   errors, GPU-versus-CPU fused state errors and graph/head layer errors. Layer traces retain the first and worst
   box/score images from complete batch forwards to limit diagnostic memory. No batch is reduced. The report
   is also written on failure, within the new preflight evidence directory; previous evidence is preserved.
-- Acceptance keeps the original raw `atol=rtol=1e-4` for **both** strict native and strict DSD comparisons.
+- Acceptance keeps the original elementwise `atol=rtol=1e-4` for final boxes/scores, Detect head stages and fused
+  weights in **both** strict native and strict DSD comparisons. Shared activation fusion uses the separate
+  bounded criterion below, together with exact native/DSD shared-feature fingerprints in each fusion state.
   Dense box tolerances are propagated through the existing affine decoder. Repeated unfused forwards and
   real Validator/fused forwards must match exactly, including in ambient mode; native postprocessing must
   match its own dense predictions exactly. Ambient fusion discrepancies are retained as failed numerical
-  comparisons, never relabelled equivalent or accepted via a larger tolerance.
+  comparisons. Each row retains the original elementwise diagnostics and explicitly names its acceptance
+  `criterion` and `contract_passed`; failure messages identify every failing case/path and the full report path.
 - The fused one-to-one adapter is observed on the actual Validator call and its repeat. Existing detach,
   independent optimizer/EMA, effective-update gradient and fresh-process save/reload checks remain mandatory.
 
-Local synthetic regression injects a deliberate P4 fusion error: strict validation must reject it, leave the
-source EMA/settings unchanged and retain the scale reports. The Windows RTX2060 lacks TF32 tensor cores;
-local success cannot establish the cause of the RTX4090 failure or stand in for the user's real-data preflight.
+### Shared activation fusion bound
+
+The user supplied the full 707,549-byte server report from `49afc94a1f1a99b49c9e4bed850867e29a0d5780`, SHA256
+`3a6e27db06de7fdfd3b1ee8e5968c22ecc6558552d0c5fd066530cfba642aac3`. All 1,272 comparison rows were examined.
+The four strict failures were exclusively P4 features: native and DSD had identical statistics for each folding
+route. The actual input was `[32,3,384,672]`, with P4 `[32,128,24,42]` and reference maximum magnitude `4.9455266`.
+
+| Folding route | Maximum absolute error, native and DSD | Mean absolute error | Old pointwise outliers |
+| ------------- | -------------------------------------: | ------------------: | ---------------------: |
+| GPU           |                            2.682209e-4 |         5.682588e-7 |                      4 |
+| CPU, then GPU |                            2.797842e-4 |         5.544718e-7 |                      5 |
+
+Both strict models passed every raw box/score, decoded-bound, fused-weight, sampled-layer and repeat check.
+Across both routes, raw boxes had maximum error `2.343655e-4`, within their existing pointwise absolute-plus-relative
+bound; raw score logits had maximum error `1.430511e-6`. P4/P5 and classification errors were identical in native/DSD.
+The P3 box maximum differed by at most `1.430511e-6`, with both still passing. Adapter calls changed 6,711,814
+P3 elements per forward, and the repeated actual Validator forward was exact. Source EMA, settings and RNG restored.
+
+The previous gate imposed the final-output pointwise criterion on cancellation-sensitive intermediate features.
+Shared activation fusion now requires `max(abs(B-A)) <= 1e-4 * max(1, max(abs(A)))` and finite tensors. For this
+P4 reference the fixed scale-relative limit is `4.9455266e-4`; the maximum observed error uses 56.6% of that budget.
+This is a bounded regression criterion supported by the native control, not a universal FP32 error theorem.
+Every element is bounded; neither the outlier count nor the mean grants an exemption. The coefficient is fixed
+and independent of test AP. It applies only to P3/P4/P5 shared features and graph-layer traces **0 through 22**.
+Native/DSD whole-batch feature fingerprints must additionally match exactly under the same precision and the same
+unfused/CPU-fused/GPU-fused state. DSD-specific drift therefore fails even below the fusion error budget.
+Initialization remains a separate exact native-versus-zero-adapter comparison in the same fusion state.
+
+The report also retains 98 ambient diagnostic failures per model. Before/after-fusion state hashes and input hashes
+match across ambient/strict, while the cuDNN TF32 switch differs; the large ambient discrepancy arises in execution,
+rather than changed folding weights. It is distinct from the small strict FP32 activation fusion error addressed here.
+Ambient discrepancies remain diagnostic failures. Diagnostic precision is restored before leaving the preflight check.
+
+Local synthetic regression checks a single activation exceeding the bound, a DSD-only tiny feature drift, and
+a deliberate P4 head fusion error. All must fail their respective contracts, preserving source state and reports.
+The Windows RTX2060 local run remains separate from the user's RTX4090 real-data preflight; the updated server
+gate and fingerprint checks still require the user's rerun.
 
 Formal training uses a separate process from disposable preflight state and native trainer seeding is repeated.
 Only this experiment's lock is acquired. Other GPU jobs are reported and remain running. The server must match

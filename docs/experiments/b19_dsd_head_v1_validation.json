@@ -137,5 +137,144 @@
       "tests/test_dsd_head.py": "bbf6848a5a4163ebde1ee74710201e0d390fb32fd294ac1d491a7ec73bd5da04"
     },
     "server_rerun": "Required; user executes unchanged real b19 batch=32 preflight. Existing failed attempts remain intact."
+  },
+  "shared_activation_fusion_fix": {
+    "base_commit": "49afc94a1f1a99b49c9e4bed850867e29a0d5780",
+    "server_report": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\DSD-Head\\validator_check.json",
+      "bytes": 707549,
+      "sha256": "3a6e27db06de7fdfd3b1ee8e5968c22ecc6558552d0c5fd066530cfba642aac3",
+      "rows_inspected": 1272,
+      "input": {
+        "shape": [32, 3, 384, 672],
+        "dtype": "torch.float32",
+        "device": "cuda:0",
+        "sha256": "c9fdfed0327e434b2d24841f41abe56aa3e7d4369cfa9471f7e465a7a04b18f6"
+      },
+      "case_counts": {
+        "ambient_native": {
+          "rows": 315,
+          "original_failed_rows": 98
+        },
+        "ambient_dsd": {
+          "rows": 321,
+          "original_failed_rows": 98
+        },
+        "strict_native": {
+          "rows": 315,
+          "original_failed_rows": 2
+        },
+        "strict_dsd": {
+          "rows": 321,
+          "original_failed_rows": 2
+        }
+      },
+      "before_and_after_fusion_state_same_across_precision": true,
+      "source_settings_rng_restored": true
+    },
+    "strict_original_failures_with_new_bound": [
+      {
+        "case": "strict_native",
+        "path": "gpu_fused.P4.feats",
+        "shape": [32, 128, 24, 42],
+        "dtype": "torch.float32",
+        "device": "cuda:0",
+        "finite": true,
+        "max_abs": 0.0002682209014892578,
+        "mean_abs": 5.682587515085898e-7,
+        "reference_max_abs": 4.945526599884033,
+        "scale_floor": 1e-6,
+        "max_error_over_scale": 5.4235053855649525e-5,
+        "outside_tolerance": 4,
+        "atol": 0.0001,
+        "rtol": 0.0001,
+        "contract_passed": true,
+        "criterion": "shared_activation_fusion_linf",
+        "fusion_abs_bound": 0.0004945526599884033
+      },
+      {
+        "case": "strict_native",
+        "path": "cpu_fused.P4.feats",
+        "shape": [32, 128, 24, 42],
+        "dtype": "torch.float32",
+        "device": "cuda:0",
+        "finite": true,
+        "max_abs": 0.0002797842025756836,
+        "mean_abs": 5.544718294403314e-7,
+        "reference_max_abs": 4.945526599884033,
+        "scale_floor": 1e-6,
+        "max_error_over_scale": 5.6573187288537525e-5,
+        "outside_tolerance": 5,
+        "atol": 0.0001,
+        "rtol": 0.0001,
+        "contract_passed": true,
+        "criterion": "shared_activation_fusion_linf",
+        "fusion_abs_bound": 0.0004945526599884033
+      },
+      {
+        "case": "strict_dsd",
+        "path": "gpu_fused.P4.feats",
+        "shape": [32, 128, 24, 42],
+        "dtype": "torch.float32",
+        "device": "cuda:0",
+        "finite": true,
+        "max_abs": 0.0002682209014892578,
+        "mean_abs": 5.682587515085898e-7,
+        "reference_max_abs": 4.945526599884033,
+        "scale_floor": 1e-6,
+        "max_error_over_scale": 5.4235053855649525e-5,
+        "outside_tolerance": 4,
+        "atol": 0.0001,
+        "rtol": 0.0001,
+        "contract_passed": true,
+        "criterion": "shared_activation_fusion_linf",
+        "fusion_abs_bound": 0.0004945526599884033
+      },
+      {
+        "case": "strict_dsd",
+        "path": "cpu_fused.P4.feats",
+        "shape": [32, 128, 24, 42],
+        "dtype": "torch.float32",
+        "device": "cuda:0",
+        "finite": true,
+        "max_abs": 0.0002797842025756836,
+        "mean_abs": 5.544718294403314e-7,
+        "reference_max_abs": 4.945526599884033,
+        "scale_floor": 1e-6,
+        "max_error_over_scale": 5.6573187288537525e-5,
+        "outside_tolerance": 5,
+        "atol": 0.0001,
+        "rtol": 0.0001,
+        "contract_passed": true,
+        "criterion": "shared_activation_fusion_linf",
+        "fusion_abs_bound": 0.0004945526599884033
+      }
+    ],
+    "numerical_reassessment": {
+      "remaining_strict_numerical_failures": [],
+      "scope": "Re-evaluation of complete historical server statistics only; NEW server preflight NOT run; historical report lacks the newly required shared-feature fingerprints."
+    },
+    "local_regression": {
+      "scope": "LOCAL Windows RTX2060 synthetic fixture only",
+      "passed": 16,
+      "skipped": 1,
+      "log": "runs/dsd_development/dsd_feature_fusion_v2.log",
+      "training_batch": 2,
+      "training_imgsz": 128,
+      "validator_input": [32, 3, 128, 160],
+      "native_dsd_shared_features_exact": {
+        "ambient": true,
+        "strict": true
+      },
+      "restored": true,
+      "P4_head_error_rejected": true,
+      "reported_failure_cases": ["strict_dsd"],
+      "single_outlier_above_bound_and_dsd_only_small_drift_rejected": true,
+      "simultaneous_feature_and_output_failures_all_reported": true
+    },
+    "source_sha256": {
+      "tools/experiments/dsd_validator.py": "9a5ec3ff10d17fc63dfb76037864dd85c068555e521ab4deefa791a9e12dc51f",
+      "tests/test_dsd_head.py": "728a09e69e0135eb90405ab692f034687e0f96f9d03ab507771095fddf7a46ad"
+    }
   }
 }

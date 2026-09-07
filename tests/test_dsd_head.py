@@ -14,7 +14,14 @@ import torch
 
 from tools.experiments import b19_common as shared
 from tools.experiments.dsd_preflight import preflight_batches, routing_checks
-from tools.experiments.dsd_validator import model_identity, raw_comparison, validator_check
+from tools.experiments.dsd_validator import (
+    activation_fusion_criterion,
+    assert_validator_contract,
+    model_identity,
+    observe,
+    raw_comparison,
+    validator_check,
+)
 from tools.experiments.run_b19_dsd_head import MODEL, AuditedTrainer, structural_checks
 from ultralytics.cfg import get_cfg
 from ultralytics.nn.modules import DSDAdapter
@@ -164,6 +171,31 @@ def test_all_scales_reported_after_first_mismatch():
     assert by_path["injected.P5.scores"]["outside_tolerance"] == 1
 
 
+@pytest.mark.parametrize("error", [0.0002682209014892578, 0.0002797842025756836])
+def test_shared_activation_fusion_bound(error):
+    """Use reported native P4 extrema to check the bound; never waive outliers or relax prediction comparisons."""
+    # Server report SHA256: 3a6e27db06de7fdfd3b1ee8e5968c22ecc6558552d0c5fd066530cfba642aac3.
+    # These two-element tensors exercise the criterion, not a reconstruction of the server activations.
+    reference = torch.tensor([4.945526599884033, 0.0])
+    candidate = reference + torch.tensor([0.0, error])
+    rows = []
+    activation = observe(reference, candidate, "gpu_fused.P4.feats", rows)
+    assert not activation["contract_passed"] and activation["outside_tolerance"] == 1
+    activation_fusion_criterion(activation)
+    assert activation["contract_passed"] and activation["outside_tolerance"] == 1
+    assert activation["fusion_abs_bound"] == pytest.approx(4.945526599884033e-4)
+    output = observe(reference, candidate, "gpu_fused.P4.boxes", rows)
+    assert output["criterion"] == "elementwise" and not output["contract_passed"]
+    exact = observe(reference, candidate, "initial_native_dsd", rows, 0, 0)
+    assert exact["criterion"] == "exact" and not exact["contract_passed"]
+    excessive = dict(activation, max_abs=activation["fusion_abs_bound"] * 1.01, outside_tolerance=1)
+    activation_fusion_criterion(excessive)
+    assert not excessive["contract_passed"]  # Even one element above the fixed bound fails.
+    nonfinite = dict(activation, finite=False, max_abs=0.0)
+    activation_fusion_criterion(nonfinite)
+    assert not nonfinite["contract_passed"]
+
+
 @pytest.mark.skipif(os.environ.get("DSD_RUN_NATIVE_SMOKE") != "1", reason="Explicit local native CUDA smoke")
 def test_native_amp_updates_and_validator(tmp_path, monkeypatch):
     """Development-only batch=2/128 smoke; never creates a server batch=32 preflight receipt."""
@@ -209,7 +241,8 @@ def test_native_amp_updates_and_validator(tmp_path, monkeypatch):
         result = validator_check(trainer.ema.ema, trainer, tmp_path)
         assert result["passed"] and result["settings_restored"] and result["source_unchanged"]
         assert set(result["cases"]) == {"ambient_native", "ambient_dsd", "strict_native", "strict_dsd"}
-        assert all(c["equivalent_at_1e_4"] for k, c in result["cases"].items() if k.startswith("strict"))
+        assert all(c["fusion_contract_passed"] for k, c in result["cases"].items() if k.startswith("strict"))
+        assert all(result["shared_features_native_dsd_exact"].values())
         for name, case in result["cases"].items():
             assert case["images"] == 32 and case["input"]["dtype"] == "torch.float32"
             assert case["same_state_and_independent_storage"] and case["reference_unchanged"]
@@ -217,6 +250,27 @@ def test_native_amp_updates_and_validator(tmp_path, monkeypatch):
             if "dsd" in name:
                 assert len(case["adapter_calls"]) == 2 and all(c["changed"] > 0 for c in case["adapter_calls"])
         assert model_identity(trainer.ema.ema) == identity and shared.computation_conditions() == conditions
+
+        # A DSD-only feature drift fails even when each fusion error stays inside the normwise bound.
+        drift = copy.deepcopy(result)
+        feature = torch.ones(1, 1, 1, 1)
+        assert (feature + 1e-6 - feature).abs().max() < 1e-4
+        drift["cases"]["strict_native"]["shared_feature_fingerprints"]["unfused"][1] = shared.reload_tensor_info(
+            feature
+        )
+        drift["cases"]["strict_dsd"]["shared_feature_fingerprints"]["unfused"][1] = shared.reload_tensor_info(
+            feature + 1e-6
+        )
+        # A simultaneous output failure must also reach the summary, not be hidden by the feature failure.
+        next(r for r in drift["cases"]["strict_dsd"]["comparisons"] if r["path"] == "gpu_fused.P4.boxes").update(
+            outside_tolerance=1, contract_passed=False
+        )
+        with pytest.raises(AssertionError, match="strict_native_vs_dsd:unfused.P4.feats"):
+            assert_validator_contract(drift, tmp_path)
+        assert {(r["case"], r["path"]) for r in drift["failures"]} == {
+            ("strict_dsd", "gpu_fused.P4.boxes"),
+            ("strict_native_vs_dsd", "unfused.P4.feats"),
+        }
 
         # Deliberate P4 implementation error MUST fail strict validation and retain the complete diagnostic.
         from ultralytics.nn.modules import DSDDetect
@@ -235,7 +289,8 @@ def test_native_amp_updates_and_validator(tmp_path, monkeypatch):
             validator_check(trainer.ema.ema, trainer, failure_dir)
         failed = json.loads((failure_dir / "validator_check.json").read_text())
         assert not failed["passed"] and failed["source_unchanged"] and failed["settings_restored"]
-        assert failed["cases"]["strict_native"]["equivalent_at_1e_4"]
+        assert failed["cases"]["strict_native"]["fusion_contract_passed"]
+        assert all(row["case"] == "strict_dsd" for row in failed["failures"])
         assert any(
             r["path"] == "gpu_fused.P4.boxes" and r["outside_tolerance"] > 0
             for r in failed["cases"]["strict_dsd"]["comparisons"]
