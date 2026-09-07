@@ -13,12 +13,14 @@ import torch
 
 from tests import test_sir_sppf as fixtures
 from tools.experiments import finish_b19_rpca_c2psa as finish
+from tools.experiments import finish_b19_sir_sppf as common_finish
 from tools.experiments import finish_b19_sir_sppf_v2 as evaluation
 from tools.experiments import run_b19_rpca_c2psa as run
 from tools.experiments import run_b19_sir_sppf as shared
 from ultralytics.data.dataset import YOLODataset
 from ultralytics.nn.modules import C2PSA, C2PSA_RPCA
 from ultralytics.nn.modules.rpca_c2psa import PSABlock_RPCA, calibrated_probabilities, region_group, region_ungroup
+from ultralytics.utils import YAML
 
 
 @pytest.fixture(autouse=True)
@@ -228,6 +230,69 @@ def test_entry_contracts_and_package_last(tmp_path):
         assert package.call_args.kwargs["include_last"]
         assert package.call_args.kwargs["experiment"] is run
         assert "ultralytics/nn/modules/rpca_c2psa.py" in package.call_args.kwargs["source_files"]
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="The fixed evaluation entry requires CUDA device 0")
+def test_real_native_fp32_validator_on_two_copied_training_images(tmp_path):
+    """Exercise actual AutoBackend/DetectionValidator on two training images, never claim held-out metrics."""
+    fixtures.sample_images(tmp_path)
+    data = tmp_path / "data.yaml"
+    YAML.save(
+        data,
+        dict(path=str(tmp_path), train="images/train", val="images/train", test="images/train", names={0: "crack"}),
+    )
+    trainer = fixtures.native_probe(trainer_type=run.AuditedTrainer, model=run.MODEL)
+    weights = tmp_path / "weights/best.pt"
+    weights.parent.mkdir()
+    torch.save(dict(model=trainer.model.half().eval(), train_args=vars(trainer.args)), weights)
+    for split in ("val", "test"):
+        report = common_finish.test_best(
+            tmp_path,
+            data,
+            split=split,
+            block_type=C2PSA_RPCA,
+            layer=10,
+            evidence=dict(weight=str(weights), local_training_subset=True),
+            output=tmp_path / split,
+        )
+        assert report["images"] == 2
+        assert report["actual_parameter_dtype"] == "torch.float32" and report["actual_split"] == split
+        assert report["args"]["quantize"] is None and report["args"]["rect"]
+        assert (tmp_path / split / "predictions.json").is_file()
+
+
+def test_diagnostic_artifact_reuse_rejects_damage(tmp_path):
+    """A matching diagnostic receipt cannot certify a missing or changed gamma visualization."""
+    evidence = dict(local_fixture=True)
+    output = evaluation.report_directory(tmp_path, "diagnostics", evidence)
+    output.mkdir(parents=True)
+    plot = output / "gamma_0_block_0.png"
+    plot.write_bytes(b"Synthetic visualization integrity fixture")
+    shared.write_json(output / "metrics.json", dict(evidence=evidence, artifacts={plot.name: shared.sha256(plot)}))
+    assert evaluation.report_directory(tmp_path, "diagnostics", evidence) == output
+    plot.write_bytes(b"damaged")
+    assert evaluation.report_directory(tmp_path, "diagnostics", evidence) != output
+    plot.unlink()
+    assert evaluation.report_directory(tmp_path, "diagnostics", evidence) != output
+
+
+def test_evaluation_identity_tracks_backend_and_device_mapping(tmp_path, monkeypatch):
+    """FP32 matmul policy or CUDA visibility changes must invalidate evaluation reuse identity."""
+    weights = tmp_path / "weights/best.pt"
+    weights.parent.mkdir()
+    weights.write_bytes(b"Hash-only provenance fixture")
+    precision = torch.get_float32_matmul_precision()
+    try:
+        torch.set_float32_matmul_precision("highest")
+        first = common_finish.provenance(tmp_path)
+        torch.set_float32_matmul_precision("high")
+        second = common_finish.provenance(tmp_path)
+        assert first["execution_conditions"] != second["execution_conditions"]
+        monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "fixture-mapping")
+        third = common_finish.provenance(tmp_path)
+        assert second["execution_conditions"] != third["execution_conditions"]
+    finally:
+        torch.set_float32_matmul_precision(precision)
 
 
 def test_shell_attempt_identity_and_exit_codes(tmp_path):

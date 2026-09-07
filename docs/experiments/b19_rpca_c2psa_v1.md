@@ -147,3 +147,11 @@ new-process reload/fusion/predict, corrupted state rejection, diagnostic summari
 No SSH configuration or running SSH connection was found. The actual server preflight, one formal run, independent
 FP32 val/test, trained diagnostics and final result archive remain to be executed on AutoDL. No training metric or
 performance improvement is claimed by local implementation checks.
+
+Review follow-up: the actual DetectionValidator owns no `.model` attribute. FP32 checks read the same YOLO model
+that PyTorchBackend converts/fuses in place; tests do not invent a validator attribute. An additional real
+DetectionValidator/AutoBackend smoke test evaluates two independently copied training images in temporary val/test
+splits, with actual FP32 parameters and JSON output; these are not held-out dataset metrics. Report identity includes
+GPU UUID/name/visible mapping and shared thread/matmul/TF32/cuDNN/deterministic policy, checked again after validation.
+Reload uses normalized, restored backend conditions in both processes. Declared diagnostic figures are hash-checked
+before reuse and included as required package files; missing/corrupt figures are rejected by regression tests.

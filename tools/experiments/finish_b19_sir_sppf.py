@@ -7,6 +7,7 @@ import gzip
 import hashlib
 import json
 import logging
+import os
 import subprocess
 import sys
 import tarfile
@@ -31,6 +32,21 @@ from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import LOGGER, YAML
 
 
+def evaluation_conditions():
+    """Bind FP32 evaluation to the mapped CUDA device and actual reusable backend policy."""
+    return dict(
+        cuda_visible_devices=os.environ.get("CUDA_VISIBLE_DEVICES"),
+        cuda_device=dict(
+            logical_device=0,
+            name=torch.cuda.get_device_name(0),
+            uuid=str(getattr(torch.cuda.get_device_properties(0), "uuid", "unavailable")),
+        )
+        if torch.cuda.is_available()
+        else None,
+        backend=shared.computation_conditions(),
+    )
+
+
 def provenance(run):
     """Identify the selected checkpoint and the exact source/environment used for postprocessing."""
     path = run / "weights/best.pt"
@@ -44,6 +60,7 @@ def provenance(run):
         cuda=torch.version.cuda,
         ultralytics=ultralytics.__version__,
         import_path=ultralytics.__file__,
+        execution_conditions=evaluation_conditions(),
         source_sha256={
             str(p.relative_to(ROOT)): shared.sha256(p)
             for p in (MODEL, Path(__file__), ROOT / "ultralytics/nn/modules/sir_sppf.py")
@@ -100,13 +117,18 @@ def test_best(run, data, *, split="test", block_type=SPPF_SIR, evidence=None, ou
     model = YOLO(evidence["weight"])
     assert type(model.model.model[layer]) is block_type
     observation = {}
+    execution_conditions = evaluation_conditions()
 
     def capture_validation(validator):
         shared.write_json(output / "predictions.json", validator.jdict)
-        tensors = list(validator.model.model.parameters())
+        tensors = list(model.model.parameters())
         assert tensors and all(p.dtype == torch.float32 for p in tensors)
         assert validator.args.split == split
+        actual_conditions = evaluation_conditions()
+        shared.assert_close_tree(execution_conditions, actual_conditions, path="evaluation_conditions")
         observation.update(
+            execution_conditions=actual_conditions,
+            actual_parameter_devices=sorted({str(p.device) for p in tensors}),
             actual_parameter_dtype="torch.float32",
             actual_split=validator.args.split,
             args=vars(validator.args),

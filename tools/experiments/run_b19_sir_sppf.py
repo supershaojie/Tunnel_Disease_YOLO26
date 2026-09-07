@@ -219,8 +219,7 @@ def resolve_recipe(options, model=MODEL):
         import_path=ultralytics.__file__,
         python=sys.version,
         executable=sys.executable,
-        omp_num_threads=os.environ.get("OMP_NUM_THREADS"),
-        torch_num_threads=torch.get_num_threads(),
+        numerical_backend=computation_conditions(),
         ultralytics=ultralytics.__version__,
         torch=torch.__version__,
         cuda=torch.version.cuda,
@@ -596,7 +595,9 @@ def reload_context():
         torch.use_deterministic_algorithms(True)
         with torch.random.fork_rng(devices=[]), torch.no_grad(), autocast(
             False, device="cpu"
-        ), torch.backends.mkldnn.flags(enabled=True, deterministic=True, allow_tf32=False):
+        ), torch.backends.mkldnn.flags(enabled=True, deterministic=True, allow_tf32=False), torch.backends.cudnn.flags(
+            enabled=True, benchmark=False, deterministic=True, allow_tf32=False
+        ):
             yield
     finally:
         torch.set_num_threads(threads)
@@ -652,6 +653,26 @@ def reload_attributes(model):
     return result
 
 
+def computation_conditions():
+    """Describe reusable backend policy without model-specific tensors or transient inference mode."""
+    return dict(
+        threads=torch.get_num_threads(),
+        interop_threads=torch.get_num_interop_threads(),
+        omp=os.environ.get("OMP_NUM_THREADS"),
+        mkl=os.environ.get("MKL_NUM_THREADS"),
+        mkldnn=torch.backends.mkldnn.enabled,
+        mkldnn_deterministic=torch.backends.mkldnn.deterministic,
+        mkldnn_allow_tf32=torch.backends.mkldnn.allow_tf32,
+        float32_matmul_precision=torch.get_float32_matmul_precision(),
+        matmul_allow_tf32=torch.backends.cuda.matmul.allow_tf32,
+        cudnn_allow_tf32=torch.backends.cudnn.allow_tf32,
+        cudnn_benchmark=torch.backends.cudnn.benchmark,
+        cudnn_deterministic=torch.backends.cudnn.deterministic,
+        deterministic=torch.are_deterministic_algorithms_enabled(),
+        deterministic_warn_only=torch.is_deterministic_algorithms_warn_only_enabled(),
+    )
+
+
 def reload_conditions(model, x):
     """Record actual FP32 CPU conditions in both processes, including import paths and input digest."""
     return dict(
@@ -661,15 +682,7 @@ def reload_conditions(model, x):
         torch_path=torch.__file__,
         ultralytics=ultralytics.__version__,
         ultralytics_path=ultralytics.__file__,
-        threads=torch.get_num_threads(),
-        interop_threads=torch.get_num_interop_threads(),
-        omp=os.environ.get("OMP_NUM_THREADS"),
-        mkl=os.environ.get("MKL_NUM_THREADS"),
-        mkldnn=torch.backends.mkldnn.enabled,
-        mkldnn_deterministic=torch.backends.mkldnn.deterministic,
-        mkldnn_allow_tf32=torch.backends.mkldnn.allow_tf32,
-        float32_matmul_precision=torch.get_float32_matmul_precision(),
-        deterministic=torch.are_deterministic_algorithms_enabled(),
+        **computation_conditions(),
         grad_enabled=torch.is_grad_enabled(),
         cpu_autocast=torch.is_autocast_enabled("cpu"),
         model_devices=sorted({str(t.device) for t in model.state_dict().values()}),
@@ -923,7 +936,7 @@ def preflight(config, evidence, directory, block_type=SPPF_SIR, trainer_type=Aud
         raise ValueError("Validation dataset count differs from archived b19.")
     write_json(directory / "weights.json", trainer.weight_audit)
     torch.cuda.reset_peak_memory_stats(trainer.device)
-    report = dict(optimizer=audit_optimizer(trainer), real_batches=[])
+    report = dict(optimizer=audit_optimizer(trainer), execution_conditions=computation_conditions(), real_batches=[])
     loader = iter(trainer.train_loader)
     warmup = max(round(trainer.args.warmup_epochs * len(trainer.train_loader)), 100)
     for step in range(3):

@@ -1,7 +1,7 @@
 {
   "local_only": true,
   "formal_preflight": false,
-  "tests_passed": 47,
+  "tests_passed": 50,
   "environment": {
     "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Jun 11 2026, 15:12:53) [MSC v.1942 64 bit (AMD64)]",
     "executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
@@ -17,7 +17,12 @@
     "mkldnn_deterministic": true,
     "mkldnn_allow_tf32": null,
     "float32_matmul_precision": "highest",
+    "matmul_allow_tf32": false,
+    "cudnn_allow_tf32": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
     "deterministic": true,
+    "deterministic_warn_only": false,
     "grad_enabled": false,
     "cpu_autocast": false,
     "model_devices": ["cpu"],
@@ -42,7 +47,7 @@
     "optimizer": "MuSGD",
     "steps": 3,
     "losses": [22.10883331298828, 24.720947265625, 21.961776733398438],
-    "seconds": [1.4020916000008583, 0.529988800000865, 0.5107906000012008],
+    "seconds": [18.543164500002604, 1.5326296999992337, 1.1623236999985238],
     "peak_allocated_bytes": 401231872,
     "third_step_gate_gradients": {
       "model.10.m.0.gate.0.weight": 4.056388570461422e-5,
@@ -64,5 +69,11 @@
     "independent FP32 val and test",
     "trained validation diagnosis",
     "final result archive"
-  ]
+  ],
+  "native_fp32_validator_smoke": {
+    "source": "two copied real training images in temporary val/test splits",
+    "actual_images_per_split": 2,
+    "actual_parameter_dtype": "torch.float32",
+    "full_val_test_metrics": false
+  }
 }

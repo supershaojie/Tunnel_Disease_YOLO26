@@ -174,7 +174,6 @@ def test_fp32_val_test_reuse_and_conflicting_evidence(tmp_path, experiment):
             self.jdict, self.speed = [], {}
 
         def __call__(self, model):
-            self.model = SimpleNamespace(model=model)
             assert self.args.batch == 32 and self.args.imgsz == 640 and self.args.workers == 8
             assert self.args.conf == 0.001 and self.args.iou == 0.7 and self.args.max_det == 300
             assert self.args.quantize is None and self.args.rect and not self.args.augment
@@ -255,7 +254,13 @@ def test_v2_package_current_reports_and_source(tmp_path, experiment):
         )
         reports[split] = dict(path=f"evaluation/{split}/metrics.json", sha256=shared.sha256(folder / "metrics.json"))
     shared.write_json(fixture / "evaluation.json", dict(evidence=evidence, reports=reports))
-    shared.write_json(fixture / "evaluation/diagnostic/metrics.json", dict(evidence=dict(evidence, samples=[])))
+    gamma = fixture / "evaluation/diagnostic/gamma.png"
+    gamma.parent.mkdir(parents=True)
+    gamma.write_bytes(b"Synthetic gamma visualization")
+    shared.write_json(
+        fixture / "evaluation/diagnostic/metrics.json",
+        dict(evidence=dict(evidence, samples=[]), artifacts={gamma.name: shared.sha256(gamma)}),
+    )
     shared.write_json(
         fixture / "diagnostics.json",
         dict(
@@ -289,9 +294,16 @@ def test_v2_package_current_reports_and_source(tmp_path, experiment):
             include_last=experiment is rpca,
             source_files=("ultralytics/nn/modules/rpca_c2psa.py",) if experiment is rpca else (),
         )
+        gamma.write_bytes(b"damaged gamma")
+        with pytest.raises(AssertionError):
+            finish.package(fixture, tmp_path / "data.yaml", tmp_path / "damaged.tar.gz", experiment=experiment)
+        gamma.unlink()
+        with pytest.raises(AssertionError):
+            finish.package(fixture, tmp_path / "data.yaml", tmp_path / "missing.tar.gz", experiment=experiment)
     with tarfile.open(output) as archive:
         names = archive.getnames()
         assert "run/weights/best.pt" in names
+        assert "run/evaluation/diagnostic/gamma.png" in names
         assert "run/evaluation/val/metrics.json" in names and "run/evaluation/test/metrics.json" in names
         assert "source/ultralytics/nn/modules/sir_sppf.py" in names
         assert "source/ultralytics/nn/modules/sir_sppf_v2.py" in names

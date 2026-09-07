@@ -59,6 +59,15 @@ def provenance(run, data, experiment=run_v2):
     return evidence
 
 
+def artifacts_match(folder, record, required=()):
+    """Verify every declared artifact and any mandatory core artifacts before reuse or packaging."""
+    artifacts = record.get("artifacts", {})
+    return all(
+        (folder / name).is_file() and shared.sha256(folder / name) == artifacts.get(name)
+        for name in set(required) | set(artifacts)
+    )
+
+
 def report_directory(run, stage, evidence):
     """Reuse matching completed reports; preserve failed or different evidence in separate directories."""
     digest = hashlib.sha256(json.dumps([stage, evidence], sort_keys=True).encode()).hexdigest()
@@ -67,12 +76,8 @@ def report_directory(run, stage, evidence):
     for candidate in (primary, *sorted(parent.glob(primary.name + "-retry-*"))):
         if (candidate / "metrics.json").is_file():
             record = json.loads((candidate / "metrics.json").read_text(encoding="utf-8"))
-            artifacts = record.get("artifacts", {})
             required = EVAL_ARTIFACTS if stage in COUNTS else ()
-            if record.get("evidence") == evidence and all(
-                (candidate / name).is_file() and shared.sha256(candidate / name) == artifacts.get(name)
-                for name in required
-            ):
+            if record.get("evidence") == evidence and artifacts_match(candidate, record, required):
                 return candidate
     candidate = primary
     attempt = 1
@@ -221,6 +226,8 @@ def package(run, data, output, experiment=run_v2, source_files=(), include_last=
     detail = json.loads((run / diagnostic["path"]).read_text(encoding="utf-8"))
     assert {k: v for k, v in detail["evidence"].items() if k != "samples"} == evidence
     assert all(shared.sha256(path) == digest for path, digest in detail["evidence"]["samples"])
+    diagnostic_folder = (run / diagnostic["path"]).parent
+    assert artifacts_match(diagnostic_folder, detail)
     required = [
         "args.yaml",
         "results.csv",
@@ -231,6 +238,7 @@ def package(run, data, output, experiment=run_v2, source_files=(), include_last=
         "evaluation.json",
         "diagnostics.json",
     ]
+    required += [str((diagnostic_folder / name).relative_to(run)) for name in detail.get("artifacts", {})]
     if include_last:
         required.append("weights/last.pt")
     required += [str(path.relative_to(run) / "metrics.json") for path in selected]
@@ -238,7 +246,7 @@ def package(run, data, output, experiment=run_v2, source_files=(), include_last=
         folder = (run / index["reports"][split]["path"]).parent
         report = json.loads((folder / "metrics.json").read_text(encoding="utf-8"))
         assert report["evidence"] == evidence
-        assert all(shared.sha256(folder / name) == report["artifacts"][name] for name in EVAL_ARTIFACTS)
+        assert artifacts_match(folder, report, EVAL_ARTIFACTS)
         required += [str((folder / name).relative_to(run)) for name in EVAL_ARTIFACTS]
     common.package(
         run,
