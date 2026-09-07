@@ -1,0 +1,24 @@
+{
+  "attachment_requested": "/workspace/scratch/d263551d3a56/upload/4a990cbe-2e0f-43bc-abc7-529003a3a9dc.zip",
+  "attachment_uuid_zip_found": false,
+  "actual_reference_file": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\DEGConv_CVPR2026.py",
+  "actual_reference_sha256": "a1eb76f9c20ef8ef07e153e03fd718db10cc1dc8123b6a92768df2c3c5cc374d",
+  "reference_read": true,
+  "excluded_reference_mechanisms": [
+    "image2patches 2x2 spatial split",
+    "HOG hard orientation bins",
+    "strip convolution stack"
+  ],
+  "actual_b19_args": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+  "actual_b19_args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+  "actual_b19_log": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\logs\\b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42.log",
+  "actual_b19_log_sha256": "1f1c388da9512dc80a2368daaebaec0a6b71cf987c0ecc4838396d5ce33bbeba",
+  "infrastructure_source_commit": "6f5f1e2",
+  "implementation_base": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "sources": [
+    "https://arxiv.org/abs/2603.01361",
+    "https://arxiv.org/abs/2108.07009",
+    "https://github.com/yuhua666/RIS-PiDiNet"
+  ],
+  "research_scope": "Dynamic constrained P3 regression adaptation. Difference convolutions, symmetry constraints, and classification/regression separation have precedents; no first-operator claim."
+}

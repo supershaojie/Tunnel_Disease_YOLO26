@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .dsd_head import DSDAdapter, DSDDetect
 from .head import (
     OBB,
     OBB26,
@@ -117,6 +118,8 @@ __all__ = (
     "CBAM",
     "CIB",
     "DFL",
+    "DSDAdapter",
+    "DSDDetect",
     "ELAN1",
     "MLP",
     "OBB",
