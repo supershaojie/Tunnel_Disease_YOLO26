@@ -100,6 +100,7 @@ def evaluate(weight, data, output, split, device=0, batch=32, workers=8):
 
 def completed_run(run):
     """Require this run's successful process exit and both unchanged final weights."""
+    common.require_clean_source()
     status = run.parent / f"{NAME}_train.exit_status"
     assert status.read_text().strip() == "0", f"Training did not exit successfully: {status}"
     record = json.loads((run / "completed.json").read_text())
@@ -215,11 +216,13 @@ def diagnose(run, data, output):
 
 def package(run, data):
     """Verify outputs and export source, weights, curves, predictions, statistics, logs and checksums."""
+    common.require_clean_source()
     required = ["args.yaml", "results.csv", "results.png", "completed.json", "weights/best.pt", "weights/last.pt"]
     for name in required:
         if not (run / name).is_file():
             raise FileNotFoundError(run / name)
-    for stage in ("preflight", "train", "test", "diagnose"):
+    common.verify_preflight(run / "provenance/preflight")
+    for stage in ("train", "test", "diagnose"):
         assert (run.parent / f"{NAME}_{stage}.exit_status").read_text().strip() == "0"
     for name in ("val_fp32", "test_fp32", "diagnostics"):
         pointer = json.loads((run / f"{name}.json").read_text())

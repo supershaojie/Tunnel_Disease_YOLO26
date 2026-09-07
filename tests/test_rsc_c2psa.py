@@ -134,3 +134,23 @@ def test_fixed_batch_oom_ownership():
         except torch.cuda.OutOfMemoryError:
             trainer._oom_retries += 1
     assert caught.value is original and trainer.args.batch == trainer.batch_size == 32
+
+
+def test_training_preflight_receipt(tmp_path):
+    """Verify the copied training receipt without a manual preflight exit file, and reject changed evidence."""
+    directory = tmp_path / "provenance/preflight"
+    checks = directory / "preflight/checks.json"
+    common.write_json(checks, dict(passed=True, peak_reserved_bytes=1234))
+    common.write_json(
+        directory / "passed.json",
+        dict(
+            passed=True,
+            commit=common.git("rev-parse", "HEAD"),
+            checks_sha256=common.sha256(checks),
+            peak_reserved_bytes=1234,
+        ),
+    )
+    assert common.verify_preflight(directory)["passed"]
+    common.write_json(checks, dict(passed=True, peak_reserved_bytes=5678))
+    with pytest.raises(RuntimeError, match="Mismatched training preflight"):
+        common.verify_preflight(directory)

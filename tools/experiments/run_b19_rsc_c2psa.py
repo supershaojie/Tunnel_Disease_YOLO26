@@ -356,14 +356,13 @@ def main(argv=None):
         arguments[arguments.index("--stage") + 1] = "preflight"
         subprocess.run([sys.executable, str(Path(__file__).resolve()), *arguments], cwd=ROOT, check=True)
         receipt_dir = Path(json.loads((project / f"{NAME}_preflight_latest.json").read_text())["directory"])
-        passed = json.loads((receipt_dir / "passed.json").read_text())
-        assert passed["passed"] and passed["commit"] == evidence["commit"]
-        assert passed["checks_sha256"] == common.sha256(receipt_dir / "preflight/checks.json")
+        passed = common.verify_preflight(receipt_dir)
         child = json.loads((receipt_dir / "resolved.json").read_text())
         assert child["config"] == config
         for key in ("source_sha256", "initial_sha256", "args_sha256", "data_sha256", "dataset_manifest"):
             assert child["evidence"][key] == evidence[key], f"Evidence changed during preflight: {key}"
         assert evidence["source_sha256"] == common.source_hashes()
+        common.require_clean_source()
         # Formal training starts only after the child has exited and released its model, optimizer and CUDA allocations.
         torch.cuda.empty_cache()
         if torch.cuda.mem_get_info(0)[0] < passed["peak_reserved_bytes"]:

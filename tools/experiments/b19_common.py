@@ -90,6 +90,7 @@ def architecture_signature(cfg):
 
 def resolve_recipe(options, model=MODEL):
     """Validate the archived b19 recipe and classify every allowed candidate difference."""
+    require_clean_source()
     root = options.baseline_root.resolve()
     if Path(ultralytics.__file__).resolve().parent != ROOT / "ultralytics":
         raise RuntimeError(f"Ultralytics import is outside the experiment worktree: {ultralytics.__file__}")
@@ -483,3 +484,31 @@ def source_hashes(extra=()):
         + [ROOT / "tests/test_rsc_c2psa.py", *map(Path, extra)]
     )
     return {str(p.relative_to(ROOT)): sha256(p) for p in paths}
+
+
+def require_clean_source():
+    """Bind executable source to HEAD, including ignored/untracked Python files in the existing source inventory."""
+    tracked = set(git("ls-files", "-z").split("\0"))
+    untracked = {name.replace("\\", "/") for name in source_hashes()} - tracked
+    dirty = git("status", "--porcelain", "--untracked-files=no")
+    if dirty or untracked:
+        raise RuntimeError(
+            f"Fixed-commit experiment requires clean tracked files and committed source: {dirty}; {sorted(untracked)}"
+        )
+
+
+def verify_preflight(directory):
+    """Validate the preflight actually used by training, independently of optional manual shell invocations."""
+    directory = Path(directory)
+    receipt = json.loads((directory / "passed.json").read_text(encoding="utf-8"))
+    checks = directory / "preflight/checks.json"
+    report = json.loads(checks.read_text(encoding="utf-8"))
+    if (
+        not receipt["passed"]
+        or not report["passed"]
+        or receipt["commit"] != git("rev-parse", "HEAD")
+        or receipt["checks_sha256"] != sha256(checks)
+        or receipt["peak_reserved_bytes"] != report["peak_reserved_bytes"]
+    ):
+        raise RuntimeError(f"Mismatched training preflight evidence: {directory}")
+    return receipt

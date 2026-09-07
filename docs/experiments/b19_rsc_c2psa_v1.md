@@ -53,7 +53,7 @@ candidate items. Trained `best.pt`/`last.pt` cannot be used as initialization.
 The complete args snapshot, startup excerpt and historical expanded CLI record are in `tools/experiments/`.
 The original shell script itself was not in the b19 archive. The expanded record was retained by the prior experiment
 infrastructure and is checked against every resolved args field. The server must supply the actual baseline `args.yaml`;
-there is no recipe fallback if it is missing. All effective differences are printed and saved in `resolved.json`.
+there is no recipe fallback if it is missing. Uncommitted tracked changes and untracked executable source are rejected so the executed source matches the commit archived in the result package. All effective differences are printed and saved in `resolved.json`.
 
 The requested ZIP was not found. Corresponding extracted references were found and read at:
 
@@ -79,11 +79,11 @@ the native training loop itself, eliminating a separately maintained approximati
 
 ## Validation boundary
 
-Local environment: Windows, Python 3.11.15, PyTorch 2.7.1+cu118, RTX 2060 6 GB. Eight local tests passed, covering complete
+Local environment: Windows, Python 3.11.15, PyTorch 2.7.1+cu118, RTX 2060 6 GB. Nine local tests passed, covering complete
 640-square and 640x512 forward/backward and shape checks; shared initialization and real original pretrained values;
 probability invariants and underflow; exact native bypass in FP32 and CUDA AMP; native MuSGD/GradScaler/clipping/EMA attention
 probes; zero-gradient fixed points; separate-process checkpoint reload and fuse; real FP32 Validator on two synthetic labeled
-images; and fixed-batch OOM behavior. These small local probes are not server batch-32 validation or accuracy measurements.
+images; fixed-batch OOM behavior; and training-owned preflight receipt validation. These small local probes are not server batch-32 validation or accuracy measurements.
 
 The local server-preflight invocation audited all baseline fields and real dataset counts and then exited nonzero for the
 documented runtime mismatch. No passing server receipt was created. The b19 server environment is Python 3.12.3,
@@ -151,7 +151,7 @@ augment False, workers 8. Each report includes split, exact weight SHA256, code 
 curves/confusion matrices and predictions (JSON and labels). `diagnose` records the first 16 sorted validation images with
 image hashes, per-head beta/entropy/diagonal mass and original/new differences; it does not save attention matrices.
 
-The archive is created only after successful train/test/diagnose evidence checks, at:
+The archive validates the preflight receipt copied by this training run, plus successful train/test/diagnose evidence. It does not require a separate manual preflight shell invocation. It is published only after payload verification, at:
 
 ```text
 /root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v1/artifacts/experiments/yolo26n_b19_rsc_c2psa_v1_<12-character-commit>.tar.gz
