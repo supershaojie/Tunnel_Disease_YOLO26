@@ -1,0 +1,29 @@
+Audit attempt: E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\runs\detect\yolo26n_b19_msi_c2psa_v1_preflight_audit_mjuuk8bj
+{
+  "model": {
+    "b19": "yolo26n.pt",
+    "candidate": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-msi-c2psa-v1\\ultralytics\\cfg\\models\\26\\yolo26n-msi-c2psa-v1.yaml"
+  },
+  "data": {
+    "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+    "candidate": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml"
+  },
+  "project": {
+    "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+    "candidate": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-msi-c2psa-v1\\runs\\detect"
+  },
+  "name": {
+    "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+    "candidate": "yolo26n_b19_msi_c2psa_v1"
+  },
+  "pretrained": {
+    "b19": true,
+    "candidate": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt"
+  }
+}
+Traceback (most recent call last):
+  File "E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\tools\experiments\run_b19_msi_c2psa.py", line 444, in <module>
+    main()
+  File "E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\tools\experiments\run_b19_msi_c2psa.py", line 352, in main
+    raise RuntimeError(f"Pending server validation; b19 runtime differs: {evidence['runtime']['mismatches']}")
+RuntimeError: Pending server validation; b19 runtime differs: {'torch': {'b19': '2.8.0+cu128', 'current': '2.7.1+cu118'}, 'python': {'b19': '3.12.3', 'current': '3.11.15'}, 'gpu': {'b19': 'NVIDIA GeForce RTX 4090', 'current': 'NVIDIA GeForce RTX 2060'}}

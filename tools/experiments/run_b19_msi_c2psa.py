@@ -402,9 +402,11 @@ def main(argv=None):
         )
         if code:
             raise subprocess.CalledProcessError(code, child_process.args)
-        receipt_dir = Path(json.loads((project / f"{name}_preflight_latest.json").read_text())["directory"])
+        receipt_dir = Path(
+            json.loads((project / f"{name}_preflight_latest.json").read_text(encoding="utf-8"))["directory"]
+        )
         passed = common.verify_preflight(receipt_dir)
-        child = json.loads((receipt_dir / "resolved.json").read_text())
+        child = json.loads((receipt_dir / "resolved.json").read_text(encoding="utf-8"))
         assert child["config"] == config
         for key in ("source_sha256", "initial_sha256", "args_sha256", "data_sha256", "dataset_manifest"):
             assert child["evidence"][key] == evidence[key], f"Evidence changed during preflight: {key}"

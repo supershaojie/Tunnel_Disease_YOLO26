@@ -12,7 +12,7 @@
     "passed": 10,
     "failed": 0,
     "command": "python -m pytest tests/test_msi_c2psa.py -q -o addopts=\"\"",
-    "log": "docs/experiments/msi_audit/pytest.log"
+    "log": "docs/experiments/msi_audit/pytest.txt"
   },
   "parameter_audit": {
     "baseline_parameters": 2504190,
@@ -76,12 +76,78 @@
   ],
   "limitations": "Local labeled probes use batch1, CPU/64px lifecycle uses synthetic data; neither is the real-data batch32 server preflight. No claim of AP improvement.",
   "audit_files": {
+    "docs/experiments/msi_audit/entry_check.txt": "3c698000a65e3f78787d1b841e2bb613fb6ba58d7b25e7919243a962bd182159",
     "docs/experiments/msi_audit/gradients_amp.json": "64807af6a452995292bf4c4fa36ce30a9b9604d1973d8504b67ea289baf12a44",
     "docs/experiments/msi_audit/gradients_fp32.json": "888fd4c4f874190021f2a1d909c0b1fcafddd08f83a4e1138f49a7808a3b5897",
     "docs/experiments/msi_audit/initialization.json": "e50d859c5624f2e2ef7ed2373a5b079c5bc0d75f3566cf569872b2bbcc752d3a",
-    "docs/experiments/msi_audit/pytest.log": "3749022384fb363a3504d23b7899a4898a7924a65a364c7556aa38ed73b22644",
+    "docs/experiments/msi_audit/package_missing.txt": "ca695ccf45df857c68ecb69d42675d5fb34373cb71cdc50872b152f3663e2e52",
+    "docs/experiments/msi_audit/pytest.txt": "3749022384fb363a3504d23b7899a4898a7924a65a364c7556aa38ed73b22644",
     "docs/experiments/msi_audit/reload_amp.json": "1af7e7e2a810df48f418ce896bce06379a0bacb0513732ed4b22b30e280bb1dc",
     "docs/experiments/msi_audit/reload_fp32.json": "662eb7a2e1561806a9f26971ca29c2ca00cc9de3bb37b71b8f8380fa6cd30eef",
-    "docs/experiments/msi_audit/structure.json": "cf63d8c59b7623baae1d1757414a390ec366afd373a2df8b2eaf0514a4925f05"
+    "docs/experiments/msi_audit/structure.json": "cf63d8c59b7623baae1d1757414a390ec366afd373a2df8b2eaf0514a4925f05",
+    "docs/experiments/msi_audit/utf8_evaluation_test.txt": "aab5f2943106a6f4c8251992c35917cf4cad3ac9047bc3b499e64e7095d52b8f"
+  },
+  "recipe_audit": {
+    "executed_commit": "d6c728fa43dd7fec9393ba4383d0a2af3100fc82",
+    "args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+    "original_weight_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "difference_fields": [
+      "data",
+      "model",
+      "name",
+      "pretrained",
+      "project"
+    ],
+    "effective_batch": 32,
+    "epochs": 200,
+    "data_manifest": {
+      "train": {
+        "images": 8414,
+        "targets": 10243,
+        "image_stat_label_content_sha256": "d6ed10577383791b1d6db67fd97f598d169641d2360bfdbdcb7045d77339e63d"
+      },
+      "val": {
+        "images": 2404,
+        "targets": 2985,
+        "image_stat_label_content_sha256": "fbb1408734f194ff31cfbd69796fd49aeae1213ef2d49fd468629eaad76f710b"
+      },
+      "test": {
+        "images": 1202,
+        "targets": 1477,
+        "image_stat_label_content_sha256": "32dc9ba84a2cff80dde2e20a409bf480401c1f9ae1bc6b1c2370c612de404f00"
+      }
+    },
+    "launcher_verified": true,
+    "full_b19_recipe_inherited": true
+  },
+  "formal_entry_local_rejection": {
+    "exit_status": 1,
+    "expected": true,
+    "mismatches": {
+      "torch": {
+        "b19": "2.8.0+cu128",
+        "current": "2.7.1+cu118"
+      },
+      "python": {
+        "b19": "3.12.3",
+        "current": "3.11.15"
+      },
+      "gpu": {
+        "b19": "NVIDIA GeForce RTX 4090",
+        "current": "NVIDIA GeForce RTX 2060"
+      }
+    },
+    "no_passed_receipt": true,
+    "no_formal_run": true
+  },
+  "incomplete_package_rejection": {
+    "exit_status": 1,
+    "listed_missing_stages": true,
+    "no_final_archive": true
+  },
+  "utf8_reader_validation": {
+    "passed": 1,
+    "selected": "test_fixed_subset_validator_and_diagnose",
+    "log": "docs/experiments/msi_audit/utf8_evaluation_test.txt"
   }
 }

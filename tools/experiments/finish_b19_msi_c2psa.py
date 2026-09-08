@@ -152,13 +152,13 @@ def completed_run(run, experiment=V1):
     common.require_clean_source()
     assert run.name == experiment.name
     status = run.parent / f"{run.name}_train.exit_status"
-    assert status.read_text().strip() == "0", f"Training did not exit successfully: {status}"
-    record = json.loads((run / "completed.json").read_text())
+    assert status.read_text(encoding="utf-8").strip() == "0", f"Training did not exit successfully: {status}"
+    record = json.loads((run / "completed.json").read_text(encoding="utf-8"))
     assert record["completed"] and Path(record["run"]).resolve() == run
     assert record["commit"] == common.git("rev-parse", "HEAD"), "Deploy the recorded training commit"
     for name in ("best", "last"):
         assert record[f"{name}_sha256"] == common.sha256(run / f"weights/{name}.pt")
-    original = json.loads((run / "provenance/resolved.json").read_text())
+    original = json.loads((run / "provenance/resolved.json").read_text(encoding="utf-8"))
     assert original["evidence"]["source_sha256"] == common.source_hashes(), "Experiment source changed since training"
     data = Path(YAML.load(run / "args.yaml")["data"]).resolve()
     assert common.sha256(data) == original["evidence"]["data_sha256"]
@@ -280,11 +280,11 @@ def diagnose(run, data, output, experiment=V1, device="cuda:0"):
         )
     ap_reports = {}
     for split in ("val", "test"):
-        pointer = json.loads((run / f"{split}_fp32.json").read_text())
-        report = json.loads((run / pointer["path"]).read_text())
+        pointer = json.loads((run / f"{split}_fp32.json").read_text(encoding="utf-8"))
+        report = json.loads((run / pointer["path"]).read_text(encoding="utf-8"))
         assert report["weight_sha256"] == common.sha256(run / "weights/best.pt")
         ap_reports[split] = dict(pointer=pointer, results_dict=report["results_dict"], ap_by_iou=report["ap_by_iou"])
-    preflight = json.loads((run / "provenance/preflight/preflight/checks.json").read_text())
+    preflight = json.loads((run / "provenance/preflight/preflight/checks.json").read_text(encoding="utf-8"))
     result = dict(
         split="val",
         precision="FP32",
@@ -342,17 +342,17 @@ def package(run, data, experiment=V1):
         f"successful {stage} stage"
         for stage in ("train", "test", "diagnose")
         if not (run.parent / f"{experiment.name}_{stage}.exit_status").is_file()
-        or (run.parent / f"{experiment.name}_{stage}.exit_status").read_text().strip() != "0"
+        or (run.parent / f"{experiment.name}_{stage}.exit_status").read_text(encoding="utf-8").strip() != "0"
     ]
     if missing:
         raise FileNotFoundError(f"Incomplete result; missing stages/artifacts: {missing}")
     common.verify_preflight(run / "provenance/preflight")
     data = completed_run(run, experiment)
     for name in ("val_fp32", "test_fp32", "diagnostics"):
-        pointer = json.loads((run / f"{name}.json").read_text())
+        pointer = json.loads((run / f"{name}.json").read_text(encoding="utf-8"))
         path = run / pointer["path"]
         assert common.sha256(path) == pointer["sha256"]
-        report = json.loads(path.read_text())
+        report = json.loads(path.read_text(encoding="utf-8"))
         assert report["weight_sha256"] == common.sha256(run / "weights/best.pt")
         assert report["commit"] == common.git("rev-parse", "HEAD") and report["precision"] == "FP32"
         for artifact, digest in report["artifacts"].items():
@@ -421,7 +421,7 @@ def package(run, data, experiment=V1):
     # Verify archive payload, not just the source files that were added.
     import hashlib
 
-    manifest = json.loads((staging / "checksums.json").read_text())
+    manifest = json.loads((staging / "checksums.json").read_text(encoding="utf-8"))
     with tarfile.open(staged_archive) as archive:
         for name, row in manifest.items():
             stream = archive.extractfile(f"{experiment.name}/{name}")

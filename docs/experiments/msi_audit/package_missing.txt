@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\tools\experiments\finish_b19_msi_c2psa.py", line 494, in <module>
+    main()
+  File "E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\tools\experiments\finish_b19_msi_c2psa.py", line 463, in main
+    package(run, None, experiment)
+  File "E:\PycharmProjects\Tunnel_Disease_YOLO26\.worktrees\exp-yolo26n-b19-msi-c2psa-v1\tools\experiments\finish_b19_msi_c2psa.py", line 348, in package
+    raise FileNotFoundError(f"Incomplete result; missing stages/artifacts: {missing}")
+FileNotFoundError: Incomplete result; missing stages/artifacts: ['args.yaml', 'results.csv', 'results.png', 'completed.json', 'weights/best.pt', 'weights/last.pt', 'provenance/weights.json', 'provenance/optimizer.json', 'provenance/effective_config.json', 'provenance/resolved.json', 'provenance/preflight/structural.json', 'val_fp32.json', 'test_fp32.json', 'diagnostics.json', 'successful train stage', 'successful test stage', 'successful diagnose stage']
