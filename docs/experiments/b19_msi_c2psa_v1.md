@@ -7,6 +7,8 @@ No RSC, RPCA, SIR-SPPF, DCR, DSD or MPDF model code is imported. Other worktrees
 Deleted: the adapted lifecycle's RSC version selectors, attention calibration diagnostics and full-dataset preflight
 evaluation. Reused: `b19_common.py` configuration/initialization/optimizer audits and the existing attempt, FP32 evaluation
 and archive lifecycle. The new module adds the requested independent branch; deleting native layers would violate b19.
+The automatic preflight child owns additional live attempt metadata because a standalone shell receipt cannot describe
+its internal process; the former parent-only child logging block was removed.
 
 ## Model and initialization
 
@@ -173,15 +175,17 @@ STAGE=train
 cat "$P/${N}_${STAGE}.current_attempt"
 A=$(cat "$P/${N}_${STAGE}.current_attempt")
 cat "$A/process_status.json"
-ps -p "$(cat "$A/shell.pid")" -o pid,ppid,etime,stat,args
+PIDFILE="$A/shell.pid"; [ -f "$PIDFILE" ] || PIDFILE="$A/python.pid"
+ps -p "$(cat "$PIDFILE")" -o pid,ppid,etime,stat,args
 pgrep -af '[r]un_b19_msi_c2psa.py|[f]inish_b19_msi_c2psa.py'
 if [ -f "$A/exit_status" ]; then cat "$A/exit_status"; else echo 'No final exit receipt; inspect PID/state.'; fi
 tail -n 5 "$P/$N/results.csv" 2>/dev/null || true
 tail -f "$A/console.log"
 ```
 
-The automatic preflight child has `preflight.log`, `preflight_process.json` and `preflight.exit_status` inside the audit
-directory named in the train attempt's `audit_path.txt`. Use STAGE=test/diagnose/package to inspect their receipts.
+The automatic preflight child owns its own preflight current_attempt, console.log, python.pid, process_status.json and
+exit_status, and clears any earlier current exit code before launch. The train audit's automatic_preflight.json points to
+that attempt. Use STAGE=preflight/test/diagnose/package to inspect their receipts.
 
 ```bash
 WORK=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_MSI_C2PSA_v1

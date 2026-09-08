@@ -255,3 +255,37 @@ def test_native_trainer_lifecycle(tmp_path):
             loader = getattr(trainer, name, None)
             if loader is not None:
                 loader.close()
+
+
+def test_automatic_preflight_current_attempt(tmp_path):
+    """A real child checks that an old success disappears while running and failures retain prior attempts."""
+    import subprocess
+    import sys
+    from tools.experiments.run_b19_msi_c2psa import execute_preflight
+
+    project, audit = tmp_path / "project", tmp_path / "audit"
+    project.mkdir()
+    audit.mkdir()
+    prefix = project / f"{V1.name}_preflight"
+    prefix.with_suffix(".exit_status").write_text("0\n")
+    command = [
+        sys.executable,
+        "-c",
+        "import os,pathlib; "
+        "p=pathlib.Path(os.environ['B19_STAGE_ATTEMPT']); "
+        f"assert not pathlib.Path({str(prefix.with_suffix('.exit_status'))!r}).exists(); "
+        "assert (p/'previous.exit_status').read_text().strip()=='0'; "
+        "assert not (p/'exit_status').exists(); print('LIVE_ATTEMPT_OK')",
+    ]
+    first = execute_preflight(command, project, audit)
+    assert prefix.with_suffix(".exit_status").read_text().strip() == "0"
+    assert (first / "exit_status").read_text().strip() == "0"
+    with pytest.raises(subprocess.CalledProcessError) as error:
+        execute_preflight([sys.executable, "-c", "print('EXPECTED_FAILURE'); raise SystemExit(7)"], project, audit)
+    assert error.value.returncode == 7
+    second = Path(prefix.with_suffix(".current_attempt").read_text().strip())
+    assert second != first
+    assert (second / "exit_status").read_text().strip() == "7"
+    assert (second / "previous.exit_status").read_text().strip() == "0"
+    assert (first / "exit_status").read_text().strip() == "0"
+    assert json.loads((second / "process_status.json").read_text())["state"] == "exited"

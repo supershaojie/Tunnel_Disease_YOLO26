@@ -76,6 +76,7 @@
   ],
   "limitations": "Local labeled probes use batch1, CPU/64px lifecycle uses synthetic data; neither is the real-data batch32 server preflight. No claim of AP improvement.",
   "audit_files": {
+    "docs/experiments/msi_audit/automatic_preflight_test.txt": "8e230f4d2d74aa31978fabb5406a8b4af90c66ffa2138003e1a043070391e3eb",
     "docs/experiments/msi_audit/entry_check.txt": "3c698000a65e3f78787d1b841e2bb613fb6ba58d7b25e7919243a962bd182159",
     "docs/experiments/msi_audit/gradients_amp.json": "64807af6a452995292bf4c4fa36ce30a9b9604d1973d8504b67ea289baf12a44",
     "docs/experiments/msi_audit/gradients_fp32.json": "888fd4c4f874190021f2a1d909c0b1fcafddd08f83a4e1138f49a7808a3b5897",
@@ -149,5 +150,15 @@
     "passed": 1,
     "selected": "test_fixed_subset_validator_and_diagnose",
     "log": "docs/experiments/msi_audit/utf8_evaluation_test.txt"
+  },
+  "automatic_preflight_state_regression": {
+    "passed": 1,
+    "log": "docs/experiments/msi_audit/automatic_preflight_test.txt",
+    "checks": [
+      "real child sees no stale success while running",
+      "new current_attempt per invocation",
+      "nonzero exit=7 propagated",
+      "prior successful attempt preserved"
+    ]
   }
 }

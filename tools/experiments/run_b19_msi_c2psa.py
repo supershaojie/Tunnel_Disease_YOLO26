@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -316,6 +317,63 @@ def resolve(options, experiment=V1):
     return config, evidence
 
 
+def execute_preflight(command, project, audit):
+    """Own the automatic child attempt's live pointer and exit state, independently of earlier preflights."""
+    stage = f"{NAME}_preflight"
+    child_attempt = Path(tempfile.mkdtemp(prefix=f"{stage}.attempt.", dir=project))
+    for suffix in ("exit_status", "process_status.json"):
+        previous = project / f"{stage}.{suffix}"
+        if previous.is_file():
+            previous.rename(child_attempt / f"previous.{suffix}")
+    (project / f"{stage}.current_attempt").write_text(str(child_attempt) + "\n", encoding="utf-8")
+    common.write_json(audit / "automatic_preflight.json", dict(attempt=str(child_attempt)))
+    process, code = None, 125
+    state = dict(
+        state="starting",
+        automatic=True,
+        parent_pid=os.getpid(),
+        commit=common.git("rev-parse", "HEAD"),
+        started_utc=datetime.now(timezone.utc).isoformat(),
+    )
+
+    def publish():
+        common.write_json(child_attempt / "process_status.json", state)
+        common.write_json(project / f"{stage}.process_status.json", state)
+
+    publish()
+    try:
+        with (child_attempt / "console.log").open("w", encoding="utf-8") as stream:
+            process = subprocess.Popen(
+                command,
+                cwd=ROOT,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                env={**os.environ, "B19_STAGE": "preflight", "B19_STAGE_ATTEMPT": str(child_attempt)},
+            )
+            (child_attempt / "python.pid").write_text(str(process.pid) + "\n", encoding="utf-8")
+            state.update(state="running", python_pid=process.pid)
+            publish()
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                stream.write(line)
+                stream.flush()
+            code = process.wait()
+    finally:
+        if process is not None and process.poll() is None:
+            process.terminate()
+            code = process.wait()
+        state.update(state="exited", exit_status=code, finished_utc=datetime.now(timezone.utc).isoformat())
+        publish()
+        (child_attempt / "exit_status").write_text(str(code) + "\n", encoding="utf-8")
+        (project / f"{stage}.exit_status").write_text(str(code) + "\n", encoding="utf-8")
+        (audit / "preflight.exit_status").write_text(str(code) + "\n", encoding="utf-8")
+    if code:
+        raise subprocess.CalledProcessError(code, command)
+    return child_attempt
+
+
 def main(argv=None):
     """Run preflight in a disposable process and always rebuild formal training from seed 42."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -380,28 +438,7 @@ def main(argv=None):
         # Always remeasure at training launch, so GPU sharing is assessed against current occupancy.
         arguments = list(sys.argv[1:] if argv is None else argv)
         arguments[arguments.index("--stage") + 1] = "preflight"
-        child_log = attempt / "preflight.log"
-        with child_log.open("w", encoding="utf-8") as stream:
-            child_process = subprocess.Popen(
-                [sys.executable, "-u", str(Path(__file__).resolve()), *arguments],
-                cwd=ROOT,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-            )
-            common.write_json(attempt / "preflight_process.json", dict(pid=child_process.pid, state="running"))
-            for line in child_process.stdout:
-                print(line, end="", flush=True)
-                stream.write(line)
-                stream.flush()
-            code = child_process.wait()
-        (attempt / "preflight.exit_status").write_text(str(code) + "\n")
-        common.write_json(
-            attempt / "preflight_process.json", dict(pid=child_process.pid, state="exited", exit_status=code)
-        )
-        if code:
-            raise subprocess.CalledProcessError(code, child_process.args)
+        execute_preflight([sys.executable, "-u", str(Path(__file__).resolve()), *arguments], project, attempt)
         receipt_dir = Path(
             json.loads((project / f"{name}_preflight_latest.json").read_text(encoding="utf-8"))["directory"]
         )
