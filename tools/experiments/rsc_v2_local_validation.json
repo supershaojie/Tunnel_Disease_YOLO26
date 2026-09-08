@@ -73,5 +73,107 @@
     "trained-weight diagnosis and complete archive",
     "Linux flock/tmux execution"
   ],
-  "limitations": "Local batch=1 labeled optimizer probes and synthetic Validator/diagnostic images validate integration, not the formal preflight or detection quality."
+  "limitations": "Local batch=1 labeled optimizer probes and synthetic Validator/diagnostic images validate integration, not the formal preflight or detection quality.",
+  "recipe_audit": {
+    "executed_commit": "c5a89d52a840b95452f8a97d80f8943bc4f955c4",
+    "args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+    "args_source": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+    "initial_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "launch_evidence": {
+      "verified": true,
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rsc-c2psa-v2\\tools\\experiments\\b19_launcher_expanded.txt",
+      "sha256": "7589c1fbab84ea9c9b995da87df0ac44348a6ad9094a6fe16d83a47343171334",
+      "command": [
+        "yolo",
+        "detect",
+        "train",
+        "model=yolo26n.pt",
+        "data=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+        "epochs=200",
+        "patience=60",
+        "imgsz=640",
+        "batch=32",
+        "workers=8",
+        "device=0",
+        "seed=42",
+        "deterministic=True",
+        "amp=True",
+        "cache=False",
+        "optimizer=MuSGD",
+        "lr0=0.01",
+        "lrf=0.003",
+        "momentum=0.937",
+        "weight_decay=0.0005",
+        "warmup_epochs=3.0",
+        "warmup_momentum=0.8",
+        "warmup_bias_lr=0.1",
+        "cos_lr=True",
+        "close_mosaic=10",
+        "hsv_h=0.024",
+        "hsv_s=0.84",
+        "hsv_v=0.535",
+        "degrees=11.0",
+        "translate=0.17",
+        "scale=0.735",
+        "shear=3.5",
+        "perspective=0.00055",
+        "flipud=0.0",
+        "fliplr=0.5",
+        "bgr=0.0",
+        "mosaic=1.0",
+        "mixup=0.135",
+        "cutmix=0.03",
+        "copy_paste=0.0",
+        "box=7.5",
+        "cls=0.5",
+        "dfl=1.5",
+        "save=True",
+        "save_period=20",
+        "plots=True",
+        "val=True",
+        "project=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+        "name=b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+        "exist_ok=False"
+      ],
+      "trainer": "native DetectionTrainer",
+      "source": "archived expanded launch record; original shell script was not included in the b19 archive"
+    },
+    "dataset_counts": {
+      "train": {
+        "images": 8414,
+        "targets": 10243
+      },
+      "val": {
+        "images": 2404,
+        "targets": 2985
+      },
+      "test": {
+        "images": 1202,
+        "targets": 1477
+      }
+    },
+    "difference_fields": ["data", "model", "name", "pretrained", "project"],
+    "unchanged_training_fields": true
+  },
+  "formal_entry_runtime_rejection": {
+    "exit_status": 1,
+    "expected_rejection": true,
+    "log": "runs/local_v2_validation/entry_runtime_rejection.log",
+    "mismatches": {
+      "torch": {
+        "b19": "2.8.0+cu128",
+        "current": "2.7.1+cu118"
+      },
+      "python": {
+        "b19": "3.12.3",
+        "current": "3.11.15"
+      },
+      "gpu": {
+        "b19": "NVIDIA GeForce RTX 4090",
+        "current": "NVIDIA GeForce RTX 2060"
+      }
+    },
+    "no_passed_receipt": true,
+    "no_training_run": true
+  }
 }
