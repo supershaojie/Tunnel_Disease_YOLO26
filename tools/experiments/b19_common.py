@@ -135,13 +135,21 @@ def resolve_recipe(options, model=MODEL):
         raise ValueError("Initial weight does not match the supplied original b19 SHA-256.")
     if source.name.lower() in {"best.pt", "last.pt"}:
         raise ValueError("Do not initialize an experiment from a b19 trained checkpoint.")
-    # Native check_amp resolves this literal filename in cwd. Seed its cache with the verified original,
-    # so a fresh worktree never downloads a different auxiliary checkpoint during native trainer setup.
-    amp_weight = ROOT / "yolo26n.pt"
-    if not amp_weight.exists():
-        shutil.copyfile(source, amp_weight)
-    if sha256(amp_weight) != PRETRAINED_SHA256:
-        raise ValueError("The worktree AMP-check checkpoint differs from the original b19 weight")
+    # Native check_amp needs both the literal weight in cwd and an untracked package asset.
+    # The experiment bootstrap owns these copies before any Trainer invokes the native check.
+    amp_assets = {}
+    for original, cached in (
+        (source, ROOT / "yolo26n.pt"),
+        (root / "ultralytics/assets/bus.jpg", ROOT / "ultralytics/assets/bus.jpg"),
+    ):
+        if not original.is_file():
+            raise FileNotFoundError(f"Original b19 native AMP-check resource is required: {original}")
+        if not cached.exists():
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(original, cached)
+        if sha256(cached) != sha256(original):
+            raise ValueError(f"Native AMP-check resource differs from b19: {cached}")
+        amp_assets[cached.relative_to(ROOT).as_posix()] = dict(source=str(original), sha256=sha256(cached))
     weights, checkpoint = load_checkpoint(source)
     if len(weights.names) != 80 or architecture_signature(weights.yaml) != architecture_signature(
         baseline_architecture()
@@ -193,6 +201,7 @@ def resolve_recipe(options, model=MODEL):
         python=sys.version,
         executable=sys.executable,
         numerical_backend=computation_conditions(),
+        native_amp_resources=amp_assets,
         ultralytics=ultralytics.__version__,
         torch=torch.__version__,
         cuda=torch.version.cuda,

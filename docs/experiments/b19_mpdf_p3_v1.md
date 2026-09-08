@@ -88,6 +88,9 @@ fuse 保留新分支的非线性和三层卷积。
 服务器必须提供真实 b19 args、相同原始 yolo26n.pt、数据 YAML 和完整数据元信息；缺失或不匹配时退出。
 不把归档配置当作服务器缺失 args 的默认替代。
 
+启动时从 b19 主目录准备并校验原生 AMP 自检所需的 `yolo26n.pt` 和 `ultralytics/assets/bus.jpg`，
+这两个未跟踪资源不靠 Git 工作树自动携带。缺少原始资源或已有副本内容不一致时明确退出，不下载替代文件。
+
 训练全部继承真实 b19：200 epochs、patience=60、640、batch=32、MuSGD、seed=42、AMP=True、workers=8、
 nbs=64、原生 warmup/累积、全部增强和优化器字段。只允许模型、输出目录及必要身份/路径表达字段有解释的差异。
 `resolved.json` 保存全配置及逐字段差异，Trainer 完成 setup 后再次核对，记录共享初始化、原生参数组和 EMA。
