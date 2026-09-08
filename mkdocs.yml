@@ -813,6 +813,7 @@ nav:
               - conv: reference/nn/modules/conv.md
               - head: reference/nn/modules/head.md
               - rsc_c2psa: reference/nn/modules/rsc_c2psa.md
+              - rsc_c2psa_v2: reference/nn/modules/rsc_c2psa_v2.md
               - transformer: reference/nn/modules/transformer.md
               - utils: reference/nn/modules/utils.md
           - tasks: reference/nn/tasks.md

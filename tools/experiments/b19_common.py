@@ -481,7 +481,8 @@ def source_hashes(extra=()):
         sorted((ROOT / "ultralytics").rglob("*.py"))
         + sorted((ROOT / "ultralytics/cfg").rglob("*.yaml"))
         + sorted(p for p in (ROOT / "tools/experiments").iterdir() if p.is_file())
-        + [ROOT / "tests/test_rsc_c2psa.py", *map(Path, extra)]
+        + sorted((ROOT / "tests").glob("test_rsc_c2psa*.py"))
+        + list(map(Path, extra))
     )
     return {str(p.relative_to(ROOT)): sha256(p) for p in paths}
 

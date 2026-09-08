@@ -20,22 +20,22 @@ import cv2
 import torch
 
 from tools.experiments import b19_common as common
-from tools.experiments.run_b19_rsc_c2psa import NAME
+from tools.experiments.rsc_experiment import EXPERIMENTS, V1
 from tools.experiments.verify_b19_rsc_c2psa import bypass
 from ultralytics import YOLO
 from ultralytics.data.augment import LetterBox
 from ultralytics.data.utils import IMG_FORMATS, check_det_dataset
-from ultralytics.nn.modules import C2PSA_RSC
 from ultralytics.nn.modules.rsc_c2psa import reciprocal_probabilities
+from ultralytics.nn.modules.rsc_c2psa_v2 import reciprocal_logit_correction
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
 
 
-def evaluate(weight, data, output, split, device=0, batch=32, workers=8):
+def evaluate(weight, data, output, split, device=0, batch=32, workers=8, experiment=V1):
     """Run the repository's unified evaluation settings and capture the real backend precision and predictions."""
     output.mkdir(parents=True, exist_ok=False)
     model = YOLO(weight)
-    assert type(model.model.model[10]) is C2PSA_RSC and model.model.model[10].m[0].attn.enabled
+    assert type(model.model.model[10]) is experiment.block_type and model.model.model[10].m[0].attn.enabled
     settings = dict(
         data=str(data),
         split=split,
@@ -91,17 +91,37 @@ def evaluate(weight, data, output, split, device=0, batch=32, workers=8):
         common.write_json(output / "predictions.json", validator.jdict)
         YAML.save(output / "args.yaml", vars(validator.args))
 
+    calls = dict(attention=0, one2one=0)
+
+    def observe_attention(module, inputs, output):
+        assert module.enabled and output.dtype == torch.float32
+        calls["attention"] += 1
+
+    def observe_head(module, inputs, output):
+        assert module.end2end and output[1]["one2one"]["scores"].numel() > 0
+        assert calls["attention"] > calls["one2one"]
+        calls["one2one"] += 1
+
+    handles = [block.attn.register_forward_hook(observe_attention) for block in model.model.model[10].m]
+    handles.append(model.model.model[-1].register_forward_hook(observe_head))
     model.add_callback("on_val_end", capture)
-    model.val(**settings)
+    try:
+        model.val(**settings)
+    finally:
+        for handle in handles:
+            handle.remove()
+    assert calls["one2one"] > 0
+    record["inference_path"] = dict(version=experiment.version, **calls)
     record["artifacts"] = {p.relative_to(output).as_posix(): common.sha256(p) for p in output.rglob("*") if p.is_file()}
     common.write_json(output / "metrics.json", record)
     return record
 
 
-def completed_run(run):
+def completed_run(run, experiment=V1):
     """Require this run's successful process exit and both unchanged final weights."""
     common.require_clean_source()
-    status = run.parent / f"{NAME}_train.exit_status"
+    assert run.name == experiment.name
+    status = run.parent / f"{run.name}_train.exit_status"
     assert status.read_text().strip() == "0", f"Training did not exit successfully: {status}"
     record = json.loads((run / "completed.json").read_text())
     assert record["completed"] and Path(record["run"]).resolve() == run
@@ -124,11 +144,30 @@ def bind_report(run, name, folder):
     )
 
 
+def distribution(tensor):
+    """Summarize a finite tensor without retaining its full values."""
+    values = tensor.float().flatten()
+    assert values.numel() and torch.isfinite(values).all()
+    quantiles = values.quantile(values.new_tensor([0.05, 0.5, 0.95])).tolist()
+    return dict(
+        min=values.min().item(),
+        max=values.max().item(),
+        mean=values.mean().item(),
+        std=values.std(unbiased=False).item(),
+        max_abs=values.abs().max().item(),
+        p05=quantiles[0],
+        p50=quantiles[1],
+        p95=quantiles[2],
+    )
+
+
 @torch.no_grad()
-def diagnose(run, data, output):
+def diagnose(run, data, output, experiment=V1, device="cuda:0"):
     """Record head statistics on the first 16 sorted validation images, without storing attention matrices."""
     model, _ = load_checkpoint(run / "weights/best.pt")
-    model.float().eval().to("cuda:0")
+    assert type(model.model[10]) is experiment.block_type
+    assert all(block.attn.enabled for block in model.model[10].m)
+    model.float().eval().to(device)
     dataset = check_det_dataset(str(data), autodownload=False)
     images = sorted(p for p in Path(dataset["val"]).rglob("*") if p.suffix[1:].lower() in IMG_FORMATS)[:16]
     assert len(images) == 16
@@ -138,7 +177,7 @@ def diagnose(run, data, output):
         if image is None:
             raise ValueError(f"Unreadable validation image: {path}")
         image = LetterBox((640, 640), auto=False, stride=32)(image=image)
-        tensor = torch.from_numpy(image[..., ::-1].transpose(2, 0, 1).copy()).unsqueeze(0).cuda().float() / 255
+        tensor = torch.from_numpy(image[..., ::-1].transpose(2, 0, 1).copy()).unsqueeze(0).to(device).float() / 255
         blocks = []
 
         def inspect(attn, inputs):
@@ -151,9 +190,12 @@ def diagnose(run, data, output):
             )
             scores = (q * attn.scale).transpose(-2, -1) @ k
             a = scores.softmax(-1)
-            r = reciprocal_probabilities(scores)
-            beta = attn.beta.view(1, attn.num_heads, 1, 1)
-            mixed = (1 - beta) * a.float() + beta * r
+            if experiment.version == 2:
+                mixed, imbalance, delta_logits = reciprocal_logit_correction(scores, attn.theta)
+            else:
+                r = reciprocal_probabilities(scores)
+                beta = attn.beta.view(1, attn.num_heads, 1, 1)
+                mixed = (1 - beta) * a.float() + beta * r
             heads = []
             for h in range(attn.num_heads):
                 old, new = a[:, h], mixed[:, h]
@@ -177,6 +219,9 @@ def diagnose(run, data, output):
                         row_sum_max_error=(new.sum(-1) - 1).abs().max().item(),
                     )
                 )
+                if experiment.version == 2:
+                    heads[-1].update(D=distribution(imbalance[:, h]), delta_logits=distribution(delta_logits[:, h]))
+                    assert heads[-1]["delta_logits"]["max_abs"] <= heads[-1]["beta"]
             blocks.append(dict(tokens=H * W, shape=[H, W], heads=heads))
 
         handles = [block.attn.register_forward_pre_hook(inspect) for block in model.model[10].m]
@@ -191,12 +236,20 @@ def diagnose(run, data, output):
         old = native[1]["one2one"]
         new = enabled[1]["one2one"]
         changes = {k: (new[k] - old[k]).abs().mean().item() for k in ("boxes", "scores")}
+        head = model.model[-1]
+        decoded_native, decoded_new = head._inference(old), head._inference(new)
+        dense_changes = {
+            key: distribution((decoded_new[:, index] - decoded_native[:, index]).abs())
+            for key, index in (("boxes_pixels", slice(0, 4)), ("scores_probability", slice(4, None)))
+        }
+        assert blocks and len(blocks) == len(model.model[10].m)
         rows.append(
             dict(
                 image=str(path),
                 sha256=common.sha256(path),
                 blocks=blocks,
                 disabled_inference_mean_abs_difference=changes,
+                dense_one2one_difference=dense_changes,
             )
         )
     common.write_json(
@@ -204,6 +257,18 @@ def diagnose(run, data, output):
         dict(
             split="val",
             precision="FP32",
+            version=experiment.version,
+            device=str(device),
+            preprocessing=dict(
+                selection="first 16 sorted validation image paths",
+                letterbox=[640, 640],
+                auto=False,
+                stride=32,
+                color="RGB",
+                normalization="/255",
+            ),
+            data_sha256=common.sha256(data),
+            source_sha256=common.source_hashes(),
             samples=rows,
             weight_sha256=common.sha256(run / "weights/best.pt"),
             commit=common.git("rev-parse", "HEAD"),
@@ -214,16 +279,17 @@ def diagnose(run, data, output):
     bind_report(run, "diagnostics", output)
 
 
-def package(run, data):
+def package(run, data, experiment=V1):
     """Verify outputs and export source, weights, curves, predictions, statistics, logs and checksums."""
     common.require_clean_source()
+    assert run.name == experiment.name
     required = ["args.yaml", "results.csv", "results.png", "completed.json", "weights/best.pt", "weights/last.pt"]
     for name in required:
         if not (run / name).is_file():
             raise FileNotFoundError(run / name)
     common.verify_preflight(run / "provenance/preflight")
     for stage in ("train", "test", "diagnose"):
-        assert (run.parent / f"{NAME}_{stage}.exit_status").read_text().strip() == "0"
+        assert (run.parent / f"{experiment.name}_{stage}.exit_status").read_text().strip() == "0"
     for name in ("val_fp32", "test_fp32", "diagnostics"):
         pointer = json.loads((run / f"{name}.json").read_text())
         path = run / pointer["path"]
@@ -238,10 +304,10 @@ def package(run, data):
             assert (report["images"], report["targets"]) == expected
     bundles = ROOT / "artifacts/experiments"
     bundles.mkdir(parents=True, exist_ok=True)
-    output = bundles / f"{NAME}_{common.git('rev-parse', '--short=12', 'HEAD')}.tar.gz"
+    output = bundles / f"{experiment.name}_{common.git('rev-parse', '--short=12', 'HEAD')}.tar.gz"
     if output.exists():
         raise FileExistsError(f"Preserving existing package: {output}")
-    staging = Path(tempfile.mkdtemp(prefix=f"{NAME}_package_", dir=bundles))
+    staging = Path(tempfile.mkdtemp(prefix=f"{experiment.name}_package_", dir=bundles))
     staged_archive = staging / output.name
     with (staging / "source.tar").open("wb") as stream:
         subprocess.run(
@@ -258,6 +324,10 @@ def package(run, data):
             data_sha256=common.sha256(data),
             reference_files=json.loads((ROOT / "tools/experiments/rsc_sources.json").read_text(encoding="utf-8")),
             references=["https://arxiv.org/html/2408.04357v1", "https://arxiv.org/html/2508.09983v1"],
+            experiment=dict(version=experiment.version, name=experiment.name, model=str(experiment.model)),
+            v2_source=json.loads((ROOT / "tools/experiments/rsc_v2_sources.json").read_text(encoding="utf-8"))
+            if experiment.version == 2
+            else None,
         ),
     )
     selected = {
@@ -266,7 +336,7 @@ def package(run, data):
         if p.is_file() and p.name not in {"preflight.pt", "reload_reference.pt"}
     }
     for stage in ("preflight", "train", "test", "diagnose"):
-        for p in run.parent.glob(f"{NAME}_{stage}*"):
+        for p in run.parent.glob(f"{experiment.name}_{stage}*"):
             if p.is_file():
                 selected[f"execution/{p.name}"] = p
             elif ".attempt." in p.name:
@@ -281,14 +351,14 @@ def package(run, data):
     selected["checksums.json"] = staging / "checksums.json"
     with tarfile.open(staged_archive, "w:gz") as archive:
         for name, path in sorted(selected.items()):
-            archive.add(path, arcname=f"{NAME}/{name}", recursive=False)
+            archive.add(path, arcname=f"{experiment.name}/{name}", recursive=False)
     # Verify archive payload, not just the source files that were added.
     import hashlib
 
     manifest = json.loads((staging / "checksums.json").read_text())
     with tarfile.open(staged_archive) as archive:
         for name, row in manifest.items():
-            stream = archive.extractfile(f"{NAME}/{name}")
+            stream = archive.extractfile(f"{experiment.name}/{name}")
             digest = hashlib.sha256()
             size = 0
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -307,20 +377,22 @@ def package(run, data):
 def main(argv=None):
     """Expose independent stage processes; internal checkpoint checks cannot create formal stage receipts."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", type=int, choices=(1, 2), default=1)
     parser.add_argument("--stage", choices=("test", "diagnose", "package"))
     parser.add_argument("--checkpoint-check", type=Path)
     parser.add_argument("--data", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--split", choices=("val", "test"), default="val")
     args = parser.parse_args(argv)
+    experiment = EXPERIMENTS[args.version]
     if args.checkpoint_check:
-        result = evaluate(args.checkpoint_check, args.data, args.output, args.split)
+        result = evaluate(args.checkpoint_check, args.data, args.output, args.split, experiment=experiment)
         assert (result["images"], result["targets"]) == ((2404, 2985) if args.split == "val" else (1202, 1477))
         return
-    run = ROOT / "runs/detect" / NAME
-    data = completed_run(run)
+    run = ROOT / "runs/detect" / experiment.name
+    data = completed_run(run, experiment)
     if args.stage == "package":
-        package(run, data)
+        package(run, data, experiment)
         return
     output = Path(tempfile.mkdtemp(prefix=f"{args.stage}_", dir=run))
     if args.stage == "test":
@@ -330,6 +402,8 @@ def main(argv=None):
                 [
                     sys.executable,
                     str(Path(__file__).resolve()),
+                    "--version",
+                    str(experiment.version),
                     "--checkpoint-check",
                     str(run / "weights/best.pt"),
                     "--data",
@@ -344,7 +418,7 @@ def main(argv=None):
             )
             bind_report(run, f"{split}_fp32", folder)
     elif args.stage == "diagnose":
-        diagnose(run, data, output)
+        diagnose(run, data, output, experiment)
     else:
         parser.error("--stage is required")
 

@@ -17,6 +17,7 @@ from ultralytics.nn.modules import (
     C2,
     C2PSA,
     C2PSA_RSC,
+    C2PSA_RSC_V2,
     C3,
     C3TR,
     ELAN1,
@@ -1889,6 +1890,7 @@ def parse_model(d, ch, verbose=True):
             C2fPSA,
             C2PSA,
             C2PSA_RSC,
+            C2PSA_RSC_V2,
             DWConv,
             Focus,
             BottleneckCSP,
@@ -1932,6 +1934,7 @@ def parse_model(d, ch, verbose=True):
             C2fCIB,
             C2PSA,
             C2PSA_RSC,
+            C2PSA_RSC_V2,
             A2C2f,
         }
     )

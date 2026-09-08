@@ -25,24 +25,26 @@ import torch
 
 from tools.experiments import b19_common as common
 from tools.experiments import verify_b19_rsc_c2psa as verify
+from tools.experiments.rsc_experiment import EXPERIMENTS, V1
 from ultralytics.cfg import DEFAULT_CFG_DICT, get_cfg
 from ultralytics.data.utils import check_det_dataset
 from ultralytics.models.yolo.detect import DetectionTrainer
-from ultralytics.nn.modules import C2PSA_RSC
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils.torch_utils import init_seeds
 
-NAME = "yolo26n_b19_rsc_c2psa_v1"
-MODEL = common.MODEL
+NAME = V1.name
+MODEL = V1.model
 
 
 class AuditedTrainer(DetectionTrainer):
     """Own only fixed-batch output and initialization audits; retain native training and optimization."""
 
     new_marker = ".attn.theta"
+    experiment = V1
 
-    def __init__(self, overrides, _callbacks=None):
+    def __init__(self, overrides, _callbacks=None, experiment=V1):
         """Reserve the exact experiment directory without auto-incrementing or overwriting another run."""
+        self.experiment = experiment
         output = Path(overrides["project"]) / overrides["name"]
         output.mkdir(parents=True, exist_ok=False)
         super().__init__(
@@ -73,7 +75,7 @@ class AuditedTrainer(DetectionTrainer):
         with torch.random.fork_rng(devices=[]):
             baseline = super().get_model(copy.deepcopy(common.baseline_architecture()), weights, False)
         candidate = super().get_model(cfg, weights, verbose)
-        self.weight_audit = verify.audit(baseline, candidate, weights)
+        self.weight_audit = verify.audit(baseline, candidate, weights, self.experiment)
         self.initial_common = {
             k: v.detach().cpu().clone() for k, v in candidate.state_dict().items() if self.new_marker not in k
         }
@@ -89,7 +91,7 @@ def final_model_audit(trainer):
     attn = trainer.model.model[10].m[0].attn
     assert attn.enabled and attn.theta.requires_grad
     torch.testing.assert_close(attn.beta, torch.full_like(attn.beta, 0.01), atol=1e-8, rtol=1e-6)
-    assert type(trainer.ema.ema.model[10]) is C2PSA_RSC
+    assert type(trainer.ema.ema.model[10]) is trainer.experiment.block_type
     torch.testing.assert_close(trainer.ema.ema.model[10].m[0].attn.theta, attn.theta, atol=0, rtol=0)
     common.write_json(trainer.save_dir / "provenance/weights.json", trainer.weight_audit)
     common.write_json(trainer.save_dir / "provenance/optimizer.json", common.audit_optimizer(trainer))
@@ -128,11 +130,11 @@ class PreflightComplete(Exception):
     """End the disposable native loop at its batch callback without declaring a training run complete."""
 
 
-def preflight(config, evidence, directory):
+def preflight(config, evidence, directory, experiment=V1):
     """Observe 32 real native batches: AMP, GradScaler, warmup, accumulation, clipping, MuSGD and EMA."""
     directory.mkdir(parents=True, exist_ok=False)
     common.write_json(directory / "environment.json", evidence)
-    trainer = AuditedTrainer(dict(config, project=str(directory), name="check"))
+    trainer = AuditedTrainer(dict(config, project=str(directory), name="check"), experiment=experiment)
     report = dict(
         passed=False,
         batches=[],
@@ -238,7 +240,8 @@ def preflight(config, evidence, directory):
             pass
         assert len(report["batches"]) == 32
         assert report["completed_steps"] >= 2 and report["theta_updates"] > 0
-        assert report["nonzero_task_gradient_steps"] > 0  # No per-batch nonzero requirement; R=A can give zero.
+        # Degenerate attention can have zero gradient; require a real task signal across the probe.
+        assert report["nonzero_task_gradient_steps"] > 0
         ema = trainer.ema.ema
         assert trainer.ema.updates == report["optimizer_attempts"]
         assert not torch.equal(state["initial_ema"], ema.model[10].m[0].attn.theta)
@@ -254,7 +257,7 @@ def preflight(config, evidence, directory):
             batch=trainer.test_loader.batch_size,
             args=vars(trainer.validator.args),
         )
-        report["reload"] = verify.save_reload_check(ema, directory)
+        report["reload"] = verify.save_reload_check(ema, directory, experiment)
         report.update(
             peak_allocated_bytes=torch.cuda.max_memory_allocated(0),
             peak_reserved_bytes=torch.cuda.max_memory_reserved(0),
@@ -278,6 +281,8 @@ def preflight(config, evidence, directory):
             sys.executable,
             "-m",
             "tools.experiments.finish_b19_rsc_c2psa",
+            "--version",
+            str(experiment.version),
             "--checkpoint-check",
             str(directory / "preflight.pt"),
             "--data",
@@ -293,9 +298,9 @@ def preflight(config, evidence, directory):
     return report
 
 
-def resolve(options):
+def resolve(options, experiment=V1):
     """Resolve all original b19 fields and bind code, data and initialization evidence to this execution."""
-    raw, config, evidence = common.resolve_recipe(options, MODEL)
+    raw, config, evidence = common.resolve_recipe(options, experiment.model)
     evidence["launch_evidence"] = common.launcher_evidence(options, raw)
     evidence["source_sha256"] = common.source_hashes()
     evidence["runtime"] = runtime_evidence()
@@ -306,6 +311,7 @@ def resolve(options):
 def main(argv=None):
     """Run preflight in a disposable process and always rebuild formal training from seed 42."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", type=int, choices=(1, 2), default=1)
     parser.add_argument("--stage", choices=("preflight", "train"), required=True)
     parser.add_argument("--baseline-root", type=Path, required=True)
     parser.add_argument("--baseline-args", type=Path, required=True)
@@ -313,32 +319,41 @@ def main(argv=None):
     parser.add_argument("--pretrained", type=Path)
     parser.add_argument("--pretrained-sha256", default=common.PRETRAINED_SHA256)
     parser.add_argument("--project", type=Path, default=ROOT / "runs/detect")
-    parser.add_argument("--name", default=NAME, choices=(NAME,))
+    parser.add_argument("--name")
     options = parser.parse_args(argv)
+    experiment = EXPERIMENTS[options.version]
+    name = experiment.name
+    if options.name is None:
+        options.name = name
+    if options.name != name:
+        parser.error(f"Version {experiment.version} requires --name {name}")
     os.chdir(ROOT)
     project = options.project.resolve()
     if project != ROOT / "runs/detect":
         raise ValueError("Server stages must use this experiment worktree's runs/detect directory")
     project.mkdir(parents=True, exist_ok=True)
-    if options.stage == "train" and (project / NAME).exists():
-        raise FileExistsError(f"Preserving existing run: {project / NAME}")
-    attempt = Path(tempfile.mkdtemp(prefix=f"{NAME}_{options.stage}_audit_", dir=project))
+    if options.stage == "train" and (project / name).exists():
+        raise FileExistsError(f"Preserving existing run: {project / name}")
+    attempt = Path(tempfile.mkdtemp(prefix=f"{name}_{options.stage}_audit_", dir=project))
     try:
-        config, evidence = resolve(options)
+        config, evidence = resolve(options, experiment)
         common.write_json(attempt / "resolved.json", dict(config=config, evidence=evidence))
-        verify.structural_checks(attempt)
-        probe = object.__new__(AuditedTrainer)
-        probe.args = get_cfg(overrides=config)
-        probe.data = dict(nc=1, channels=3, names={0: "crack"})
-        weights, _ = load_checkpoint(evidence["initial_path"])
-        init_seeds(42, deterministic=True)
-        probe.get_model(str(MODEL), weights, False)
-        common.write_json(attempt / "initialization.json", probe.weight_audit)
-        del probe, weights
         if evidence["runtime"]["mismatches"]:
             raise RuntimeError(f"Pending server validation; b19 runtime differs: {evidence['runtime']['mismatches']}")
         if options.stage == "preflight":
-            checks = preflight(config, evidence, attempt / "preflight")
+            # These checks belong to the disposable child, never repeated in the formal training parent.
+            verify.structural_checks(attempt, experiment)
+            probe = object.__new__(AuditedTrainer)
+            probe.experiment = experiment
+            probe.args = get_cfg(overrides=config)
+            probe.data = dict(nc=1, channels=3, names={0: "crack"})
+            weights, _ = load_checkpoint(evidence["initial_path"])
+            init_seeds(42, deterministic=True)
+            probe.get_model(str(experiment.model), weights, False)
+            common.write_json(attempt / "initialization.json", probe.weight_audit)
+            del probe, weights
+            init_seeds(42, deterministic=True)
+            checks = preflight(config, evidence, attempt / "preflight", experiment)
             common.write_json(
                 attempt / "passed.json",
                 dict(
@@ -348,14 +363,14 @@ def main(argv=None):
                     peak_reserved_bytes=checks["peak_reserved_bytes"],
                 ),
             )
-            common.write_json(project / f"{NAME}_preflight_latest.json", dict(directory=str(attempt)))
+            common.write_json(project / f"{name}_preflight_latest.json", dict(directory=str(attempt)))
             print(f"Preflight passed: {attempt}")
             return
         # Always remeasure at training launch, so GPU sharing is assessed against current occupancy.
         arguments = list(sys.argv[1:] if argv is None else argv)
         arguments[arguments.index("--stage") + 1] = "preflight"
         subprocess.run([sys.executable, str(Path(__file__).resolve()), *arguments], cwd=ROOT, check=True)
-        receipt_dir = Path(json.loads((project / f"{NAME}_preflight_latest.json").read_text())["directory"])
+        receipt_dir = Path(json.loads((project / f"{name}_preflight_latest.json").read_text())["directory"])
         passed = common.verify_preflight(receipt_dir)
         child = json.loads((receipt_dir / "resolved.json").read_text())
         assert child["config"] == config
@@ -368,7 +383,7 @@ def main(argv=None):
         if torch.cuda.mem_get_info(0)[0] < passed["peak_reserved_bytes"]:
             raise RuntimeError("Available memory is below the measured fixed-batch preflight peak; no batch reduction")
         init_seeds(42, deterministic=True)
-        trainer = AuditedTrainer(config)
+        trainer = AuditedTrainer(config, experiment=experiment)
         provenance = trainer.save_dir / "provenance"
         shutil.copytree(attempt, provenance / "launch")
         shutil.copytree(receipt_dir, provenance / "preflight")

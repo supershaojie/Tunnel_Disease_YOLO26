@@ -1,0 +1,12 @@
+{
+  "base_branch": "exp-yolo26n-b19-rsc-c2psa-v1",
+  "base_commit": "47a81c2e9da27b8f371ce22bd3d72c81b7b35e83",
+  "formula_source": "User-specified v2 bounded reciprocal-imbalance logit correction; independently implemented against this repository's native Attention.forward.",
+  "formula": "L=log_softmax(S.float(),-1); D=tanh(0.5*(L.transpose(-2,-1)-L)); beta=0.2*sigmoid(theta.float()); A=softmax(S.float()+beta[None,:,None,None]*D,-1)",
+  "theta_initial": "log(0.05/0.95)",
+  "beta_initial": 0.01,
+  "scope": "Only backbone layer 10 C2PSA attention; native SPPF, CSP, QKV, PE(V), projection, FFN, residuals, neck and Detect retained.",
+  "inherited_reference_record": "tools/experiments/rsc_sources.json; extracted files were reviewed during v1, requested ZIP identity was not established.",
+  "interpretation": "Engineering hypothesis awaiting experiments; no guaranteed accuracy improvement or established academic novelty. Reciprocal attention has prior art. Dense N-squared attention and extra FP32 operations remain.",
+  "diagnostic_policy": "Post-training bypass is inference diagnosis, not an independently trained ablation. Select structure using validation, not repeated test-set tuning."
+}

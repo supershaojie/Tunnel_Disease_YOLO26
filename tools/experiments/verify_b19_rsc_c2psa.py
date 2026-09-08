@@ -1,5 +1,6 @@
 """Numerical, initialization and serialization checks for the isolated RSC candidate."""
 
+import argparse
 import copy
 import os
 import subprocess
@@ -10,8 +11,10 @@ from pathlib import Path
 import torch
 
 from tools.experiments import b19_common as common
+from tools.experiments.rsc_experiment import EXPERIMENTS, V1
 from ultralytics import YOLO
-from ultralytics.nn.modules import C2PSA_RSC, SPPF
+from ultralytics.cfg import get_cfg
+from ultralytics.nn.modules import SPPF
 from ultralytics.nn.modules.rsc_c2psa import Attention_RSC, reciprocal_probabilities
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils import YAML
@@ -31,11 +34,11 @@ def bypass(model):
             m.enabled = state
 
 
-def audit(baseline, candidate, weights):
+def audit(baseline, candidate, weights, experiment=V1):
     """Verify all shared names/shapes/values, the native graph and precisely two added scalars."""
     report = common.audit_weights(baseline, candidate, weights)
     block = candidate.model[10]
-    assert type(block) is C2PSA_RSC and type(candidate.model[9]) is SPPF
+    assert type(block) is experiment.block_type and type(candidate.model[9]) is SPPF
     assert [i for i, (a, b) in enumerate(zip(baseline.model, candidate.model)) if type(a) is not type(b)] == [10]
     assert candidate.model[21].f == [-1, 10]
     assert candidate.model[-1].f == [16, 19, 22]
@@ -104,22 +107,26 @@ def probability_checks(device="cpu"):
     )
 
 
-def structural_checks(directory):
+def structural_checks(directory, experiment=V1):
     """Run complete 640-square and rectangular model forward/backward, preserving initialization evidence."""
     original = YAML.load(common.ROOT / "ultralytics/cfg/models/26/yolo26.yaml")
     expected = copy.deepcopy(original)
     expected["nc"] = 1
-    expected["backbone"][10][2] = "C2PSA_RSC"
-    assert YAML.load(common.MODEL) == expected
+    expected["backbone"][10][2] = experiment.block_type.__name__
+    assert YAML.load(experiment.model) == expected
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(42)
         baseline = DetectionModel(common.baseline_architecture(), verbose=False).eval()
         rng = torch.get_rng_state()
         torch.manual_seed(42)
-        candidate = DetectionModel(str(common.MODEL), nc=1, verbose=False).eval()
+        candidate = DetectionModel(str(experiment.model), nc=1, verbose=False).eval()
         assert torch.equal(rng, torch.get_rng_state())
-        report = audit(baseline, candidate, None)
-        report.update(constructor_rng_equal=True, probabilities=probability_checks(), shapes=[])
+        report = audit(baseline, candidate, None, experiment)
+        if experiment.version == 2:
+            from tools.experiments.verify_b19_rsc_c2psa_v2 import probability_checks as check_probabilities
+        else:
+            check_probabilities = probability_checks
+        report.update(constructor_rng_equal=True, probabilities=check_probabilities(), shapes=[])
         for h, w in ((640, 640), (640, 512)):
             x = torch.randn(1, 3, h, w)
             with torch.no_grad(), bypass(candidate):
@@ -131,10 +138,24 @@ def structural_checks(directory):
                 candidate.zero_grad(set_to_none=True)
                 output = candidate(x)
                 raw = output["one2many"]
-                loss = raw["boxes"].square().mean() + raw["scores"].square().mean()
+                if experiment.version == 2:
+                    candidate.args = get_cfg(overrides=common.REFERENCE["args"])
+                    task_batch = dict(
+                        img=x,
+                        batch_idx=torch.tensor([0.0]),
+                        cls=torch.tensor([[0.0]]),
+                        bboxes=torch.tensor([[0.5, 0.5, 0.4, 0.3]]),
+                    )
+                    loss, _ = candidate.loss(task_batch, output)
+                    loss = loss.sum()
+                else:
+                    loss = raw["boxes"].square().mean() + raw["scores"].square().mean()
                 loss.backward()
                 theta = candidate.model[10].m[0].attn.theta
                 assert theta.grad is not None and torch.isfinite(theta.grad).all()
+                if experiment.version == 2:
+                    assert theta.grad.count_nonzero(), "Synthetic labeled task probe must reach theta"
+
                 assert shape == [[1, 256, h // 32, w // 32]]
                 assert raw["boxes"].shape == (1, 4, (h // 8) * (w // 8) * 21 // 16)
                 report["shapes"].append(
@@ -155,7 +176,7 @@ def structural_checks(directory):
     return report
 
 
-def save_reload_check(model, directory):
+def save_reload_check(model, directory, experiment=V1):
     """Compare a native FP16 EMA checkpoint in a fresh process against the pre-save independent snapshot."""
     directory = Path(directory)
     snapshot = copy.deepcopy(model).cpu().half().eval()
@@ -168,7 +189,14 @@ def save_reload_check(model, directory):
         x = torch.randn(1, 3, 64, 96)
         reference = dict(x=x, state=snapshot.state_dict(), raw=snapshot(x))
         torch.save(reference, directory / "reload_reference.pt")
-    command = [sys.executable, "-m", "tools.experiments.verify_b19_rsc_c2psa", str(path)]
+    command = [
+        sys.executable,
+        "-m",
+        "tools.experiments.verify_b19_rsc_c2psa",
+        str(path),
+        "--version",
+        str(experiment.version),
+    ]
     result = subprocess.run(
         command, cwd=common.ROOT, env={**os.environ, "PYTHONPATH": str(common.ROOT)}, capture_output=True, text=True
     )
@@ -184,23 +212,26 @@ def save_reload_check(model, directory):
     )
 
 
-def reload_in_process(path):
+def reload_in_process(path, experiment=V1):
     """Validate all serialized tensors, raw outputs, retained fused branch and anchor-aligned predictions."""
     path = Path(path)
     reference = torch.load(path.with_name("reload_reference.pt"), map_location="cpu", weights_only=False)
     model = YOLO(path)
-    assert type(model.model.model[10]) is C2PSA_RSC
+    assert type(model.model.model[10]) is experiment.block_type
     assert model.model.model[10].m[0].attn.enabled
     common.assert_close_tree(reference["state"], model.model.state_dict(), 0, 0)
     report = []
     with torch.no_grad():
         before = model.model(reference["x"])
         common.assert_close_tree(reference["raw"], before, 1e-5, 1e-5, report=report)
-        model.fuse()
-        after = model.model(reference["x"])
+        # Both branches start from the same complete v2 state, including any updated theta/shared weights.
+        fused = copy.deepcopy(model)
+        common.assert_close_tree(model.model.state_dict(), fused.model.state_dict(), 0, 0)
+        fused.fuse()
+        after = fused.model(reference["x"])
         assert after[1]["one2many"] == {}
         common.assert_close_tree(before[1]["one2one"], after[1]["one2one"], 1e-4, 1e-4, report=report)
-        head = model.model.model[-1]
+        head = fused.model.model[-1]
         decoded = [head._inference(v[1]["one2one"]).permute(0, 2, 1) for v in (before, after)]
         common.assert_close_tree(decoded[0], decoded[1], 1e-4, 1e-4, report=report)
         aligned = []
@@ -215,4 +246,8 @@ def reload_in_process(path):
 
 
 if __name__ == "__main__":
-    reload_in_process(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("checkpoint", type=Path)
+    parser.add_argument("--version", type=int, choices=(1, 2), default=1)
+    options = parser.parse_args()
+    reload_in_process(options.checkpoint, EXPERIMENTS[options.version])

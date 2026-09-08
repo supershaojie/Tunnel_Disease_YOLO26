@@ -1,0 +1,77 @@
+{
+  "local_only": true,
+  "server_preflight_passed": false,
+  "base_commit": "47a81c2e9da27b8f371ce22bd3d72c81b7b35e83",
+  "environment": {
+    "python": "3.11.15",
+    "torch": "2.7.1+cu118",
+    "cuda": "11.8",
+    "gpu": "NVIDIA GeForce RTX 2060"
+  },
+  "tests": [
+    {
+      "file": "tests/test_rsc_c2psa.py",
+      "passed": 13,
+      "log": "runs/local_v2_validation/shared_1.log"
+    },
+    {
+      "file": "tests/test_rsc_c2psa_v2.py",
+      "passed": 8,
+      "log": "runs/local_v2_validation/v2_1.log"
+    }
+  ],
+  "parameter_audit": {
+    "common_keys": 708,
+    "new_parameters": {
+      "model.10.m.0.attn.theta": [2]
+    },
+    "added_parameters": 2,
+    "baseline_parameters": 2504190,
+    "candidate_parameters": 2504192,
+    "all_common_tensors_equal": true
+  },
+  "pretrained_tensors": 606,
+  "original_weight_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+  "local_labeled_task_probes": [
+    {
+      "amp": false,
+      "local_batch": 1,
+      "steps": 8,
+      "gradients": [
+        [3.58377983502578e-5, 7.3915766733989585e-6],
+        [-9.22891340451315e-5, 2.011478500207886e-5],
+        [9.659800525696483e-6, -2.1338057194952853e-5],
+        [4.249126504873857e-5, -4.8336041800212115e-6],
+        [-8.790774154476821e-5, -1.8721197193372063e-5],
+        [-1.3568766917160247e-5, -1.3260441846796311e-6],
+        [4.5902539568487555e-5, 3.496006320347078e-5],
+        [-6.321065302472562e-5, -1.360064106847858e-5]
+      ],
+      "theta": [-2.9438860416412354, -2.9438915252685547],
+      "ema_theta": [-2.9438862800598145, -2.943891763687134]
+    },
+    {
+      "amp": true,
+      "local_batch": 1,
+      "steps": 3,
+      "gradients": [
+        [3.495582495816052e-5, 7.048711722745793e-6],
+        [0.00012494206021074206, -2.824894545483403e-5],
+        [2.963983206427656e-5, 3.0047635846131016e-7]
+      ],
+      "theta": [-2.9443209171295166, -2.944314956665039],
+      "ema_theta": [-2.9443211555480957, -2.944315195083618]
+    }
+  ],
+  "synthetic_validator_images": 2,
+  "fixed_diagnostic_samples": 16,
+  "pending_server": [
+    "b19 runtime and actual batch=32 concurrent GPU memory",
+    "32 native real batches with AMP/GradScaler/warmup/accumulation/clipping/MuSGD/EMA",
+    "full native and FP32 Validator",
+    "formal training and final val/test",
+    "trained-weight diagnosis and complete archive",
+    "Linux flock/tmux execution"
+  ],
+  "limitations": "Local batch=1 labeled optimizer probes and synthetic Validator/diagnostic images validate integration, not the formal preflight or detection quality."
+}

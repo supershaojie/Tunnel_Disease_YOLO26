@@ -108,10 +108,13 @@ from .transformer import (
 )
 
 from .rsc_c2psa import Attention_RSC, C2PSA_RSC
+from .rsc_c2psa_v2 import Attention_RSC_V2, C2PSA_RSC_V2
 
 __all__ = (
     "Attention_RSC",
+    "Attention_RSC_V2",
     "C2PSA_RSC",
+    "C2PSA_RSC_V2",
     "AIFI",
     "C1",
     "C2",

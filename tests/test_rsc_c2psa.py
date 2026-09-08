@@ -15,6 +15,8 @@ from tools.experiments import b19_common as common
 from tools.experiments import verify_b19_rsc_c2psa as verify
 from tools.experiments.finish_b19_rsc_c2psa import evaluate
 from tools.experiments.run_b19_rsc_c2psa import AuditedTrainer
+from tools.experiments.rsc_experiment import V1, V2
+from ultralytics.nn.modules.rsc_c2psa_v2 import Attention_RSC_V2
 from ultralytics.cfg import get_cfg
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.nn.modules.block import Attention
@@ -24,9 +26,10 @@ from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import ModelEMA, autocast
 
 
-def test_full_graph(tmp_path):
+@pytest.mark.parametrize("experiment", [V1, V2], ids=["v1", "v2"])
+def test_full_graph(tmp_path, experiment):
     """Check actual 640/rectangular outputs, backward, all common initialization and exact native bypass."""
-    report = verify.structural_checks(tmp_path)
+    report = verify.structural_checks(tmp_path, experiment)
     assert report["added_parameters"] == 2
 
 
@@ -39,8 +42,9 @@ def test_probabilities(device):
     verify.probability_checks(device)
 
 
+@pytest.mark.parametrize("experiment", [V1, V2], ids=["v1", "v2"])
 @pytest.mark.parametrize("amp", [False, True])
-def test_attention_native_bypass_and_optimizer(amp):
+def test_attention_native_bypass_and_optimizer(amp, experiment):
     """Use the real native MuSGD/GradScaler/clipping/EMA step on an attention-only CUDA probe."""
     if amp and not torch.cuda.is_available():
         pytest.skip("CUDA unavailable")
@@ -48,7 +52,7 @@ def test_attention_native_bypass_and_optimizer(amp):
     torch.manual_seed(42)
     native = Attention(128, num_heads=2).to(device).eval()
     rng = torch.get_rng_state()
-    candidate = Attention_RSC(copy.deepcopy(native)).eval()
+    candidate = (Attention_RSC if experiment.version == 1 else Attention_RSC_V2)(copy.deepcopy(native)).eval()
     assert torch.equal(rng, torch.get_rng_state())
     torch.testing.assert_close(candidate.beta, torch.full((2,), 0.01, device=device))
     x = torch.randn(2, 128, 20, 20, device=device, requires_grad=True)
@@ -90,7 +94,8 @@ def test_zero_gradient_fixed_point():
     assert theta.grad is not None and torch.isfinite(theta.grad).all() and theta.grad.item() == 0
 
 
-def test_original_weight_reload_and_validator(tmp_path):
+@pytest.mark.parametrize("experiment", [V1, V2], ids=["v1", "v2"])
+def test_original_weight_reload_and_validator(tmp_path, experiment):
     """Audit the real original yolo26n.pt, serialization/fuse and a small local real Validator run."""
     weight = Path(os.environ.get("RSC_TEST_PRETRAINED", common.ROOT / "yolo26n.pt"))
     if not weight.is_file():
@@ -98,15 +103,16 @@ def test_original_weight_reload_and_validator(tmp_path):
     assert common.sha256(weight) == common.PRETRAINED_SHA256
     weights, _ = load_checkpoint(weight)
     probe = object.__new__(AuditedTrainer)
+    probe.experiment = experiment
     probe.args = get_cfg()
     probe.data = dict(nc=1, channels=3, names={0: "crack"})
     torch.manual_seed(42)
-    model = probe.get_model(str(common.MODEL), weights, False)
+    model = probe.get_model(str(experiment.model), weights, False)
     assert len(probe.weight_audit["loaded_keys"]) == 606
     assert probe.weight_audit["all_common_tensors_equal"]
     common.write_json(tmp_path / "weight_audit.json", probe.weight_audit)
     model.args = vars(probe.args)
-    verify.save_reload_check(model.eval(), tmp_path)
+    verify.save_reload_check(model.eval(), tmp_path, experiment)
     # Synthetic labeled images exercise the actual Validator API; no detection-quality claim is made.
     data_root = tmp_path / "dataset"
     for kind in ("images", "labels"):
@@ -118,7 +124,16 @@ def test_original_weight_reload_and_validator(tmp_path):
         (data_root / f"labels/val/{i}.txt").write_text("0 0.45 0.43 0.75 0.6\n")
     data = data_root / "data.yaml"
     YAML.save(data, dict(path=str(data_root), train="images/val", val="images/val", names={0: "crack"}))
-    report = evaluate(tmp_path / "preflight.pt", data, tmp_path / "validator", "val", device="cpu", batch=2, workers=0)
+    report = evaluate(
+        tmp_path / "preflight.pt",
+        data,
+        tmp_path / "validator",
+        "val",
+        device="cpu",
+        batch=2,
+        workers=0,
+        experiment=experiment,
+    )
     assert report["images"] == 2 and report["targets"] == 2 and report["precision"] == "FP32"
 
 
