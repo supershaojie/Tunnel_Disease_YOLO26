@@ -311,5 +311,57 @@
     "formal training and independent FP32 val/test",
     "real 16-image diagnostics",
     "final result package integrity"
-  ]
+  ],
+  "local_preflight_entry": {
+    "exit_status": 2,
+    "passed": false,
+    "structural_passed": true,
+    "trainer_get_model_weights_passed": true,
+    "dataset_manifest": {
+      "train": {
+        "images": 8414,
+        "targets": 10243,
+        "image_stat_label_content_sha256": "d6ed10577383791b1d6db67fd97f598d169641d2360bfdbdcb7045d77339e63d"
+      },
+      "val": {
+        "images": 2404,
+        "targets": 2985,
+        "image_stat_label_content_sha256": "fbb1408734f194ff31cfbd69796fd49aeae1213ef2d49fd468629eaad76f710b"
+      },
+      "test": {
+        "images": 1202,
+        "targets": 1477,
+        "image_stat_label_content_sha256": "32dc9ba84a2cff80dde2e20a409bf480401c1f9ae1bc6b1c2370c612de404f00"
+      }
+    },
+    "config_differences": {
+      "model": {
+        "b19": "yolo26n.pt",
+        "pkc": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-pkc-sppf-v1\\ultralytics\\cfg\\models\\26\\yolo26n-pkc-sppf-v1.yaml"
+      },
+      "data": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+        "pkc": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml"
+      },
+      "project": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+        "pkc": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-pkc-sppf-v1\\runs\\detect"
+      },
+      "name": {
+        "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+        "pkc": "yolo26n_b19_pkc_sppf_v1"
+      },
+      "pretrained": {
+        "b19": true,
+        "pkc": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt"
+      }
+    },
+    "missing": [
+      "b19 torch=2.8.0+cu128; current torch=2.7.1+cu118",
+      "b19 Python=3.12.3; current=3.11.15",
+      "b19 GPU=NVIDIA GeForce RTX 4090; current=NVIDIA GeForce RTX 2060",
+      "Insufficient verified headroom: free=4.99 GiB; require 8 GiB for preflight."
+    ],
+    "note": "Real-data CUDA updates were not attempted; batch32 and original recipe were retained"
+  }
 }

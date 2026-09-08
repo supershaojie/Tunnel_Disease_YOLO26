@@ -71,6 +71,10 @@ fuse 比较保留 atol=rtol=1e-4，并记录原生对照。
 64×96 下所有 126 个 anchor 都被保留；接近相同的分数可能使 top-k 行排序改变，故按实际 anchor 对齐完整
 box/score/class，并同时比较全部未排序解码结果，没有放宽阈值或修改模型后处理。
 
+实际运行本地 preflight 入口后，数据数量/标注清单、完整配方和预训练初始化核对均通过。
+入口因本机 RTX2060、Python/PyTorch 与 b19 不同及显存不足而退出码为 2，没有执行真实 CUDA 更新，
+没有生成通过凭证，也没有降 batch。详细记录见 [验证报告](b19_pkc_sppf_v1_validation.json)。
+
 **待服务器验证：** 原 b19 Python 3.12.3 / torch 2.8.0+cu128 / RTX4090 环境，
 真实数据 batch32/640 的 AMP、FP32、MuSGD、EMA、Validator 预检，正式训练，最终 val/test 和真实特征诊断。
 未执行服务器训练，未声称模型涨点或首创。
