@@ -1,0 +1,142 @@
+{
+  "fp32": [
+    {
+      "path": "pool(R)",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 5.960464477539063e-08,
+      "mean_abs": 9.12696123123169e-09,
+      "scale": 2.355130910873413,
+      "arithmetic_dtype": "torch.float32",
+      "roundoff_bound": 2.246027861474431e-06,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(U+R)-H",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 1.1920928955078125e-07,
+      "mean_abs": 9.437402089436849e-09,
+      "scale": 4.11195182800293,
+      "arithmetic_dtype": "torch.float32",
+      "roundoff_bound": 3.921462848666124e-06,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(R)",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 6.103515625e-05,
+      "mean_abs": 1.02996826171875e-05,
+      "scale": 2429.144775390625,
+      "arithmetic_dtype": "torch.float32",
+      "roundoff_bound": 0.002316612983122468,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(U+R)-H",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 8.569657802581787e-05,
+      "mean_abs": 1.7705000936985015e-05,
+      "scale": 2430.181396484375,
+      "arithmetic_dtype": "torch.float32",
+      "roundoff_bound": 0.0023176015820354223,
+      "outside_tolerance": 0
+    }
+  ],
+  "amp": [
+    {
+      "path": "pool(R)",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 0.000244140625,
+      "mean_abs": 5.544448892275492e-05,
+      "scale": 2.6606247425079346,
+      "arithmetic_dtype": "torch.float16",
+      "roundoff_bound": 0.02078613080084324,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(U+R)-H",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 0.00024415552616119385,
+      "mean_abs": 5.544546681145827e-05,
+      "scale": 3.748499870300293,
+      "arithmetic_dtype": "torch.float16",
+      "roundoff_bound": 0.02928515523672104,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(R)",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 0.25,
+      "mean_abs": 0.0795248031616211,
+      "scale": 2564.0,
+      "arithmetic_dtype": "torch.float16",
+      "roundoff_bound": 20.03125,
+      "outside_tolerance": 0
+    },
+    {
+      "path": "pool(U+R)-H",
+      "shape": [
+        2,
+        2,
+        3,
+        5
+      ],
+      "dtype": "torch.float32",
+      "finite": true,
+      "max_abs": 0.25002622604370117,
+      "mean_abs": 0.07953291926532984,
+      "scale": 2563.53125,
+      "arithmetic_dtype": "torch.float16",
+      "roundoff_bound": 20.027587890625,
+      "outside_tolerance": 0
+    }
+  ]
+}

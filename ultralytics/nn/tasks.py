@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 
 from ultralytics.nn.autobackend import check_class_names
+from ultralytics.nn.modules.mpdf_p3 import MPDFP3
 from ultralytics.nn.modules import (
     AIFI,
     C1,
@@ -1982,6 +1983,14 @@ def parse_model(d, ch, verbose=True):
             c2 = args[1] if args[3] else args[1] * 4
         elif m is torch.nn.BatchNorm2d:
             args = [ch[f]]
+        elif m is MPDFP3:
+            if not isinstance(f, list) or len(f) != 3 or n != 1:
+                raise ValueError("MPDFP3 requires one fusion with [U, L, H] sources")
+            c_up, c_low, c_high = (ch[x] for x in f)
+            if c_up != c_high:
+                raise ValueError("MPDFP3 U and H channels must match")
+            args = [c_low, c_high, *args]
+            c2 = c_up + c_low
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         elif m in frozenset(

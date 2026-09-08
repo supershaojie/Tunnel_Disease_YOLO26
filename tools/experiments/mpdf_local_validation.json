@@ -1,0 +1,74 @@
+{
+  "local_only": true,
+  "server_preflight_passed": false,
+  "environment": {
+    "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Jun 11 2026, 15:12:53) [MSC v.1942 64 bit (AMD64)]",
+    "torch": "2.7.1+cu118",
+    "cuda": "11.8",
+    "gpu": "NVIDIA GeForce RTX 2060"
+  },
+  "tests": {
+    "passed": 12,
+    "failed": 0,
+    "command": "python -m pytest tests/test_mpdf_p3.py -q -o addopts=\"\""
+  },
+  "parameters": {
+    "baseline_parameters": 2504190,
+    "candidate_parameters": 2537630,
+    "added_parameters": 33440,
+    "common_keys": 708,
+    "all_common_tensors_equal": true,
+    "new_parameters": {
+      "model.15.reduce.weight": [
+        32,
+        640,
+        1,
+        1
+      ],
+      "model.15.dw.weight": [
+        32,
+        1,
+        3,
+        3
+      ],
+      "model.15.project.weight": [
+        384,
+        32,
+        1,
+        1
+      ],
+      "model.15.project.bias": [
+        384
+      ]
+    }
+  },
+  "pretrained_matched": 606,
+  "shared_states": 708,
+  "real_data_batch32": "Pending server execution; local Validator and diagnose use 16 synthetic fixture images.",
+  "fused_one2one_bypass": {
+    "boxes": 0.018023014068603516,
+    "scores": 0.00026798248291015625
+  },
+  "diagnostic_images": 16,
+  "cuda_dtypes": [
+    "FP32",
+    "AMP_FP16"
+  ],
+  "implementation_base": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "trained_fused_local_mean_errors": {
+    "FP32": {
+      "max_abs": 4.76837158203125e-07,
+      "mean_abs": 6.1514319630228895e-09,
+      "outside_tolerance": 0,
+      "input_dtype": "torch.float32",
+      "coefficient_dtype": "torch.float32"
+    },
+    "AMP_FP16": {
+      "max_abs": 9.5367431640625e-07,
+      "mean_abs": 7.451453711837531e-08,
+      "outside_tolerance": 0,
+      "input_dtype": "torch.float32",
+      "coefficient_dtype": "torch.float16"
+    }
+  }
+}

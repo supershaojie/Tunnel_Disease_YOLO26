@@ -1,0 +1,18 @@
+{
+  "data_gradients": [
+    {
+      "reduce.weight": 0.0,
+      "dw.weight": 0.0,
+      "project.weight": 0.07117191702127457,
+      "project.bias": 0.4768127501010895
+    },
+    {
+      "reduce.weight": 0.002456669695675373,
+      "dw.weight": 0.0002621001622173935,
+      "project.weight": 0.14619725942611694,
+      "project.bias": 0.990929126739502
+    }
+  ],
+  "optimizer": "MuSGD",
+  "ema_updates": 2
+}
