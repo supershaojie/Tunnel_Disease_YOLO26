@@ -1,0 +1,155 @@
+{
+  "implementation_base": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "zip_path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+  "zip_sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "zip_matches_requested": true,
+  "reference_files": [
+    {
+      "path": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\AAFM_2025ACM.py",
+      "sha256": "cd2021081fe7b1606fdf2c55a735b2dc5665a91cd5937cb5a8194a763c24398a",
+      "zip_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/AAFM_2025ACM.py",
+      "zip_member_equals_extracted": true,
+      "read_scope": "FeedForward and surrounding module integration; external modules are not imported"
+    },
+    {
+      "path": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\HMHA_2025CVPR.py",
+      "sha256": "5b267bd82cfd1ddea89daf0a6b18e633013966bd590f7d36b9dd2b39719ffb1a",
+      "zip_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HMHA_2025CVPR.py",
+      "zip_member_equals_extracted": true,
+      "read_scope": "FeedForward and surrounding module integration; external modules are not imported"
+    }
+  ],
+  "actual_b19_and_prompt_files": [
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+      "sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9"
+    },
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\logs\\b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42.log",
+      "sha256": "1f1c388da9512dc80a2368daaebaec0a6b71cf987c0ecc4838396d5ce33bbeba"
+    },
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\git_state.txt",
+      "sha256": "5ecad24cb7a308e38d33d6c787d2a06370913d001e201e08c71e527dbdf5eabc"
+    },
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\framework_versions.txt",
+      "sha256": "2c936e2b4ffb0ab07e09bdffac92c36fc3671a7b7967a0d6cd09fa99f9327766"
+    },
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\results.csv",
+      "sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt",
+      "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
+    },
+    {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\MSI-C2PSA\\Codex_MSI_C2PSA_v1_full_prompt.md",
+      "sha256": "d91ce0e18a1c99a84fd14ea0dad04f6cdbb108cb4b9e70ad544901165477df25"
+    }
+  ],
+  "native_files": [
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\nn\\modules\\block.py",
+      "sha256": "c9fe821aad5a72247134f0d0c0c458daeb0557a70d720ffeff0f564e3a57d06b"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\cfg\\models\\26\\yolo26.yaml",
+      "sha256": "9e742b3edec062fbf99067b6500ebf7e0665a841faa114d04adb17544fe11f3b"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\nn\\tasks.py",
+      "sha256": "01a8d859333221652515fd46b8f6b03714d4cd3c7b664f596ef136927a52cd2d"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\nn\\modules\\head.py",
+      "sha256": "d06ad637b95aa62366faf27bb2e2f809ae9bf06b9117a9652fbb6c97eedaf8eb"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\engine\\trainer.py",
+      "sha256": "bba9d19cb22c0ace8a3dc69234588eb59225f59aa43f490c63671840f0b08249"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\models\\yolo\\detect\\train.py",
+      "sha256": "deefc6356e7e7c642a022d07c42c96cb1d5a16ea6713a1beb89d162deb61ff52"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\utils\\torch_utils.py",
+      "sha256": "0871fa4d8ffd3cb9d2bec7506626fd228b135ea9dcc647d5a19e00149437cf42"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\optim\\muon.py",
+      "sha256": "42a4e66e36b740497877029f75b8c9b1e2a7cc3e018d4f169e216f990879ba18"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\engine\\validator.py",
+      "sha256": "72c418c43243350da778427383d35f55015a8780d47db4fcad02b5b156f3e6be"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\nn\\autobackend.py",
+      "sha256": "b0b1ab6c6dd611f019aef55b1fc641584bc40893c5584b7fb3198b451b02d146"
+    },
+    {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\ultralytics\\nn\\backends\\pytorch.py",
+      "sha256": "91904789ded8bf14747c58ccd702f56669093df390c22e76729230d632918dce"
+    }
+  ],
+  "infrastructure": {
+    "worktree": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rsc-c2psa-v2",
+    "commit": "0d44e61a37697d200287f22392898f4138be0277",
+    "reused": [
+      "b19_common.py",
+      "b19_reference.json",
+      "b19_archived_args.yaml",
+      "b19_launcher_expanded.txt",
+      "b19_startup_excerpt.txt"
+    ],
+    "adapted": [
+      "training stage lifecycle",
+      "FP32 evaluation and packaging lifecycle"
+    ],
+    "removed_from_adaptation": [
+      "RSC v1/v2 selectors",
+      "theta and attention-probability diagnostics",
+      "full-validation preflight"
+    ]
+  },
+  "reference_differences": {
+    "AAFM": "Reuse only DW3/DW5 -> GELU(first)*second. Use the existing native Conv+BN+SiLU FFN expansion once; add zero-initialized Wo beside the retained native FFN output. Bias-free identity DW kernels; no FFT, external attention, external projection_in or normalization.",
+    "HMHA": "Source FeedForward uses one 3x3 depthwise conv on both halves. MSI uses separate 3x3 and full 5x5 kernels, without replacing native FFN.",
+    "TransNeXt": "Dai Shi, CVPR 2024, Convolutional GLU uses local depthwise convolution before GELU in one gate branch. Conceptual local-FFN reference only; MSI has two kernel sizes and an additive zero-initialized branch, not the TransNeXt block."
+  },
+  "papers": [
+    {
+      "title": "TransNeXt: Robust Foveal Visual Perception for Vision Transformers",
+      "author": "Dai Shi",
+      "venue": "CVPR 2024",
+      "url": "https://arxiv.org/abs/2311.17132",
+      "read_url": "https://arxiv.org/html/2311.17132v3",
+      "sections": [
+        "3.2",
+        "Appendix D.4"
+      ]
+    },
+    {
+      "title": "Devil is in the Uniformity: Exploring Diverse Learners within Transformer for Image Restoration",
+      "authors": [
+        "Shihao Zhou",
+        "Dayu Li",
+        "Jinshan Pan",
+        "Juncheng Zhou",
+        "Jinglei Shi",
+        "Jufeng Yang"
+      ],
+      "venue": "ICCV 2025",
+      "url": "https://openaccess.thecvf.com/content/ICCV2025/html/Zhou_Devil_is_in_the_Uniformity_Exploring_Diverse_Learners_within_Transformer_ICCV_2025_paper.html",
+      "scope": "metadata verified; HMHA full attention not used"
+    }
+  ],
+  "metadata_notes": {
+    "HMHA": "Associated HINT paper is ICCV 2025; the CVPR filename is not venue evidence.",
+    "AAFM": "Module package source reference. Original title/authors/DOI not independently established; no fabricated citation."
+  },
+  "claims": "Native Attention already contains positional encoding; native FFN 1x1 projections alone do not mix neighborhoods. No accuracy improvement claim before formal evaluation."
+}

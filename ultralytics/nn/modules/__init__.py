@@ -107,7 +107,10 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .msi_c2psa import C2PSA_MSI
+
 __all__ = (
+    "C2PSA_MSI",
     "AIFI",
     "C1",
     "C2",

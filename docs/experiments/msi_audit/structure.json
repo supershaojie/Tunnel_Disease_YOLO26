@@ -1,0 +1,5993 @@
+{
+  "common_keys": 708,
+  "common_elements": 2523296,
+  "loaded_keys": [],
+  "loaded_elements": 0,
+  "groups": {
+    "backbone": {
+      "common_keys": 240,
+      "common_elements": 1373880,
+      "loaded_keys": 0,
+      "loaded_elements": 0
+    },
+    "neck": {
+      "common_keys": 228,
+      "common_elements": 903334,
+      "loaded_keys": 0,
+      "loaded_elements": 0
+    },
+    "head": {
+      "common_keys": 240,
+      "common_elements": 246082,
+      "loaded_keys": 0,
+      "loaded_elements": 0
+    }
+  },
+  "unmatched_source_keys": {},
+  "new_parameters": {
+    "model.10.m.0.msi.dw3.weight": [
+      128,
+      1,
+      3,
+      3
+    ],
+    "model.10.m.0.msi.dw5.weight": [
+      128,
+      1,
+      5,
+      5
+    ],
+    "model.10.m.0.msi.project.weight": [
+      128,
+      128,
+      1,
+      1
+    ],
+    "model.10.m.0.msi.project.bias": [
+      128
+    ]
+  },
+  "target_original_keys": [
+    "model.10.cv1.conv.weight",
+    "model.10.cv1.bn.weight",
+    "model.10.cv1.bn.bias",
+    "model.10.cv1.bn.running_mean",
+    "model.10.cv1.bn.running_var",
+    "model.10.cv1.bn.num_batches_tracked",
+    "model.10.cv2.conv.weight",
+    "model.10.cv2.bn.weight",
+    "model.10.cv2.bn.bias",
+    "model.10.cv2.bn.running_mean",
+    "model.10.cv2.bn.running_var",
+    "model.10.cv2.bn.num_batches_tracked",
+    "model.10.m.0.attn.qkv.conv.weight",
+    "model.10.m.0.attn.qkv.bn.weight",
+    "model.10.m.0.attn.qkv.bn.bias",
+    "model.10.m.0.attn.qkv.bn.running_mean",
+    "model.10.m.0.attn.qkv.bn.running_var",
+    "model.10.m.0.attn.qkv.bn.num_batches_tracked",
+    "model.10.m.0.attn.proj.conv.weight",
+    "model.10.m.0.attn.proj.bn.weight",
+    "model.10.m.0.attn.proj.bn.bias",
+    "model.10.m.0.attn.proj.bn.running_mean",
+    "model.10.m.0.attn.proj.bn.running_var",
+    "model.10.m.0.attn.proj.bn.num_batches_tracked",
+    "model.10.m.0.attn.pe.conv.weight",
+    "model.10.m.0.attn.pe.bn.weight",
+    "model.10.m.0.attn.pe.bn.bias",
+    "model.10.m.0.attn.pe.bn.running_mean",
+    "model.10.m.0.attn.pe.bn.running_var",
+    "model.10.m.0.attn.pe.bn.num_batches_tracked",
+    "model.10.m.0.ffn.0.conv.weight",
+    "model.10.m.0.ffn.0.bn.weight",
+    "model.10.m.0.ffn.0.bn.bias",
+    "model.10.m.0.ffn.0.bn.running_mean",
+    "model.10.m.0.ffn.0.bn.running_var",
+    "model.10.m.0.ffn.0.bn.num_batches_tracked",
+    "model.10.m.0.ffn.1.conv.weight",
+    "model.10.m.0.ffn.1.bn.weight",
+    "model.10.m.0.ffn.1.bn.bias",
+    "model.10.m.0.ffn.1.bn.running_mean",
+    "model.10.m.0.ffn.1.bn.running_var",
+    "model.10.m.0.ffn.1.bn.num_batches_tracked"
+  ],
+  "common_tensor_keys": [
+    "model.0.conv.weight",
+    "model.0.bn.weight",
+    "model.0.bn.bias",
+    "model.0.bn.running_mean",
+    "model.0.bn.running_var",
+    "model.0.bn.num_batches_tracked",
+    "model.1.conv.weight",
+    "model.1.bn.weight",
+    "model.1.bn.bias",
+    "model.1.bn.running_mean",
+    "model.1.bn.running_var",
+    "model.1.bn.num_batches_tracked",
+    "model.2.cv1.conv.weight",
+    "model.2.cv1.bn.weight",
+    "model.2.cv1.bn.bias",
+    "model.2.cv1.bn.running_mean",
+    "model.2.cv1.bn.running_var",
+    "model.2.cv1.bn.num_batches_tracked",
+    "model.2.cv2.conv.weight",
+    "model.2.cv2.bn.weight",
+    "model.2.cv2.bn.bias",
+    "model.2.cv2.bn.running_mean",
+    "model.2.cv2.bn.running_var",
+    "model.2.cv2.bn.num_batches_tracked",
+    "model.2.m.0.cv1.conv.weight",
+    "model.2.m.0.cv1.bn.weight",
+    "model.2.m.0.cv1.bn.bias",
+    "model.2.m.0.cv1.bn.running_mean",
+    "model.2.m.0.cv1.bn.running_var",
+    "model.2.m.0.cv1.bn.num_batches_tracked",
+    "model.2.m.0.cv2.conv.weight",
+    "model.2.m.0.cv2.bn.weight",
+    "model.2.m.0.cv2.bn.bias",
+    "model.2.m.0.cv2.bn.running_mean",
+    "model.2.m.0.cv2.bn.running_var",
+    "model.2.m.0.cv2.bn.num_batches_tracked",
+    "model.3.conv.weight",
+    "model.3.bn.weight",
+    "model.3.bn.bias",
+    "model.3.bn.running_mean",
+    "model.3.bn.running_var",
+    "model.3.bn.num_batches_tracked",
+    "model.4.cv1.conv.weight",
+    "model.4.cv1.bn.weight",
+    "model.4.cv1.bn.bias",
+    "model.4.cv1.bn.running_mean",
+    "model.4.cv1.bn.running_var",
+    "model.4.cv1.bn.num_batches_tracked",
+    "model.4.cv2.conv.weight",
+    "model.4.cv2.bn.weight",
+    "model.4.cv2.bn.bias",
+    "model.4.cv2.bn.running_mean",
+    "model.4.cv2.bn.running_var",
+    "model.4.cv2.bn.num_batches_tracked",
+    "model.4.m.0.cv1.conv.weight",
+    "model.4.m.0.cv1.bn.weight",
+    "model.4.m.0.cv1.bn.bias",
+    "model.4.m.0.cv1.bn.running_mean",
+    "model.4.m.0.cv1.bn.running_var",
+    "model.4.m.0.cv1.bn.num_batches_tracked",
+    "model.4.m.0.cv2.conv.weight",
+    "model.4.m.0.cv2.bn.weight",
+    "model.4.m.0.cv2.bn.bias",
+    "model.4.m.0.cv2.bn.running_mean",
+    "model.4.m.0.cv2.bn.running_var",
+    "model.4.m.0.cv2.bn.num_batches_tracked",
+    "model.5.conv.weight",
+    "model.5.bn.weight",
+    "model.5.bn.bias",
+    "model.5.bn.running_mean",
+    "model.5.bn.running_var",
+    "model.5.bn.num_batches_tracked",
+    "model.6.cv1.conv.weight",
+    "model.6.cv1.bn.weight",
+    "model.6.cv1.bn.bias",
+    "model.6.cv1.bn.running_mean",
+    "model.6.cv1.bn.running_var",
+    "model.6.cv1.bn.num_batches_tracked",
+    "model.6.cv2.conv.weight",
+    "model.6.cv2.bn.weight",
+    "model.6.cv2.bn.bias",
+    "model.6.cv2.bn.running_mean",
+    "model.6.cv2.bn.running_var",
+    "model.6.cv2.bn.num_batches_tracked",
+    "model.6.m.0.cv1.conv.weight",
+    "model.6.m.0.cv1.bn.weight",
+    "model.6.m.0.cv1.bn.bias",
+    "model.6.m.0.cv1.bn.running_mean",
+    "model.6.m.0.cv1.bn.running_var",
+    "model.6.m.0.cv1.bn.num_batches_tracked",
+    "model.6.m.0.cv2.conv.weight",
+    "model.6.m.0.cv2.bn.weight",
+    "model.6.m.0.cv2.bn.bias",
+    "model.6.m.0.cv2.bn.running_mean",
+    "model.6.m.0.cv2.bn.running_var",
+    "model.6.m.0.cv2.bn.num_batches_tracked",
+    "model.6.m.0.cv3.conv.weight",
+    "model.6.m.0.cv3.bn.weight",
+    "model.6.m.0.cv3.bn.bias",
+    "model.6.m.0.cv3.bn.running_mean",
+    "model.6.m.0.cv3.bn.running_var",
+    "model.6.m.0.cv3.bn.num_batches_tracked",
+    "model.6.m.0.m.0.cv1.conv.weight",
+    "model.6.m.0.m.0.cv1.bn.weight",
+    "model.6.m.0.m.0.cv1.bn.bias",
+    "model.6.m.0.m.0.cv1.bn.running_mean",
+    "model.6.m.0.m.0.cv1.bn.running_var",
+    "model.6.m.0.m.0.cv1.bn.num_batches_tracked",
+    "model.6.m.0.m.0.cv2.conv.weight",
+    "model.6.m.0.m.0.cv2.bn.weight",
+    "model.6.m.0.m.0.cv2.bn.bias",
+    "model.6.m.0.m.0.cv2.bn.running_mean",
+    "model.6.m.0.m.0.cv2.bn.running_var",
+    "model.6.m.0.m.0.cv2.bn.num_batches_tracked",
+    "model.6.m.0.m.1.cv1.conv.weight",
+    "model.6.m.0.m.1.cv1.bn.weight",
+    "model.6.m.0.m.1.cv1.bn.bias",
+    "model.6.m.0.m.1.cv1.bn.running_mean",
+    "model.6.m.0.m.1.cv1.bn.running_var",
+    "model.6.m.0.m.1.cv1.bn.num_batches_tracked",
+    "model.6.m.0.m.1.cv2.conv.weight",
+    "model.6.m.0.m.1.cv2.bn.weight",
+    "model.6.m.0.m.1.cv2.bn.bias",
+    "model.6.m.0.m.1.cv2.bn.running_mean",
+    "model.6.m.0.m.1.cv2.bn.running_var",
+    "model.6.m.0.m.1.cv2.bn.num_batches_tracked",
+    "model.7.conv.weight",
+    "model.7.bn.weight",
+    "model.7.bn.bias",
+    "model.7.bn.running_mean",
+    "model.7.bn.running_var",
+    "model.7.bn.num_batches_tracked",
+    "model.8.cv1.conv.weight",
+    "model.8.cv1.bn.weight",
+    "model.8.cv1.bn.bias",
+    "model.8.cv1.bn.running_mean",
+    "model.8.cv1.bn.running_var",
+    "model.8.cv1.bn.num_batches_tracked",
+    "model.8.cv2.conv.weight",
+    "model.8.cv2.bn.weight",
+    "model.8.cv2.bn.bias",
+    "model.8.cv2.bn.running_mean",
+    "model.8.cv2.bn.running_var",
+    "model.8.cv2.bn.num_batches_tracked",
+    "model.8.m.0.cv1.conv.weight",
+    "model.8.m.0.cv1.bn.weight",
+    "model.8.m.0.cv1.bn.bias",
+    "model.8.m.0.cv1.bn.running_mean",
+    "model.8.m.0.cv1.bn.running_var",
+    "model.8.m.0.cv1.bn.num_batches_tracked",
+    "model.8.m.0.cv2.conv.weight",
+    "model.8.m.0.cv2.bn.weight",
+    "model.8.m.0.cv2.bn.bias",
+    "model.8.m.0.cv2.bn.running_mean",
+    "model.8.m.0.cv2.bn.running_var",
+    "model.8.m.0.cv2.bn.num_batches_tracked",
+    "model.8.m.0.cv3.conv.weight",
+    "model.8.m.0.cv3.bn.weight",
+    "model.8.m.0.cv3.bn.bias",
+    "model.8.m.0.cv3.bn.running_mean",
+    "model.8.m.0.cv3.bn.running_var",
+    "model.8.m.0.cv3.bn.num_batches_tracked",
+    "model.8.m.0.m.0.cv1.conv.weight",
+    "model.8.m.0.m.0.cv1.bn.weight",
+    "model.8.m.0.m.0.cv1.bn.bias",
+    "model.8.m.0.m.0.cv1.bn.running_mean",
+    "model.8.m.0.m.0.cv1.bn.running_var",
+    "model.8.m.0.m.0.cv1.bn.num_batches_tracked",
+    "model.8.m.0.m.0.cv2.conv.weight",
+    "model.8.m.0.m.0.cv2.bn.weight",
+    "model.8.m.0.m.0.cv2.bn.bias",
+    "model.8.m.0.m.0.cv2.bn.running_mean",
+    "model.8.m.0.m.0.cv2.bn.running_var",
+    "model.8.m.0.m.0.cv2.bn.num_batches_tracked",
+    "model.8.m.0.m.1.cv1.conv.weight",
+    "model.8.m.0.m.1.cv1.bn.weight",
+    "model.8.m.0.m.1.cv1.bn.bias",
+    "model.8.m.0.m.1.cv1.bn.running_mean",
+    "model.8.m.0.m.1.cv1.bn.running_var",
+    "model.8.m.0.m.1.cv1.bn.num_batches_tracked",
+    "model.8.m.0.m.1.cv2.conv.weight",
+    "model.8.m.0.m.1.cv2.bn.weight",
+    "model.8.m.0.m.1.cv2.bn.bias",
+    "model.8.m.0.m.1.cv2.bn.running_mean",
+    "model.8.m.0.m.1.cv2.bn.running_var",
+    "model.8.m.0.m.1.cv2.bn.num_batches_tracked",
+    "model.9.cv1.conv.weight",
+    "model.9.cv1.bn.weight",
+    "model.9.cv1.bn.bias",
+    "model.9.cv1.bn.running_mean",
+    "model.9.cv1.bn.running_var",
+    "model.9.cv1.bn.num_batches_tracked",
+    "model.9.cv2.conv.weight",
+    "model.9.cv2.bn.weight",
+    "model.9.cv2.bn.bias",
+    "model.9.cv2.bn.running_mean",
+    "model.9.cv2.bn.running_var",
+    "model.9.cv2.bn.num_batches_tracked",
+    "model.10.cv1.conv.weight",
+    "model.10.cv1.bn.weight",
+    "model.10.cv1.bn.bias",
+    "model.10.cv1.bn.running_mean",
+    "model.10.cv1.bn.running_var",
+    "model.10.cv1.bn.num_batches_tracked",
+    "model.10.cv2.conv.weight",
+    "model.10.cv2.bn.weight",
+    "model.10.cv2.bn.bias",
+    "model.10.cv2.bn.running_mean",
+    "model.10.cv2.bn.running_var",
+    "model.10.cv2.bn.num_batches_tracked",
+    "model.10.m.0.attn.qkv.conv.weight",
+    "model.10.m.0.attn.qkv.bn.weight",
+    "model.10.m.0.attn.qkv.bn.bias",
+    "model.10.m.0.attn.qkv.bn.running_mean",
+    "model.10.m.0.attn.qkv.bn.running_var",
+    "model.10.m.0.attn.qkv.bn.num_batches_tracked",
+    "model.10.m.0.attn.proj.conv.weight",
+    "model.10.m.0.attn.proj.bn.weight",
+    "model.10.m.0.attn.proj.bn.bias",
+    "model.10.m.0.attn.proj.bn.running_mean",
+    "model.10.m.0.attn.proj.bn.running_var",
+    "model.10.m.0.attn.proj.bn.num_batches_tracked",
+    "model.10.m.0.attn.pe.conv.weight",
+    "model.10.m.0.attn.pe.bn.weight",
+    "model.10.m.0.attn.pe.bn.bias",
+    "model.10.m.0.attn.pe.bn.running_mean",
+    "model.10.m.0.attn.pe.bn.running_var",
+    "model.10.m.0.attn.pe.bn.num_batches_tracked",
+    "model.10.m.0.ffn.0.conv.weight",
+    "model.10.m.0.ffn.0.bn.weight",
+    "model.10.m.0.ffn.0.bn.bias",
+    "model.10.m.0.ffn.0.bn.running_mean",
+    "model.10.m.0.ffn.0.bn.running_var",
+    "model.10.m.0.ffn.0.bn.num_batches_tracked",
+    "model.10.m.0.ffn.1.conv.weight",
+    "model.10.m.0.ffn.1.bn.weight",
+    "model.10.m.0.ffn.1.bn.bias",
+    "model.10.m.0.ffn.1.bn.running_mean",
+    "model.10.m.0.ffn.1.bn.running_var",
+    "model.10.m.0.ffn.1.bn.num_batches_tracked",
+    "model.13.cv1.conv.weight",
+    "model.13.cv1.bn.weight",
+    "model.13.cv1.bn.bias",
+    "model.13.cv1.bn.running_mean",
+    "model.13.cv1.bn.running_var",
+    "model.13.cv1.bn.num_batches_tracked",
+    "model.13.cv2.conv.weight",
+    "model.13.cv2.bn.weight",
+    "model.13.cv2.bn.bias",
+    "model.13.cv2.bn.running_mean",
+    "model.13.cv2.bn.running_var",
+    "model.13.cv2.bn.num_batches_tracked",
+    "model.13.m.0.cv1.conv.weight",
+    "model.13.m.0.cv1.bn.weight",
+    "model.13.m.0.cv1.bn.bias",
+    "model.13.m.0.cv1.bn.running_mean",
+    "model.13.m.0.cv1.bn.running_var",
+    "model.13.m.0.cv1.bn.num_batches_tracked",
+    "model.13.m.0.cv2.conv.weight",
+    "model.13.m.0.cv2.bn.weight",
+    "model.13.m.0.cv2.bn.bias",
+    "model.13.m.0.cv2.bn.running_mean",
+    "model.13.m.0.cv2.bn.running_var",
+    "model.13.m.0.cv2.bn.num_batches_tracked",
+    "model.13.m.0.cv3.conv.weight",
+    "model.13.m.0.cv3.bn.weight",
+    "model.13.m.0.cv3.bn.bias",
+    "model.13.m.0.cv3.bn.running_mean",
+    "model.13.m.0.cv3.bn.running_var",
+    "model.13.m.0.cv3.bn.num_batches_tracked",
+    "model.13.m.0.m.0.cv1.conv.weight",
+    "model.13.m.0.m.0.cv1.bn.weight",
+    "model.13.m.0.m.0.cv1.bn.bias",
+    "model.13.m.0.m.0.cv1.bn.running_mean",
+    "model.13.m.0.m.0.cv1.bn.running_var",
+    "model.13.m.0.m.0.cv1.bn.num_batches_tracked",
+    "model.13.m.0.m.0.cv2.conv.weight",
+    "model.13.m.0.m.0.cv2.bn.weight",
+    "model.13.m.0.m.0.cv2.bn.bias",
+    "model.13.m.0.m.0.cv2.bn.running_mean",
+    "model.13.m.0.m.0.cv2.bn.running_var",
+    "model.13.m.0.m.0.cv2.bn.num_batches_tracked",
+    "model.13.m.0.m.1.cv1.conv.weight",
+    "model.13.m.0.m.1.cv1.bn.weight",
+    "model.13.m.0.m.1.cv1.bn.bias",
+    "model.13.m.0.m.1.cv1.bn.running_mean",
+    "model.13.m.0.m.1.cv1.bn.running_var",
+    "model.13.m.0.m.1.cv1.bn.num_batches_tracked",
+    "model.13.m.0.m.1.cv2.conv.weight",
+    "model.13.m.0.m.1.cv2.bn.weight",
+    "model.13.m.0.m.1.cv2.bn.bias",
+    "model.13.m.0.m.1.cv2.bn.running_mean",
+    "model.13.m.0.m.1.cv2.bn.running_var",
+    "model.13.m.0.m.1.cv2.bn.num_batches_tracked",
+    "model.16.cv1.conv.weight",
+    "model.16.cv1.bn.weight",
+    "model.16.cv1.bn.bias",
+    "model.16.cv1.bn.running_mean",
+    "model.16.cv1.bn.running_var",
+    "model.16.cv1.bn.num_batches_tracked",
+    "model.16.cv2.conv.weight",
+    "model.16.cv2.bn.weight",
+    "model.16.cv2.bn.bias",
+    "model.16.cv2.bn.running_mean",
+    "model.16.cv2.bn.running_var",
+    "model.16.cv2.bn.num_batches_tracked",
+    "model.16.m.0.cv1.conv.weight",
+    "model.16.m.0.cv1.bn.weight",
+    "model.16.m.0.cv1.bn.bias",
+    "model.16.m.0.cv1.bn.running_mean",
+    "model.16.m.0.cv1.bn.running_var",
+    "model.16.m.0.cv1.bn.num_batches_tracked",
+    "model.16.m.0.cv2.conv.weight",
+    "model.16.m.0.cv2.bn.weight",
+    "model.16.m.0.cv2.bn.bias",
+    "model.16.m.0.cv2.bn.running_mean",
+    "model.16.m.0.cv2.bn.running_var",
+    "model.16.m.0.cv2.bn.num_batches_tracked",
+    "model.16.m.0.cv3.conv.weight",
+    "model.16.m.0.cv3.bn.weight",
+    "model.16.m.0.cv3.bn.bias",
+    "model.16.m.0.cv3.bn.running_mean",
+    "model.16.m.0.cv3.bn.running_var",
+    "model.16.m.0.cv3.bn.num_batches_tracked",
+    "model.16.m.0.m.0.cv1.conv.weight",
+    "model.16.m.0.m.0.cv1.bn.weight",
+    "model.16.m.0.m.0.cv1.bn.bias",
+    "model.16.m.0.m.0.cv1.bn.running_mean",
+    "model.16.m.0.m.0.cv1.bn.running_var",
+    "model.16.m.0.m.0.cv1.bn.num_batches_tracked",
+    "model.16.m.0.m.0.cv2.conv.weight",
+    "model.16.m.0.m.0.cv2.bn.weight",
+    "model.16.m.0.m.0.cv2.bn.bias",
+    "model.16.m.0.m.0.cv2.bn.running_mean",
+    "model.16.m.0.m.0.cv2.bn.running_var",
+    "model.16.m.0.m.0.cv2.bn.num_batches_tracked",
+    "model.16.m.0.m.1.cv1.conv.weight",
+    "model.16.m.0.m.1.cv1.bn.weight",
+    "model.16.m.0.m.1.cv1.bn.bias",
+    "model.16.m.0.m.1.cv1.bn.running_mean",
+    "model.16.m.0.m.1.cv1.bn.running_var",
+    "model.16.m.0.m.1.cv1.bn.num_batches_tracked",
+    "model.16.m.0.m.1.cv2.conv.weight",
+    "model.16.m.0.m.1.cv2.bn.weight",
+    "model.16.m.0.m.1.cv2.bn.bias",
+    "model.16.m.0.m.1.cv2.bn.running_mean",
+    "model.16.m.0.m.1.cv2.bn.running_var",
+    "model.16.m.0.m.1.cv2.bn.num_batches_tracked",
+    "model.17.conv.weight",
+    "model.17.bn.weight",
+    "model.17.bn.bias",
+    "model.17.bn.running_mean",
+    "model.17.bn.running_var",
+    "model.17.bn.num_batches_tracked",
+    "model.19.cv1.conv.weight",
+    "model.19.cv1.bn.weight",
+    "model.19.cv1.bn.bias",
+    "model.19.cv1.bn.running_mean",
+    "model.19.cv1.bn.running_var",
+    "model.19.cv1.bn.num_batches_tracked",
+    "model.19.cv2.conv.weight",
+    "model.19.cv2.bn.weight",
+    "model.19.cv2.bn.bias",
+    "model.19.cv2.bn.running_mean",
+    "model.19.cv2.bn.running_var",
+    "model.19.cv2.bn.num_batches_tracked",
+    "model.19.m.0.cv1.conv.weight",
+    "model.19.m.0.cv1.bn.weight",
+    "model.19.m.0.cv1.bn.bias",
+    "model.19.m.0.cv1.bn.running_mean",
+    "model.19.m.0.cv1.bn.running_var",
+    "model.19.m.0.cv1.bn.num_batches_tracked",
+    "model.19.m.0.cv2.conv.weight",
+    "model.19.m.0.cv2.bn.weight",
+    "model.19.m.0.cv2.bn.bias",
+    "model.19.m.0.cv2.bn.running_mean",
+    "model.19.m.0.cv2.bn.running_var",
+    "model.19.m.0.cv2.bn.num_batches_tracked",
+    "model.19.m.0.cv3.conv.weight",
+    "model.19.m.0.cv3.bn.weight",
+    "model.19.m.0.cv3.bn.bias",
+    "model.19.m.0.cv3.bn.running_mean",
+    "model.19.m.0.cv3.bn.running_var",
+    "model.19.m.0.cv3.bn.num_batches_tracked",
+    "model.19.m.0.m.0.cv1.conv.weight",
+    "model.19.m.0.m.0.cv1.bn.weight",
+    "model.19.m.0.m.0.cv1.bn.bias",
+    "model.19.m.0.m.0.cv1.bn.running_mean",
+    "model.19.m.0.m.0.cv1.bn.running_var",
+    "model.19.m.0.m.0.cv1.bn.num_batches_tracked",
+    "model.19.m.0.m.0.cv2.conv.weight",
+    "model.19.m.0.m.0.cv2.bn.weight",
+    "model.19.m.0.m.0.cv2.bn.bias",
+    "model.19.m.0.m.0.cv2.bn.running_mean",
+    "model.19.m.0.m.0.cv2.bn.running_var",
+    "model.19.m.0.m.0.cv2.bn.num_batches_tracked",
+    "model.19.m.0.m.1.cv1.conv.weight",
+    "model.19.m.0.m.1.cv1.bn.weight",
+    "model.19.m.0.m.1.cv1.bn.bias",
+    "model.19.m.0.m.1.cv1.bn.running_mean",
+    "model.19.m.0.m.1.cv1.bn.running_var",
+    "model.19.m.0.m.1.cv1.bn.num_batches_tracked",
+    "model.19.m.0.m.1.cv2.conv.weight",
+    "model.19.m.0.m.1.cv2.bn.weight",
+    "model.19.m.0.m.1.cv2.bn.bias",
+    "model.19.m.0.m.1.cv2.bn.running_mean",
+    "model.19.m.0.m.1.cv2.bn.running_var",
+    "model.19.m.0.m.1.cv2.bn.num_batches_tracked",
+    "model.20.conv.weight",
+    "model.20.bn.weight",
+    "model.20.bn.bias",
+    "model.20.bn.running_mean",
+    "model.20.bn.running_var",
+    "model.20.bn.num_batches_tracked",
+    "model.22.cv1.conv.weight",
+    "model.22.cv1.bn.weight",
+    "model.22.cv1.bn.bias",
+    "model.22.cv1.bn.running_mean",
+    "model.22.cv1.bn.running_var",
+    "model.22.cv1.bn.num_batches_tracked",
+    "model.22.cv2.conv.weight",
+    "model.22.cv2.bn.weight",
+    "model.22.cv2.bn.bias",
+    "model.22.cv2.bn.running_mean",
+    "model.22.cv2.bn.running_var",
+    "model.22.cv2.bn.num_batches_tracked",
+    "model.22.m.0.0.cv1.conv.weight",
+    "model.22.m.0.0.cv1.bn.weight",
+    "model.22.m.0.0.cv1.bn.bias",
+    "model.22.m.0.0.cv1.bn.running_mean",
+    "model.22.m.0.0.cv1.bn.running_var",
+    "model.22.m.0.0.cv1.bn.num_batches_tracked",
+    "model.22.m.0.0.cv2.conv.weight",
+    "model.22.m.0.0.cv2.bn.weight",
+    "model.22.m.0.0.cv2.bn.bias",
+    "model.22.m.0.0.cv2.bn.running_mean",
+    "model.22.m.0.0.cv2.bn.running_var",
+    "model.22.m.0.0.cv2.bn.num_batches_tracked",
+    "model.22.m.0.1.attn.qkv.conv.weight",
+    "model.22.m.0.1.attn.qkv.bn.weight",
+    "model.22.m.0.1.attn.qkv.bn.bias",
+    "model.22.m.0.1.attn.qkv.bn.running_mean",
+    "model.22.m.0.1.attn.qkv.bn.running_var",
+    "model.22.m.0.1.attn.qkv.bn.num_batches_tracked",
+    "model.22.m.0.1.attn.proj.conv.weight",
+    "model.22.m.0.1.attn.proj.bn.weight",
+    "model.22.m.0.1.attn.proj.bn.bias",
+    "model.22.m.0.1.attn.proj.bn.running_mean",
+    "model.22.m.0.1.attn.proj.bn.running_var",
+    "model.22.m.0.1.attn.proj.bn.num_batches_tracked",
+    "model.22.m.0.1.attn.pe.conv.weight",
+    "model.22.m.0.1.attn.pe.bn.weight",
+    "model.22.m.0.1.attn.pe.bn.bias",
+    "model.22.m.0.1.attn.pe.bn.running_mean",
+    "model.22.m.0.1.attn.pe.bn.running_var",
+    "model.22.m.0.1.attn.pe.bn.num_batches_tracked",
+    "model.22.m.0.1.ffn.0.conv.weight",
+    "model.22.m.0.1.ffn.0.bn.weight",
+    "model.22.m.0.1.ffn.0.bn.bias",
+    "model.22.m.0.1.ffn.0.bn.running_mean",
+    "model.22.m.0.1.ffn.0.bn.running_var",
+    "model.22.m.0.1.ffn.0.bn.num_batches_tracked",
+    "model.22.m.0.1.ffn.1.conv.weight",
+    "model.22.m.0.1.ffn.1.bn.weight",
+    "model.22.m.0.1.ffn.1.bn.bias",
+    "model.22.m.0.1.ffn.1.bn.running_mean",
+    "model.22.m.0.1.ffn.1.bn.running_var",
+    "model.22.m.0.1.ffn.1.bn.num_batches_tracked",
+    "model.23.cv2.0.0.conv.weight",
+    "model.23.cv2.0.0.bn.weight",
+    "model.23.cv2.0.0.bn.bias",
+    "model.23.cv2.0.0.bn.running_mean",
+    "model.23.cv2.0.0.bn.running_var",
+    "model.23.cv2.0.0.bn.num_batches_tracked",
+    "model.23.cv2.0.1.conv.weight",
+    "model.23.cv2.0.1.bn.weight",
+    "model.23.cv2.0.1.bn.bias",
+    "model.23.cv2.0.1.bn.running_mean",
+    "model.23.cv2.0.1.bn.running_var",
+    "model.23.cv2.0.1.bn.num_batches_tracked",
+    "model.23.cv2.0.2.weight",
+    "model.23.cv2.0.2.bias",
+    "model.23.cv2.1.0.conv.weight",
+    "model.23.cv2.1.0.bn.weight",
+    "model.23.cv2.1.0.bn.bias",
+    "model.23.cv2.1.0.bn.running_mean",
+    "model.23.cv2.1.0.bn.running_var",
+    "model.23.cv2.1.0.bn.num_batches_tracked",
+    "model.23.cv2.1.1.conv.weight",
+    "model.23.cv2.1.1.bn.weight",
+    "model.23.cv2.1.1.bn.bias",
+    "model.23.cv2.1.1.bn.running_mean",
+    "model.23.cv2.1.1.bn.running_var",
+    "model.23.cv2.1.1.bn.num_batches_tracked",
+    "model.23.cv2.1.2.weight",
+    "model.23.cv2.1.2.bias",
+    "model.23.cv2.2.0.conv.weight",
+    "model.23.cv2.2.0.bn.weight",
+    "model.23.cv2.2.0.bn.bias",
+    "model.23.cv2.2.0.bn.running_mean",
+    "model.23.cv2.2.0.bn.running_var",
+    "model.23.cv2.2.0.bn.num_batches_tracked",
+    "model.23.cv2.2.1.conv.weight",
+    "model.23.cv2.2.1.bn.weight",
+    "model.23.cv2.2.1.bn.bias",
+    "model.23.cv2.2.1.bn.running_mean",
+    "model.23.cv2.2.1.bn.running_var",
+    "model.23.cv2.2.1.bn.num_batches_tracked",
+    "model.23.cv2.2.2.weight",
+    "model.23.cv2.2.2.bias",
+    "model.23.cv3.0.0.0.conv.weight",
+    "model.23.cv3.0.0.0.bn.weight",
+    "model.23.cv3.0.0.0.bn.bias",
+    "model.23.cv3.0.0.0.bn.running_mean",
+    "model.23.cv3.0.0.0.bn.running_var",
+    "model.23.cv3.0.0.0.bn.num_batches_tracked",
+    "model.23.cv3.0.0.1.conv.weight",
+    "model.23.cv3.0.0.1.bn.weight",
+    "model.23.cv3.0.0.1.bn.bias",
+    "model.23.cv3.0.0.1.bn.running_mean",
+    "model.23.cv3.0.0.1.bn.running_var",
+    "model.23.cv3.0.0.1.bn.num_batches_tracked",
+    "model.23.cv3.0.1.0.conv.weight",
+    "model.23.cv3.0.1.0.bn.weight",
+    "model.23.cv3.0.1.0.bn.bias",
+    "model.23.cv3.0.1.0.bn.running_mean",
+    "model.23.cv3.0.1.0.bn.running_var",
+    "model.23.cv3.0.1.0.bn.num_batches_tracked",
+    "model.23.cv3.0.1.1.conv.weight",
+    "model.23.cv3.0.1.1.bn.weight",
+    "model.23.cv3.0.1.1.bn.bias",
+    "model.23.cv3.0.1.1.bn.running_mean",
+    "model.23.cv3.0.1.1.bn.running_var",
+    "model.23.cv3.0.1.1.bn.num_batches_tracked",
+    "model.23.cv3.0.2.weight",
+    "model.23.cv3.0.2.bias",
+    "model.23.cv3.1.0.0.conv.weight",
+    "model.23.cv3.1.0.0.bn.weight",
+    "model.23.cv3.1.0.0.bn.bias",
+    "model.23.cv3.1.0.0.bn.running_mean",
+    "model.23.cv3.1.0.0.bn.running_var",
+    "model.23.cv3.1.0.0.bn.num_batches_tracked",
+    "model.23.cv3.1.0.1.conv.weight",
+    "model.23.cv3.1.0.1.bn.weight",
+    "model.23.cv3.1.0.1.bn.bias",
+    "model.23.cv3.1.0.1.bn.running_mean",
+    "model.23.cv3.1.0.1.bn.running_var",
+    "model.23.cv3.1.0.1.bn.num_batches_tracked",
+    "model.23.cv3.1.1.0.conv.weight",
+    "model.23.cv3.1.1.0.bn.weight",
+    "model.23.cv3.1.1.0.bn.bias",
+    "model.23.cv3.1.1.0.bn.running_mean",
+    "model.23.cv3.1.1.0.bn.running_var",
+    "model.23.cv3.1.1.0.bn.num_batches_tracked",
+    "model.23.cv3.1.1.1.conv.weight",
+    "model.23.cv3.1.1.1.bn.weight",
+    "model.23.cv3.1.1.1.bn.bias",
+    "model.23.cv3.1.1.1.bn.running_mean",
+    "model.23.cv3.1.1.1.bn.running_var",
+    "model.23.cv3.1.1.1.bn.num_batches_tracked",
+    "model.23.cv3.1.2.weight",
+    "model.23.cv3.1.2.bias",
+    "model.23.cv3.2.0.0.conv.weight",
+    "model.23.cv3.2.0.0.bn.weight",
+    "model.23.cv3.2.0.0.bn.bias",
+    "model.23.cv3.2.0.0.bn.running_mean",
+    "model.23.cv3.2.0.0.bn.running_var",
+    "model.23.cv3.2.0.0.bn.num_batches_tracked",
+    "model.23.cv3.2.0.1.conv.weight",
+    "model.23.cv3.2.0.1.bn.weight",
+    "model.23.cv3.2.0.1.bn.bias",
+    "model.23.cv3.2.0.1.bn.running_mean",
+    "model.23.cv3.2.0.1.bn.running_var",
+    "model.23.cv3.2.0.1.bn.num_batches_tracked",
+    "model.23.cv3.2.1.0.conv.weight",
+    "model.23.cv3.2.1.0.bn.weight",
+    "model.23.cv3.2.1.0.bn.bias",
+    "model.23.cv3.2.1.0.bn.running_mean",
+    "model.23.cv3.2.1.0.bn.running_var",
+    "model.23.cv3.2.1.0.bn.num_batches_tracked",
+    "model.23.cv3.2.1.1.conv.weight",
+    "model.23.cv3.2.1.1.bn.weight",
+    "model.23.cv3.2.1.1.bn.bias",
+    "model.23.cv3.2.1.1.bn.running_mean",
+    "model.23.cv3.2.1.1.bn.running_var",
+    "model.23.cv3.2.1.1.bn.num_batches_tracked",
+    "model.23.cv3.2.2.weight",
+    "model.23.cv3.2.2.bias",
+    "model.23.one2one_cv2.0.0.conv.weight",
+    "model.23.one2one_cv2.0.0.bn.weight",
+    "model.23.one2one_cv2.0.0.bn.bias",
+    "model.23.one2one_cv2.0.0.bn.running_mean",
+    "model.23.one2one_cv2.0.0.bn.running_var",
+    "model.23.one2one_cv2.0.0.bn.num_batches_tracked",
+    "model.23.one2one_cv2.0.1.conv.weight",
+    "model.23.one2one_cv2.0.1.bn.weight",
+    "model.23.one2one_cv2.0.1.bn.bias",
+    "model.23.one2one_cv2.0.1.bn.running_mean",
+    "model.23.one2one_cv2.0.1.bn.running_var",
+    "model.23.one2one_cv2.0.1.bn.num_batches_tracked",
+    "model.23.one2one_cv2.0.2.weight",
+    "model.23.one2one_cv2.0.2.bias",
+    "model.23.one2one_cv2.1.0.conv.weight",
+    "model.23.one2one_cv2.1.0.bn.weight",
+    "model.23.one2one_cv2.1.0.bn.bias",
+    "model.23.one2one_cv2.1.0.bn.running_mean",
+    "model.23.one2one_cv2.1.0.bn.running_var",
+    "model.23.one2one_cv2.1.0.bn.num_batches_tracked",
+    "model.23.one2one_cv2.1.1.conv.weight",
+    "model.23.one2one_cv2.1.1.bn.weight",
+    "model.23.one2one_cv2.1.1.bn.bias",
+    "model.23.one2one_cv2.1.1.bn.running_mean",
+    "model.23.one2one_cv2.1.1.bn.running_var",
+    "model.23.one2one_cv2.1.1.bn.num_batches_tracked",
+    "model.23.one2one_cv2.1.2.weight",
+    "model.23.one2one_cv2.1.2.bias",
+    "model.23.one2one_cv2.2.0.conv.weight",
+    "model.23.one2one_cv2.2.0.bn.weight",
+    "model.23.one2one_cv2.2.0.bn.bias",
+    "model.23.one2one_cv2.2.0.bn.running_mean",
+    "model.23.one2one_cv2.2.0.bn.running_var",
+    "model.23.one2one_cv2.2.0.bn.num_batches_tracked",
+    "model.23.one2one_cv2.2.1.conv.weight",
+    "model.23.one2one_cv2.2.1.bn.weight",
+    "model.23.one2one_cv2.2.1.bn.bias",
+    "model.23.one2one_cv2.2.1.bn.running_mean",
+    "model.23.one2one_cv2.2.1.bn.running_var",
+    "model.23.one2one_cv2.2.1.bn.num_batches_tracked",
+    "model.23.one2one_cv2.2.2.weight",
+    "model.23.one2one_cv2.2.2.bias",
+    "model.23.one2one_cv3.0.0.0.conv.weight",
+    "model.23.one2one_cv3.0.0.0.bn.weight",
+    "model.23.one2one_cv3.0.0.0.bn.bias",
+    "model.23.one2one_cv3.0.0.0.bn.running_mean",
+    "model.23.one2one_cv3.0.0.0.bn.running_var",
+    "model.23.one2one_cv3.0.0.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.0.0.1.conv.weight",
+    "model.23.one2one_cv3.0.0.1.bn.weight",
+    "model.23.one2one_cv3.0.0.1.bn.bias",
+    "model.23.one2one_cv3.0.0.1.bn.running_mean",
+    "model.23.one2one_cv3.0.0.1.bn.running_var",
+    "model.23.one2one_cv3.0.0.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.0.1.0.conv.weight",
+    "model.23.one2one_cv3.0.1.0.bn.weight",
+    "model.23.one2one_cv3.0.1.0.bn.bias",
+    "model.23.one2one_cv3.0.1.0.bn.running_mean",
+    "model.23.one2one_cv3.0.1.0.bn.running_var",
+    "model.23.one2one_cv3.0.1.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.0.1.1.conv.weight",
+    "model.23.one2one_cv3.0.1.1.bn.weight",
+    "model.23.one2one_cv3.0.1.1.bn.bias",
+    "model.23.one2one_cv3.0.1.1.bn.running_mean",
+    "model.23.one2one_cv3.0.1.1.bn.running_var",
+    "model.23.one2one_cv3.0.1.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.0.2.weight",
+    "model.23.one2one_cv3.0.2.bias",
+    "model.23.one2one_cv3.1.0.0.conv.weight",
+    "model.23.one2one_cv3.1.0.0.bn.weight",
+    "model.23.one2one_cv3.1.0.0.bn.bias",
+    "model.23.one2one_cv3.1.0.0.bn.running_mean",
+    "model.23.one2one_cv3.1.0.0.bn.running_var",
+    "model.23.one2one_cv3.1.0.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.1.0.1.conv.weight",
+    "model.23.one2one_cv3.1.0.1.bn.weight",
+    "model.23.one2one_cv3.1.0.1.bn.bias",
+    "model.23.one2one_cv3.1.0.1.bn.running_mean",
+    "model.23.one2one_cv3.1.0.1.bn.running_var",
+    "model.23.one2one_cv3.1.0.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.1.1.0.conv.weight",
+    "model.23.one2one_cv3.1.1.0.bn.weight",
+    "model.23.one2one_cv3.1.1.0.bn.bias",
+    "model.23.one2one_cv3.1.1.0.bn.running_mean",
+    "model.23.one2one_cv3.1.1.0.bn.running_var",
+    "model.23.one2one_cv3.1.1.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.1.1.1.conv.weight",
+    "model.23.one2one_cv3.1.1.1.bn.weight",
+    "model.23.one2one_cv3.1.1.1.bn.bias",
+    "model.23.one2one_cv3.1.1.1.bn.running_mean",
+    "model.23.one2one_cv3.1.1.1.bn.running_var",
+    "model.23.one2one_cv3.1.1.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.1.2.weight",
+    "model.23.one2one_cv3.1.2.bias",
+    "model.23.one2one_cv3.2.0.0.conv.weight",
+    "model.23.one2one_cv3.2.0.0.bn.weight",
+    "model.23.one2one_cv3.2.0.0.bn.bias",
+    "model.23.one2one_cv3.2.0.0.bn.running_mean",
+    "model.23.one2one_cv3.2.0.0.bn.running_var",
+    "model.23.one2one_cv3.2.0.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.2.0.1.conv.weight",
+    "model.23.one2one_cv3.2.0.1.bn.weight",
+    "model.23.one2one_cv3.2.0.1.bn.bias",
+    "model.23.one2one_cv3.2.0.1.bn.running_mean",
+    "model.23.one2one_cv3.2.0.1.bn.running_var",
+    "model.23.one2one_cv3.2.0.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.2.1.0.conv.weight",
+    "model.23.one2one_cv3.2.1.0.bn.weight",
+    "model.23.one2one_cv3.2.1.0.bn.bias",
+    "model.23.one2one_cv3.2.1.0.bn.running_mean",
+    "model.23.one2one_cv3.2.1.0.bn.running_var",
+    "model.23.one2one_cv3.2.1.0.bn.num_batches_tracked",
+    "model.23.one2one_cv3.2.1.1.conv.weight",
+    "model.23.one2one_cv3.2.1.1.bn.weight",
+    "model.23.one2one_cv3.2.1.1.bn.bias",
+    "model.23.one2one_cv3.2.1.1.bn.running_mean",
+    "model.23.one2one_cv3.2.1.1.bn.running_var",
+    "model.23.one2one_cv3.2.1.1.bn.num_batches_tracked",
+    "model.23.one2one_cv3.2.2.weight",
+    "model.23.one2one_cv3.2.2.bias"
+  ],
+  "all_common_tensors_equal": true,
+  "rng_strategy": "native modules constructed once; new CPU convolutions use fork_rng(devices=[])",
+  "baseline_parameters": 2504190,
+  "candidate_parameters": 2525054,
+  "added_parameters": 20864,
+  "expected_missing_keys_vs_native_single_class": [
+    "model.10.m.0.msi.dw3.weight",
+    "model.10.m.0.msi.dw5.weight",
+    "model.10.m.0.msi.project.bias",
+    "model.10.m.0.msi.project.weight"
+  ],
+  "dimensions": {
+    "channels": 256,
+    "half_channels": 128,
+    "repeats": 1,
+    "heads": 2,
+    "ffn_expansion": 256
+  },
+  "shared_tensors": {
+    "model.0.conv.weight": {
+      "shape": [
+        16,
+        3,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.conv.weight": {
+      "shape": [
+        32,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.conv.weight": {
+      "shape": [
+        64,
+        48,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.conv.weight": {
+      "shape": [
+        8,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.bn.weight": {
+      "shape": [
+        8
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.bn.bias": {
+      "shape": [
+        8
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.bn.running_mean": {
+      "shape": [
+        8
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.bn.running_var": {
+      "shape": [
+        8
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.conv.weight": {
+      "shape": [
+        16,
+        8,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.2.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.conv.weight": {
+      "shape": [
+        128,
+        96,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.conv.weight": {
+      "shape": [
+        16,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.4.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.conv.weight": {
+      "shape": [
+        128,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.5.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.conv.weight": {
+      "shape": [
+        128,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.conv.weight": {
+      "shape": [
+        128,
+        192,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.cv3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.6.m.0.m.1.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.conv.weight": {
+      "shape": [
+        256,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.7.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.conv.weight": {
+      "shape": [
+        256,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.conv.weight": {
+      "shape": [
+        256,
+        384,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.conv.weight": {
+      "shape": [
+        64,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.conv.weight": {
+      "shape": [
+        64,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.conv.weight": {
+      "shape": [
+        128,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.cv3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.8.m.0.m.1.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.conv.weight": {
+      "shape": [
+        128,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.conv.weight": {
+      "shape": [
+        256,
+        512,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.9.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.conv.weight": {
+      "shape": [
+        256,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.conv.weight": {
+      "shape": [
+        256,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.conv.weight": {
+      "shape": [
+        256,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.qkv.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.conv.weight": {
+      "shape": [
+        128,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.proj.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.conv.weight": {
+      "shape": [
+        128,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.attn.pe.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.conv.weight": {
+      "shape": [
+        256,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.conv.weight": {
+      "shape": [
+        128,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.10.m.0.ffn.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.conv.weight": {
+      "shape": [
+        128,
+        384,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.conv.weight": {
+      "shape": [
+        128,
+        192,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.cv3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.13.m.0.m.1.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.conv.weight": {
+      "shape": [
+        64,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.conv.weight": {
+      "shape": [
+        64,
+        96,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.conv.weight": {
+      "shape": [
+        16,
+        32,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.conv.weight": {
+      "shape": [
+        16,
+        32,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.conv.weight": {
+      "shape": [
+        32,
+        32,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.cv3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.16.m.0.m.1.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.conv.weight": {
+      "shape": [
+        64,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.17.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.conv.weight": {
+      "shape": [
+        128,
+        192,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.conv.weight": {
+      "shape": [
+        128,
+        192,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.cv3.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.conv.weight": {
+      "shape": [
+        32,
+        32,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.bn.weight": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.bn.bias": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.bn.running_mean": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.bn.running_var": {
+      "shape": [
+        32
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.19.m.0.m.1.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.conv.weight": {
+      "shape": [
+        128,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.20.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.conv.weight": {
+      "shape": [
+        256,
+        384,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.conv.weight": {
+      "shape": [
+        256,
+        384,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.conv.weight": {
+      "shape": [
+        64,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.conv.weight": {
+      "shape": [
+        128,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.0.cv2.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.conv.weight": {
+      "shape": [
+        256,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.qkv.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.conv.weight": {
+      "shape": [
+        128,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.proj.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.conv.weight": {
+      "shape": [
+        128,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.attn.pe.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.conv.weight": {
+      "shape": [
+        256,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.conv.weight": {
+      "shape": [
+        128,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.22.m.0.1.ffn.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.conv.weight": {
+      "shape": [
+        16,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.0.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.conv.weight": {
+      "shape": [
+        16,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.1.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.conv.weight": {
+      "shape": [
+        16,
+        256,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv2.2.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.0.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.conv.weight": {
+      "shape": [
+        128,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.conv.weight": {
+      "shape": [
+        64,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.1.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.conv.weight": {
+      "shape": [
+        256,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.conv.weight": {
+      "shape": [
+        64,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.cv3.2.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.conv.weight": {
+      "shape": [
+        16,
+        64,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.0.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.conv.weight": {
+      "shape": [
+        16,
+        128,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.1.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.conv.weight": {
+      "shape": [
+        16,
+        256,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.conv.weight": {
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.bn.weight": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.bn.bias": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.bn.running_mean": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.bn.running_var": {
+      "shape": [
+        16
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.2.weight": {
+      "shape": [
+        4,
+        16,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv2.2.2.bias": {
+      "shape": [
+        4
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.0.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.conv.weight": {
+      "shape": [
+        128,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.bn.weight": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.bn.bias": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.bn.running_mean": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.bn.running_var": {
+      "shape": [
+        128
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.conv.weight": {
+      "shape": [
+        64,
+        128,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.1.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.conv.weight": {
+      "shape": [
+        256,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.bn.weight": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.bn.bias": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.bn.running_mean": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.bn.running_var": {
+      "shape": [
+        256
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.conv.weight": {
+      "shape": [
+        64,
+        256,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.0.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.conv.weight": {
+      "shape": [
+        64,
+        1,
+        3,
+        3
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.0.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.conv.weight": {
+      "shape": [
+        64,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.bn.weight": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.bn.bias": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.bn.running_mean": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.bn.running_var": {
+      "shape": [
+        64
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.1.1.bn.num_batches_tracked": {
+      "shape": [],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.2.weight": {
+      "shape": [
+        1,
+        64,
+        1,
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    },
+    "model.23.one2one_cv3.2.2.bias": {
+      "shape": [
+        1
+      ],
+      "equal": true,
+      "pretrained": false
+    }
+  },
+  "constructor_rng_equal": true,
+  "branch": {
+    "formula": [
+      {
+        "shortcut": true,
+        "formula_exact": true,
+        "bn_updates": 1,
+        "expansion_calls": 1
+      },
+      {
+        "shortcut": false,
+        "formula_exact": true,
+        "bn_updates": 1,
+        "expansion_calls": 1
+      }
+    ],
+    "data_gradients_without_weight_decay": [
+      {
+        "dw3.weight": 0.0,
+        "dw5.weight": 0.0,
+        "project.weight": 0.024519825354218483,
+        "project.bias": 0.010478555224835873
+      },
+      {
+        "dw3.weight": 2.888933750000433e-07,
+        "dw5.weight": 5.024996880820254e-07,
+        "project.weight": 0.025697309523820877,
+        "project.bias": 0.010435009375214577
+      }
+    ]
+  },
+  "shapes": [
+    {
+      "input": [
+        1,
+        3,
+        640,
+        640
+      ],
+      "layer10": [
+        1,
+        256,
+        20,
+        20
+      ],
+      "initial_output_exact": true
+    },
+    {
+      "input": [
+        1,
+        3,
+        384,
+        672
+      ],
+      "layer10": [
+        1,
+        256,
+        12,
+        21
+      ],
+      "initial_output_exact": true
+    }
+  ]
+}

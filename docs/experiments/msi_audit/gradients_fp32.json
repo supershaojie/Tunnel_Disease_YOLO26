@@ -1,0 +1,30 @@
+{
+  "amp": false,
+  "local_batch": 1,
+  "steps": 3,
+  "gradients": [
+    {
+      "dw3.weight": 0.0,
+      "dw5.weight": 0.0,
+      "project.weight": 0.005789333023130894,
+      "project.bias": 9.853366123024898e-09
+    },
+    {
+      "dw3.weight": 2.3068189420882845e-06,
+      "dw5.weight": 6.407761247828603e-06,
+      "project.weight": 0.006015262100845575,
+      "project.bias": 1.0942001082980823e-08
+    },
+    {
+      "dw3.weight": 2.920405677286908e-06,
+      "dw5.weight": 8.268132660305128e-06,
+      "project.weight": 0.005469589028507471,
+      "project.bias": 1.1190825155438233e-08
+    }
+  ],
+  "scales": [
+    1.0,
+    1.0,
+    1.0
+  ]
+}
