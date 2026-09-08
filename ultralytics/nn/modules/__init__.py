@@ -94,6 +94,7 @@ from .head import (
     YOLOESegment26,
     v10Detect,
 )
+from .pkc_sppf import SPPF_PKC
 from .transformer import (
     AIFI,
     MLP,
@@ -125,6 +126,7 @@ __all__ = (
     "SPP",
     "SPPELAN",
     "SPPF",
+    "SPPF_PKC",
     "A2C2f",
     "AConv",
     "ADown",

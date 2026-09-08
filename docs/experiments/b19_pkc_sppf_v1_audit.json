@@ -1,0 +1,55 @@
+{
+  "b19_source_commit": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "b19_args": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+    "sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+    "all_fields_equal": true
+  },
+  "b19_data": {
+    "train": "images/train",
+    "val": "images/val",
+    "test": "images/test",
+    "nc": 1,
+    "names": {
+      "0": "crack"
+    }
+  },
+  "design": {
+    "path": "E:/ditieyolo26跑结果/8.12离线在线/PKC-SPPF/YOLO26_b19_PKC_SPPF_v1_design.md",
+    "sha256": "cb7d2e32ec5d7c0176f70b57b4b7b9ff61eb2d50e1f42e237a4eddc9d7dbc519",
+    "fully_read": true
+  },
+  "module_archive": {
+    "local": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+    "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+    "matches_design_archive": true,
+    "reference_files": {
+      "HLKConv_TGRS2025.py": {
+        "local": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\HLKConv_TGRS2025.py",
+        "sha256": "ab4407a9cae37bf68b7409a18b85e652046c2aafd7d0f990d90c37b561216d06",
+        "zip_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HLKConv_TGRS2025.py",
+        "zip_bytes_equal": true
+      },
+      "MRFAConv_2025ICCV.py": {
+        "local": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\MRFAConv_2025ICCV.py",
+        "sha256": "3e88a3d989e7cae95eb96669ce5a0ff5cffa79f3281674fdb8db0b1dcb61a56b",
+        "zip_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/MRFAConv_2025ICCV.py",
+        "zip_bytes_equal": true
+      },
+      "SMMM_AAAI2026.py": {
+        "local": "D:\\7.21yolo26改\\YOLO26缝合\\ultralytics\\nn\\newsAddmodules\\SMMM_AAAI2026.py",
+        "sha256": "55ed860c07d2aa9848ec20943c0355b9a8131e75d79b39811104aa500f5af5ba",
+        "zip_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/SMMM_AAAI2026.py",
+        "zip_bytes_equal": true
+      }
+    },
+    "native_sppf_source_equal": true
+  },
+  "original_pretrained": {
+    "path": "E:/PycharmProjects/Tunnel_Disease_YOLO26/yolo26n.pt",
+    "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
+  },
+  "launcher_source": "E:/ditieyolo26跑结果/8.12离线在线/b19  SIR-SPPF v1/Codex_YOLO26n_b19_SIRSPPF_v1.md section 9; historical record only",
+  "reused_from": "SIR v2 worktree commit 9052970: recipe/weight audit, process wrapper, evaluation/package contracts; no SIR model code imported",
+  "server_validation": "待服务器验证: b19 original Python3.12.3 / torch2.8.0+cu128 / RTX4090, real-data batch32 preflight, FP32/AMP gradients, native Validator, formal training and final metrics"
+}
