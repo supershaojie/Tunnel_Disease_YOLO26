@@ -50,7 +50,7 @@ Deleted: 新实验 YAML 中第 9 层原生 SPPF 选项被替换；从复用脚�
 原生训练周期内的验证 loader 行为也保持 b19；独立预检 Validator 和训练后的独立 val/test 配置均为 batch=32。
 
 `train` 自动以独立子进程执行缺失的预检，成功后新建 Trainer，从原始权重和原 seed 开始。
-预检最多使用 16 个真实 batch32，沿用原生 warmup/accumulation、GradScaler、MuSGD、clip=10 和 EMA 更新顺序，
+预检观察窗口最多使用 128 个真实 batch32（全部新增参数满足条件后立即提前结束），沿用原生 warmup/accumulation、GradScaler、MuSGD、clip=10 和 EMA 更新顺序，
 记录溢出跳步；必须观察到投影及所有上游新增参数具有有限任务梯度和实际更新。
 另用独立模型进行 FP32 batch32 反向检查，随后验证 EMA、保存重载、fuse 和真实独立 Validator。
 预检模型不用于正式训练，预检精度不作为最终结果。共享张量、源码、初始权重、数据清单和环境指纹均记录。
@@ -83,7 +83,7 @@ box/score/class，并同时比较全部未排序解码结果，没有放宽阈�
 
 ```bash
 PYTHONPATH="$PWD" PKC_TEST_PRETRAINED=/path/to/original/yolo26n.pt \
-  python -m unittest discover -s tests -p test_pkc_sppf.py -v
+  python -m unittest discover -s tests -p 'test_pkc*.py' -v
 python tools/experiments/run_b19_pkc_sppf.py --help
 python tools/experiments/finish_b19_pkc_sppf.py --help
 bash -n tools/experiments/server_b19_pkc_sppf_v1.sh
@@ -91,30 +91,40 @@ bash -n tools/experiments/server_b19_pkc_sppf_v1.sh
 
 ## 服务器部署与 tmux
 
-以下命令由用户在服务器执行。交付消息给出完整提交 SHA；部署时可将 PKC_SHA 固定为该 SHA。
-下方默认解析刚 fetch 的实验分支，并打印实际完整 SHA。新工作树路径已存在时 Git 会停止，不覆盖其他工作。
+本次 v1 预检修复的失败证据、改动和验证见 [修复报告](b19_pkc_sppf_v1_preflight_fix.md)。
+以下命令由用户在服务器执行，用交付消息的完整 40 位 SHA 替换 `PKC_SHA`。
+使用已经存在的实验工作树，保留旧 `y26_pkc_v1` 会话和失败记录。更新期间持有本实验的文件锁，
+确认无活跃实验 Python 且无已跟踪文件改动后才切换。fetch 使用 HTTP/1.1 和低速检测，未设置总时长硬超时。
 
 ```bash
-BASE=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26
+(
+set -euo pipefail
 WORK=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_pkc_sppf_v1
 BRANCH=codex/exp-yolo26n-b19-pkc-sppf-v1
-git -C "$BASE" fetch origin "$BRANCH"
-PKC_SHA=$(git -C "$BASE" rev-parse FETCH_HEAD)
-printf 'PKC source: %s\n' "$PKC_SHA"
-git -C "$BASE" worktree add --detach "$WORK" "$PKC_SHA"
+PKC_SHA=填写交付消息中的完整40位SHA
+[[ "$PKC_SHA" =~ ^[0-9a-f]{40}$ ]]
 cd "$WORK"
-export B19_PYTHON=/root/miniconda3/bin/python
-PYTHONPATH="$WORK" "$B19_PYTHON" -c 'import sys,torch,ultralytics; print(sys.executable); print(torch.__version__); print(ultralytics.__file__)'
-git rev-parse HEAD
+exec 9>runs/detect/yolo26n_b19_pkc_sppf_v1.lock
+flock -n 9 || { echo '本实验仍有命令运行，停止更新'; exit 1; }
+active=$(ps -eo pid=,comm=,args= | awk '$2 ~ /^python/ && /run_b19_pkc_sppf[.]py|finish_b19_pkc_sppf[.]py/')
+[[ -z "$active" ]] || { printf '%s\n' "$active"; exit 1; }
+git diff --quiet && git diff --cached --quiet || { echo '保留未提交改动，停止更新'; exit 1; }
+git -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1 -c http.lowSpeedTime=60 fetch origin "$BRANCH"
+git cat-file -e "${PKC_SHA}^{commit}"
+git merge-base --is-ancestor "$PKC_SHA" FETCH_HEAD
+git switch --detach "$PKC_SHA"
+test "$(git rev-parse HEAD)" = "$PKC_SHA"
+exec 9>&-
 
-# 可选：先单独预检；train 会自动补做尚未通过的有效预检。
-bash tools/experiments/server_b19_pkc_sppf_v1.sh preflight
-
-# 启动唯一一组正式训练；tmux 名存在时不再启动。
-tmux new-session -d -s y26_pkc_v1 -c "$WORK" && \
-  tmux set-option -t y26_pkc_v1 remain-on-exit on && \
-  tmux send-keys -t y26_pkc_v1:0.0 'B19_PYTHON=/root/miniconda3/bin/python bash tools/experiments/server_b19_pkc_sppf_v1.sh train; rc=$?; printf "\nPKC train exit=%s\n" "$rc"' C-m
+# 独立新会话直接启动一次 train；旧会话是否存在不影响本次重试。
+SESSION="y26_pkc_v1_retry_$(date +%Y%m%d_%H%M%S)_$$"
+tmux new-session -d -s "$SESSION" -c "$WORK" \
+  'B19_PYTHON=/root/miniconda3/bin/python bash tools/experiments/server_b19_pkc_sppf_v1.sh train; rc=$?; printf "\nPKC train exit=%s\n" "$rc"; exec bash'
+printf 'SESSION=%s\n' "$SESSION"
+)
 ```
+
+这一次 `train` 自动启动独立预检子进程，通过后重新初始化正式 Trainer。不要再串联 `preflight && train`。
 
 脚本从自身位置定位代码，通过 PYTHONPATH 使用实验工作树，不修改原环境的 editable 安装。
 预训练和数据仍读取原 b19 根目录。不会终止其他 GPU 任务，也不做自动等待或后台监控。
@@ -126,12 +136,24 @@ WORK=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_pkc_sppf_v1
 NAME=yolo26n_b19_pkc_sppf_v1
 RUN="$WORK/runs/detect/$NAME"
 tmux ls
-tmux capture-pane -pt y26_pkc_v1:0.0 -S -80
-tmux attach-session -t y26_pkc_v1
+SESSION=填写启动时打印的新会话名
+tmux capture-pane -pt "$SESSION":0.0 -S -80
+tmux attach-session -t "$SESSION"
 # 退出 tmux 查看模式：Ctrl-b 后按 d，训练继续。
 tail -n 60 "$WORK/runs/detect/${NAME}_train.console.log"
 [ ! -f "$RUN/results.csv" ] || tail -n 5 "$RUN/results.csv"
-[ ! -f "$WORK/runs/detect/${NAME}_train.exit_status" ] || cat "$WORK/runs/detect/${NAME}_train.exit_status"
+# 查最新独立 attempt，避免把旧的顶层 exit_status=1 误判为本次结果。
+ATTEMPT=$(ls -dt "$WORK/runs/detect/${NAME}_train.attempt."* | head -n 1)
+printf 'Latest attempt: %s\n' "$ATTEMPT"
+cat "$ATTEMPT/started.txt" "$ATTEMPT/commit.txt"
+if [[ -f "$ATTEMPT/exit_status" ]]; then
+  cat "$ATTEMPT/process_status.json" "$ATTEMPT/exit_status"
+else
+  echo '本次 attempt 尚未记录退出；结合 tmux / Python 进程确认运行状态'
+fi
+find "$WORK/runs/detect/${NAME}_preflight" -name checks.json -printf '%T@ %p\n' | sort -nr | head -n 5
+# 查看以上最新的详细 checks.json：max_batches、attempted_steps、overflow_skips、successful_steps、missing_effective_parameters。
+
 nvidia-smi
 
 # 训练成功结束后，依次运行；失败则保留证据并停止后续步骤。

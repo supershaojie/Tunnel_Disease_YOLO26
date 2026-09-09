@@ -17,6 +17,7 @@ import subprocess
 import sys
 import tempfile
 import traceback
+import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
@@ -606,90 +607,283 @@ def reload_in_process(path):
     write_json(path.with_name("reload_check.json"), report)
 
 
-def preflight(config, evidence, directory, block_type=SPPF_PKC, trainer_type=AuditedTrainer):
-    """Run bounded real batch32 native AMP/MuSGD updates, an independent FP32 backward, EMA and Validator."""
-    import numpy as np
-    from ultralytics import YOLO
+PREFLIGHT_MAX_BATCHES = 128
+PKC_PARAMETERS = [
+    f"{layer}.{suffix}" for layer in ("reduce", "l5", "l9", "l13") for suffix in ("conv.weight", "bn.weight", "bn.bias")
+] + ["project.weight"]
 
-    directory.mkdir(parents=True, exist_ok=False)
-    write_json(directory / "environment.json", evidence)
-    trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
-    trainer.add_callback("on_pretrain_routine_end", final_model_audit)
-    trainer._setup_train()
-    assert trainer.batch_size == trainer.args.batch == 32
-    assert len(trainer.train_loader.dataset) == REFERENCE["dataset_counts"]["train"]
-    assert len(trainer.test_loader.dataset) == REFERENCE["dataset_counts"]["val"]
-    report = dict(passed=False, optimizer=audit_optimizer(trainer), real_batches=[])
-    params = dict(trainer.model.model[9].pkc.named_parameters())
-    initial = {k: p.detach().clone() for k, p in params.items()}
-    bn_before = {k: v.clone() for k, v in trainer.model.model[9].pkc.state_dict().items() if "running_" in k}
-    effective = set()
+
+def observation_report(names=PKC_PARAMETERS, max_batches=PREFLIGHT_MAX_BATCHES):
+    """Create the bounded observation ledger before any Trainer setup can fail."""
+    return dict(
+        passed=False,
+        stage="initialization",
+        max_batches=max_batches,
+        batches_observed=0,
+        attempted_steps=0,
+        overflow_skips=0,
+        successful_steps=0,
+        real_batches=[],
+        first_finite_nonzero_gradient_step={k: None for k in names},
+        first_effective_update_step={k: None for k in names},
+        missing_effective_parameters=list(names),
+    )
+
+
+def record_failure(report, exc):
+    """Attach the active stage and unmet evidence to a failed attempt."""
+    report.update(
+        passed=False,
+        failure_stage=report["stage"],
+        exception=dict(type=type(exc).__name__, message=str(exc), traceback=traceback.format_exc()),
+        missing_reasons={
+            k: "no successful step with finite nonzero task gradient and exact change"
+            if report["first_finite_nonzero_gradient_step"][k] is not None
+            else "no finite nonzero task gradient observed"
+            for k in report["missing_effective_parameters"]
+        },
+    )
+
+
+def tensor_stats(value):
+    """Summarize detached diagnostics without emitting nonstandard JSON NaN/Infinity."""
+    if value is None:
+        return dict(is_none=True, finite=None, norm=None, max_abs=None, nonzero=0, dtype=None)
+    value = value.detach()
+    finite = bool(torch.isfinite(value).all())
+    return dict(
+        is_none=False,
+        finite=finite,
+        norm=value.double().norm().item() if finite else None,
+        max_abs=value.abs().max().item() if finite else None,
+        nonzero=torch.count_nonzero(value).item(),
+        dtype=str(value.dtype),
+    )
+
+
+def parameter_change(before, after):
+    """Measure exact element changes, including updates smaller than allclose tolerances."""
+    return dict(
+        changed=not torch.equal(before, after),
+        changed_elements=(before != after).sum().item(),
+        max_abs_delta=(after.detach().double() - before.double()).abs().max().item(),
+    )
+
+
+def gamma_replay(optimizer, group, parameter):
+    """Replay native non-Muon MuSGD on copies of the clipped gradient, parameter and momentum."""
+    from ultralytics.optim.muon import MuSGD
+
+    assert type(optimizer) is MuSGD and not group["use_muon"]
+    replica = torch.nn.Parameter(parameter.detach().clone())
+    replica.grad = parameter.grad.detach().clone()
+    shadow = MuSGD([dict(group, params=[replica])], muon=optimizer.muon, sgd=optimizer.sgd)
+    shadow.state[replica] = copy.deepcopy(optimizer.state.get(parameter, {}))
+    shadow.step()
+    # Match the native non-Muon arithmetic, including its FP32 momentum and Nesterov addition.
+    grad = parameter.grad.detach().clone()
+    if group["weight_decay"] != 0:
+        grad = grad.add(parameter.detach(), alpha=group["weight_decay"])
+    buffer = shadow.state[replica]["momentum_buffer"]
+    update = grad.add(buffer, alpha=group["momentum"]) if group["nesterov"] else buffer
+    delta = -group["lr"] * update.double()
+    direction = torch.where(delta >= 0, float("inf"), -float("inf")).to(parameter.dtype)
+    spacing = (torch.nextafter(parameter.detach(), direction).double() - parameter.detach().double()).abs()
+    analysis = dict(
+        expected_change=parameter_change(parameter.detach(), replica),
+        proposed_delta_max_abs=delta.abs().max().item(),
+        directional_spacing_min=spacing.min().item(),
+        directional_spacing_max=spacing.max().item(),
+        nonzero_proposals_below_half_spacing=((delta != 0) & (delta.abs() < spacing / 2)).sum().item(),
+        proposed_nonzero_elements=torch.count_nonzero(delta).item(),
+        expected_momentum=tensor_stats(buffer),
+    )
+    return replica.detach(), analysis
+
+
+def observed_optimizer_step(trainer, params, report, row):
+    """Observe the native unscale/clip/step/update/zero/EMA sequence without changing its arithmetic."""
+    optimizer = trainer.optimizer
+    report["attempted_steps"] += 1
+    step = report["attempted_steps"]  # One-based attempted optimizer steps; batch indices remain zero-based.
+    row.update(attempted_step=step, scale_before=trainer.scaler.get_scale(), parameters={})
+    report["stage"] = "optimizer_membership"
+    groups = {}
+    for name, p in params.items():
+        matches = [(i, g) for i, g in enumerate(optimizer.param_groups) for q in g["params"] if q is p]
+        row["parameters"][name] = info = dict(
+            registrations=len(matches), dtype=str(p.dtype), requires_grad=p.requires_grad
+        )
+        assert len(matches) == 1, f"{name}: expected exactly one optimizer registration, got {len(matches)}"
+        assert p.dtype == torch.float32 and p.requires_grad, f"{name}: invalid dtype/requires_grad"
+        index, groups[name] = matches[0]
+        info["optimizer_group"] = dict(
+            index=index,
+            **{
+                k: groups[name].get(k)
+                for k in ("param_group", "lr", "initial_lr", "momentum", "weight_decay", "use_muon", "nesterov")
+            },
+        )
+    report["stage"] = "unscale_clip"
+    trainer.scaler.unscale_(optimizer)
+    finite = all(p.grad is None or bool(torch.isfinite(p.grad).all()) for p in trainer.model.parameters())
+    row["finite_gradients"] = finite
+    before = {k: p.detach().clone() for k, p in params.items()}
+    for name, p in params.items():
+        row["parameters"][name]["gradient_before_clip"] = tensor_stats(p.grad)
+    norm = torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), 10.0)
+    coefficient = torch.clamp(10.0 / (norm + 1e-6), max=1.0)
+    row["total_gradient_norm_before_clip"] = norm.item() if torch.isfinite(norm) else str(norm.item())
+    row["clip_coefficient"] = coefficient.item() if torch.isfinite(coefficient) else str(coefficient.item())
+    replays = {}
+    for name, p in params.items():
+        info = row["parameters"][name]
+        info["gradient_after_clip"] = stats = tensor_stats(p.grad)
+        pre = info["gradient_before_clip"]
+        if pre["finite"] and pre["nonzero"] and report["first_finite_nonzero_gradient_step"][name] is None:
+            report["first_finite_nonzero_gradient_step"][name] = step
+        if name.endswith("bn.weight"):
+            info["gamma_before"] = dict(min=p.detach().min().item(), max=p.detach().max().item(), dtype=str(p.dtype))
+            info["momentum_before"] = tensor_stats(optimizer.state.get(p, {}).get("momentum_buffer"))
+            if finite and stats["finite"] and stats["nonzero"]:
+                replays[name], info["native_copy_replay"] = gamma_replay(optimizer, groups[name], p)
+    report["stage"] = "optimizer_step"
     updates = []
-    hook = trainer.optimizer.register_step_post_hook(lambda *args: updates.append(True))
-    loader = iter(trainer.train_loader)
-    warmup = max(round(trainer.args.warmup_epochs * len(trainer.train_loader)), 100)
-    last_step = -1
-    trainer.optimizer.zero_grad()
+    hook = optimizer.register_step_post_hook(lambda *args: updates.append(True))
     try:
-        for ni in range(16):
-            trainer.accumulate = max(1, int(np.interp(ni, [0, warmup], [1, trainer.args.nbs / 32]).round()))
-            for group in trainer.optimizer.param_groups:
-                start = trainer.args.warmup_bias_lr if group.get("param_group") == "bias" else 0.0
-                group["lr"] = float(np.interp(ni, [0, warmup], [start, group["initial_lr"] * trainer.lf(0)]))
-                if "momentum" in group:
-                    group["momentum"] = float(
-                        np.interp(ni, [0, warmup], [trainer.args.warmup_momentum, trainer.args.momentum])
+        trainer.scaler.step(optimizer)
+        row["optimizer_step"] = bool(updates)
+        report["successful_steps"] += int(bool(updates))
+        trainer.scaler.update()
+        row["scale_after"] = trainer.scaler.get_scale()
+        overflow = not updates and row["scale_after"] < row["scale_before"]
+        report["overflow_skips"] += int(overflow)
+        row["overflow_skip"] = overflow
+        optimizer.zero_grad()
+        if trainer.ema:
+            trainer.ema.update(trainer.model)
+    finally:
+        hook.remove()
+    for name, p in params.items():
+        info = row["parameters"][name]
+        info.update(parameter_change(before[name], p))
+        pre, post = info["gradient_before_clip"], info["gradient_after_clip"]
+        eligible = bool(updates) and finite and pre["finite"] and pre["nonzero"] and post["finite"] and post["nonzero"]
+        if eligible and info["changed"] and report["first_effective_update_step"][name] is None:
+            report["first_effective_update_step"][name] = step
+        if name.endswith("bn.weight"):
+            info["gamma_after"] = dict(min=p.detach().min().item(), max=p.detach().max().item(), dtype=str(p.dtype))
+            info["momentum_after"] = tensor_stats(optimizer.state.get(p, {}).get("momentum_buffer"))
+            if name in replays and updates:
+                info["native_copy_replay"]["matches_actual_exactly"] = torch.equal(replays[name], p)
+                assert info["native_copy_replay"]["matches_actual_exactly"], f"Native copy replay differs: {name}"
+    report["missing_effective_parameters"] = [k for k, v in report["first_effective_update_step"].items() if v is None]
+    row["missing_effective_parameters"] = list(report["missing_effective_parameters"])
+    row["first_finite_nonzero_gradient_step"] = dict(report["first_finite_nonzero_gradient_step"])
+    row["first_effective_update_step"] = dict(report["first_effective_update_step"])
+    assert all(not info["gradient_before_clip"]["is_none"] for info in row["parameters"].values()), (
+        "Disconnected PKC gradient"
+    )
+    assert finite or (not updates and overflow), "Nonfinite gradients were not skipped by GradScaler"
+    assert updates or overflow, "No optimizer step without an AMP overflow"
+
+
+def observe_batches(trainer, params, loader, report, checks_path):
+    """Stop at the first complete task-update evidence or fail at the fixed batch budget."""
+    import numpy as np
+
+    try:
+        report["stage"] = "epoch_setup"
+        trainer.optimizer.zero_grad()
+        trainer.epoch = trainer.start_epoch
+        # Native _do_train steps the scheduler once before the first batch, then enters model train mode.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            trainer.scheduler.step()
+        trainer._model_train()
+        warmup = (
+            max(round(trainer.args.warmup_epochs * len(trainer.train_loader)), 100)
+            if trainer.args.warmup_epochs > 0
+            else -1
+        )
+        last_step = -1
+        for ni in range(report["max_batches"]):
+            row = dict(batch=ni, attempted=False)
+            report["real_batches"].append(row)
+            report["stage"] = "batch_forward_backward"
+            if ni <= warmup:
+                trainer.accumulate = max(
+                    1, int(np.interp(ni, [0, warmup], [1, trainer.args.nbs / trainer.batch_size]).round())
+                )
+                for group in trainer.optimizer.param_groups:
+                    start = trainer.args.warmup_bias_lr if group.get("param_group") == "bias" else 0.0
+                    group["lr"] = float(
+                        np.interp(ni, [0, warmup], [start, group["initial_lr"] * trainer.lf(trainer.epoch)])
                     )
+                    if "momentum" in group:
+                        group["momentum"] = float(
+                            np.interp(ni, [0, warmup], [trainer.args.warmup_momentum, trainer.args.momentum])
+                        )
             raw = next(loader)
-            assert raw["img"].shape[0] == 32
-            trainer.model.train()
-            with autocast(bool(config["amp"]), device=trainer.device.type):
+            assert raw["img"].shape[0] == trainer.batch_size == 32
+            report["batches_observed"] += 1
+            with autocast(trainer.amp, device=trainer.device.type):
                 batch = trainer.preprocess_batch(raw)
                 loss, items = trainer.model(batch)
                 total = loss.sum()
-            assert batch["cls"].numel() and torch.isfinite(total)
-            trainer.scaler.scale(total).backward()
-            attempted = ni - last_step >= trainer.accumulate
-            row = dict(
-                batch=ni,
+            row.update(
                 shape=list(batch["img"].shape),
                 loss=total.item(),
                 components=items.detach().cpu().tolist(),
                 scale_before=trainer.scaler.get_scale(),
-                attempted=attempted,
                 accumulate=trainer.accumulate,
             )
-            if attempted:
-                trainer.scaler.unscale_(trainer.optimizer)
-                norms = {k: p.grad.float().norm().item() if p.grad is not None else None for k, p in params.items()}
-                assert all(value is not None for value in norms.values()), "Disconnected PKC gradient"
-                finite = all(p.grad is None or torch.isfinite(p.grad).all() for p in trainer.model.parameters())
-                before = {k: p.detach().clone() for k, p in params.items()}
-                count = len(updates)
-                torch.nn.utils.clip_grad_norm_(trainer.model.parameters(), 10.0)
-                trainer.scaler.step(trainer.optimizer)
-                trainer.scaler.update()
-                trainer.optimizer.zero_grad()
-                trainer.ema.update(trainer.model)
-                stepped = len(updates) > count
-                assert finite or (not stepped and trainer.scaler.get_scale() < row["scale_before"])
-                moved = {k: not torch.equal(before[k], p) for k, p in params.items()}
-                if stepped and finite:
-                    effective.update(k for k in params if norms[k] > 0 and moved[k])
-                row.update(
-                    unscaled_gradient_norms={k: v if math.isfinite(v) else str(v) for k, v in norms.items()},
-                    finite_gradients=bool(finite),
-                    optimizer_step=stepped,
-                    changed=moved,
-                )
-                last_step = ni
+            assert batch["cls"].numel() and torch.isfinite(total)
+            trainer.scaler.scale(total).backward()
+            row["attempted"] = ni - last_step >= trainer.accumulate
+            if row["attempted"]:
+                observed_optimizer_step(trainer, params, report, row)
+                last_step = ni  # Native Trainer advances this even when GradScaler skips the step.
             row["scale_after"] = trainer.scaler.get_scale()
-            report["real_batches"].append(row)
-            write_json(directory / "checks.json", report)
+            report["stage"] = "model_finiteness"
             assert all(torch.isfinite(v).all() for v in trainer.model.state_dict().values())
-            if effective == set(params):
-                break
-        assert effective == set(params), f"No finite task-gradient update for: {set(params) - effective}"
+            write_json(checks_path, report)
+            if not report["missing_effective_parameters"]:
+                return
+        report["stage"] = "observation_budget"
+        raise AssertionError(
+            f"Batch budget exhausted; no effective task update for: {report['missing_effective_parameters']}"
+        )
+    except BaseException as exc:
+        record_failure(report, exc)
+        raise
+    finally:
+        write_json(checks_path, report)
+
+
+def preflight(config, evidence, directory, block_type=SPPF_PKC, trainer_type=AuditedTrainer):
+    """Run bounded real batch32 native AMP/MuSGD updates and the unchanged downstream checks."""
+    from ultralytics import YOLO
+
+    directory.mkdir(parents=True, exist_ok=False)
+    report = observation_report()
+    trainer = None
+    try:
+        report["stage"] = "setup"
+        write_json(directory / "environment.json", evidence)
+        trainer = trainer_type(overrides=dict(config, project=str(directory), name="check"))
+        trainer.add_callback("on_pretrain_routine_end", final_model_audit)
+        trainer._setup_train()
+        assert trainer.batch_size == trainer.args.batch == 32
+        assert len(trainer.train_loader.dataset) == REFERENCE["dataset_counts"]["train"]
+        assert len(trainer.test_loader.dataset) == REFERENCE["dataset_counts"]["val"]
+        report["optimizer"] = audit_optimizer(trainer)
+        params = dict(trainer.model.model[9].pkc.named_parameters())
+        initial = {k: p.detach().clone() for k, p in params.items()}
+        bn_before = {k: v.clone() for k, v in trainer.model.model[9].pkc.state_dict().items() if "running_" in k}
+        loader = iter(trainer.train_loader)
+        observe_batches(trainer, params, loader, report, directory / "checks.json")
+        report["stage"] = "bn_ema"
         assert all(not torch.equal(initial[k], p) for k, p in params.items())
         report["bn_updated"] = all(
             not torch.equal(v, trainer.model.model[9].pkc.state_dict()[k]) for k, v in bn_before.items()
@@ -699,6 +893,7 @@ def preflight(config, evidence, directory, block_type=SPPF_PKC, trainer_type=Aud
         assert trainer.ema.updates > 0 and torch.count_nonzero(trainer.ema.ema.model[9].pkc["project"].weight) > 0
         report["ema_updates"] = trainer.ema.updates
         # Disposable independent model; FP32 check never modifies the AMP training candidate or optimizer.
+        report["stage"] = "fp32"
         fp32 = copy.deepcopy(trainer.model).float().train()
         fp32.zero_grad(set_to_none=True)
         batch = trainer.preprocess_batch(next(loader))
@@ -710,8 +905,10 @@ def preflight(config, evidence, directory, block_type=SPPF_PKC, trainer_type=Aud
         assert all(p.grad is None or torch.isfinite(p.grad).all() for p in fp32.parameters())
         report["fp32"] = dict(batch=32, loss=loss.detach().cpu().tolist(), finite=True)
         del fp32, batch, loss
+        report["stage"] = "reload_fuse"
         report["reload"] = save_reload_check(trainer.ema.ema, directory, block_type)
         # Native standalone Validator owns its model copy/fusion and evaluates the unchanged val split.
+        report["stage"] = "validator"
         validator_model = YOLO(directory / "preflight.pt")
         observed = {}
         validator_model.add_callback(
@@ -739,13 +936,25 @@ def preflight(config, evidence, directory, block_type=SPPF_PKC, trainer_type=Aud
         assert observed["args"]["batch"] == 32 and observed["args"]["quantize"] is None
         report["validator"] = dict(observed, metrics=metrics.results_dict, scope="preflight only; not final accuracy")
         report["peak_cuda_memory_bytes"] = torch.cuda.max_memory_allocated(trainer.device)
-        report["passed"] = True
-        return report
+    except BaseException as exc:
+        record_failure(report, exc)
+        raise
     finally:
-        hook.remove()
-        write_json(directory / "checks.json", report)
-        for loader in (trainer.train_loader, trainer.test_loader):
-            loader.close()
+        try:
+            if trainer is not None:
+                for loader in (getattr(trainer, "train_loader", None), getattr(trainer, "test_loader", None)):
+                    if loader is not None:
+                        loader.close()
+        except BaseException as exc:
+            if "exception" not in report:
+                report["stage"] = "loader_cleanup"
+                record_failure(report, exc)
+            raise
+        finally:
+            write_json(directory / "checks.json", report)
+    report.update(passed=True, stage="complete")
+    write_json(directory / "checks.json", report)
+    return report
 
 
 class TeeStream:
@@ -949,13 +1158,16 @@ def main(
             setattr(options, attr, value.resolve())
     os.chdir(ROOT)
     project = (options.project or ROOT / "runs/detect").resolve()
-    if options.stage == "train" and (project / options.name).exists():
-        raise FileExistsError(f"PKC output already exists; no second run or overwrite: {project / options.name}")
     check_root = project / f"{options.name}_preflight"
     check_root.mkdir(parents=True, exist_ok=True)
+    invocation = Path(tempfile.mkdtemp(prefix=f"{options.stage}-invocation-", dir=check_root))
+    status = observation_report()
     handler = logging.FileHandler(check_root / f"{options.stage}.log", encoding="utf-8")
     LOGGER.addHandler(handler)
     try:
+        status["stage"] = "source_structure_recipe"
+        if options.stage == "train" and (project / options.name).exists():
+            raise FileExistsError(f"PKC output already exists; no second run or overwrite: {project / options.name}")
         if git("status", "--porcelain", "--untracked-files=no"):
             raise RuntimeError("Commit source changes before server preflight or training")
         structure_check(check_root, model, block_type)
@@ -973,6 +1185,7 @@ def main(
         )
         signature = hashlib.sha256(json.dumps([config, evidence], sort_keys=True).encode()).hexdigest()
         check_dir = check_root / signature[:20]
+        status.update(fingerprint=signature, commit=evidence.get("commit"))
         write_json(check_root / "resolved.json", dict(config=config, evidence=evidence, fingerprint=signature))
         print(
             json.dumps(
@@ -996,6 +1209,8 @@ def main(
                 dict(passed=False, missing=issues, structural_passed=True, trainer_get_model_weights_passed=True),
             )
             print("Preflight incomplete:\n- " + "\n- ".join(issues), file=sys.stderr)
+            status["stage"] = "runtime_requirements"
+            record_failure(status, RuntimeError("; ".join(issues)))
             return 2
         receipt = check_dir / "passed.json"
         if options.stage == "train" and not receipt.is_file():
@@ -1013,24 +1228,39 @@ def main(
                 value = getattr(options, attr)
                 if value is not None:
                     command.extend(["--" + attr.replace("_", "-"), str(value)])
+            status["stage"] = "preflight_subprocess"
+            previous_invocations = set(check_root.glob("preflight-invocation-*"))
             result = subprocess.run([sys.executable, str(entrypoint), *command], cwd=ROOT)
+            child_reports = set(check_root.glob("preflight-invocation-*")) - previous_invocations
+            if len(child_reports) == 1:
+                child_path = child_reports.pop() / "checks.json"
+                status["subprocess_checks"] = str(child_path)
+                if child_path.is_file():
+                    child = json.loads(child_path.read_text(encoding="utf-8"))
+                    status.update(
+                        {k: v for k, v in child.items() if k not in ("passed", "stage", "exception", "failure_stage")}
+                    )
             write_json(check_root / "preflight_process_status.json", dict(python=result.returncode, stage="preflight"))
             result.check_returncode()
-        if options.stage == "preflight":
-            if not receipt.is_file():
-                if check_dir.exists():
-                    # Preserve a failed attempt's logs; a new attempt never reuses its training state.
-                    check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
-                preflight(config, evidence, check_dir, block_type, trainer_type)
-                write_json(check_dir / "passed.json", dict(fingerprint=signature, passed=True))
-                # A retry is referenced, not copied over earlier evidence.
-                if check_dir / "passed.json" != receipt:
-                    write_json(receipt, dict(fingerprint=signature, passed=True, report_dir=str(check_dir)))
-            print(f"Preflight passed: {receipt}")
-            return 0
+        if options.stage == "preflight" and not receipt.is_file():
+            if check_dir.exists():
+                # Preserve a failed attempt's logs; a new attempt never reuses its training state.
+                check_dir = Path(tempfile.mkdtemp(prefix=signature[:20] + "-retry-", dir=check_root)) / "attempt"
+            status.update(stage="real_preflight", report_dir=str(check_dir))
+            preflight(config, evidence, check_dir, block_type, trainer_type)
+            write_json(check_dir / "passed.json", dict(fingerprint=signature, passed=True))
+            # A retry is referenced, not copied over earlier evidence.
+            if check_dir / "passed.json" != receipt:
+                write_json(receipt, dict(fingerprint=signature, passed=True, report_dir=str(check_dir)))
+        status["stage"] = "receipt_and_fresh_trainer"
         passed = json.loads(receipt.read_text(encoding="utf-8"))
         if passed.get("fingerprint") != signature or not passed.get("passed"):
             raise RuntimeError("Stale/mismatched preflight receipt.")
+        status["report_dir"] = passed.get("report_dir", str(check_dir))
+        if options.stage == "preflight":
+            print(f"Preflight passed: {receipt}")
+            status.update(passed=True, stage="complete", receipt=str(receipt))
+            return 0
         issues = runtime_issues(config)
         if issues:
             raise RuntimeError("Resources/environment changed after preflight: " + "; ".join(issues))
@@ -1050,6 +1280,7 @@ def main(
         train_handler = logging.FileHandler(trainer.save_dir / "train.log", encoding="utf-8")
         LOGGER.addHandler(train_handler)
         try:
+            status["stage"] = "formal_train"
             with redirect_stdout(TeeStream(sys.stdout, train_handler.stream)), redirect_stderr(
                 TeeStream(sys.stderr, train_handler.stream)
             ):
@@ -1062,14 +1293,33 @@ def main(
             LOGGER.removeHandler(train_handler)
             train_handler.close()
         print(f"PKC completed; validation-selected weights and provenance: {trainer.save_dir}")
+        status.update(passed=True, stage="complete", receipt=str(receipt))
         return 0
-    except Exception:
+    except BaseException as exc:
+        record_failure(status, exc)
         text = traceback.format_exc()
         with (check_root / f"{options.stage}.log").open("a", encoding="utf-8") as stream:
             stream.write(text)
         print(text, file=sys.stderr)
         return 1
     finally:
+        # Link/copy the detailed observation counters even when failure occurred inside the isolated subprocess.
+        report_dir = status.get("report_dir")
+        if report_dir and (Path(report_dir) / "checks.json").is_file():
+            details = json.loads((Path(report_dir) / "checks.json").read_text(encoding="utf-8"))
+            for key in (
+                "attempted_steps",
+                "overflow_skips",
+                "successful_steps",
+                "batches_observed",
+                "first_finite_nonzero_gradient_step",
+                "first_effective_update_step",
+                "missing_effective_parameters",
+            ):
+                status[key] = details[key]
+            if not details["passed"] and "missing_reasons" in details:
+                status["missing_reasons"] = details["missing_reasons"]
+        write_json(invocation / "checks.json", status)
         LOGGER.removeHandler(handler)
         handler.close()
 
