@@ -17,6 +17,7 @@ Examples:
     >>> subprocess.run(f"onnxslim {f} {f} && open {f}", shell=True, check=True)  # pip install onnxslim
 """
 
+from .bci_c2psa import C2PSA_BCI
 from .block import (
     C1,
     C2,
@@ -112,6 +113,7 @@ __all__ = (
     "C1",
     "C2",
     "C2PSA",
+    "C2PSA_BCI",
     "C3",
     "C3TR",
     "CBAM",

@@ -1,0 +1,641 @@
+{
+  "args_path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+  "args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+  "results_sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507",
+  "fields": {
+    "task": {
+      "actual": "detect",
+      "recorded": "detect",
+      "equal": true
+    },
+    "mode": {
+      "actual": "train",
+      "recorded": "train",
+      "equal": true
+    },
+    "model": {
+      "actual": "yolo26n.pt",
+      "recorded": "yolo26n.pt",
+      "equal": true
+    },
+    "data": {
+      "actual": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "recorded": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "equal": true
+    },
+    "epochs": {
+      "actual": 200,
+      "recorded": 200,
+      "equal": true
+    },
+    "time": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "patience": {
+      "actual": 60,
+      "recorded": 60,
+      "equal": true
+    },
+    "batch": {
+      "actual": 32,
+      "recorded": 32,
+      "equal": true
+    },
+    "imgsz": {
+      "actual": 640,
+      "recorded": 640,
+      "equal": true
+    },
+    "save": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "save_period": {
+      "actual": 20,
+      "recorded": 20,
+      "equal": true
+    },
+    "cache": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "device": {
+      "actual": "0",
+      "recorded": "0",
+      "equal": true
+    },
+    "workers": {
+      "actual": 8,
+      "recorded": 8,
+      "equal": true
+    },
+    "project": {
+      "actual": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "recorded": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "equal": true
+    },
+    "name": {
+      "actual": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "recorded": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "equal": true
+    },
+    "exist_ok": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "pretrained": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "cls_remap": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "optimizer": {
+      "actual": "MuSGD",
+      "recorded": "MuSGD",
+      "equal": true
+    },
+    "verbose": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "seed": {
+      "actual": 42,
+      "recorded": 42,
+      "equal": true
+    },
+    "deterministic": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "single_cls": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "rect": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "cos_lr": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "close_mosaic": {
+      "actual": 10,
+      "recorded": 10,
+      "equal": true
+    },
+    "resume": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "amp": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "fraction": {
+      "actual": 1.0,
+      "recorded": 1.0,
+      "equal": true
+    },
+    "profile": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "freeze": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "multi_scale": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "compile": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "overlap_mask": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "mask_ratio": {
+      "actual": 4,
+      "recorded": 4,
+      "equal": true
+    },
+    "dropout": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "val": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "split": {
+      "actual": "val",
+      "recorded": "val",
+      "equal": true
+    },
+    "save_json": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "conf": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "iou": {
+      "actual": 0.7,
+      "recorded": 0.7,
+      "equal": true
+    },
+    "max_det": {
+      "actual": 300,
+      "recorded": 300,
+      "equal": true
+    },
+    "quantize": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "dnn": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "plots": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "end2end": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "source": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "vid_stride": {
+      "actual": 1,
+      "recorded": 1,
+      "equal": true
+    },
+    "stream_buffer": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "visualize": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "augment": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "agnostic_nms": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "classes": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "retina_masks": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "embed": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "show": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "save_frames": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "save_txt": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "save_conf": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "save_crop": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "show_labels": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "show_conf": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "show_boxes": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "line_width": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "format": {
+      "actual": "torchscript",
+      "recorded": "torchscript",
+      "equal": true
+    },
+    "keras": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "optimize": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "dynamic": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "simplify": {
+      "actual": true,
+      "recorded": true,
+      "equal": true
+    },
+    "opset": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "workspace": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "nms": {
+      "actual": false,
+      "recorded": false,
+      "equal": true
+    },
+    "lr0": {
+      "actual": 0.01,
+      "recorded": 0.01,
+      "equal": true
+    },
+    "lrf": {
+      "actual": 0.003,
+      "recorded": 0.003,
+      "equal": true
+    },
+    "momentum": {
+      "actual": 0.937,
+      "recorded": 0.937,
+      "equal": true
+    },
+    "weight_decay": {
+      "actual": 0.0005,
+      "recorded": 0.0005,
+      "equal": true
+    },
+    "warmup_epochs": {
+      "actual": 3.0,
+      "recorded": 3.0,
+      "equal": true
+    },
+    "warmup_momentum": {
+      "actual": 0.8,
+      "recorded": 0.8,
+      "equal": true
+    },
+    "warmup_bias_lr": {
+      "actual": 0.1,
+      "recorded": 0.1,
+      "equal": true
+    },
+    "distill_model": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "dis": {
+      "actual": 6.0,
+      "recorded": 6.0,
+      "equal": true
+    },
+    "box": {
+      "actual": 7.5,
+      "recorded": 7.5,
+      "equal": true
+    },
+    "cls": {
+      "actual": 0.5,
+      "recorded": 0.5,
+      "equal": true
+    },
+    "cls_pw": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "dfl": {
+      "actual": 1.5,
+      "recorded": 1.5,
+      "equal": true
+    },
+    "pose": {
+      "actual": 12.0,
+      "recorded": 12.0,
+      "equal": true
+    },
+    "kobj": {
+      "actual": 1.0,
+      "recorded": 1.0,
+      "equal": true
+    },
+    "rle": {
+      "actual": 1.0,
+      "recorded": 1.0,
+      "equal": true
+    },
+    "angle": {
+      "actual": 1.0,
+      "recorded": 1.0,
+      "equal": true
+    },
+    "nbs": {
+      "actual": 64,
+      "recorded": 64,
+      "equal": true
+    },
+    "hsv_h": {
+      "actual": 0.024,
+      "recorded": 0.024,
+      "equal": true
+    },
+    "hsv_s": {
+      "actual": 0.84,
+      "recorded": 0.84,
+      "equal": true
+    },
+    "hsv_v": {
+      "actual": 0.535,
+      "recorded": 0.535,
+      "equal": true
+    },
+    "degrees": {
+      "actual": 11.0,
+      "recorded": 11.0,
+      "equal": true
+    },
+    "translate": {
+      "actual": 0.17,
+      "recorded": 0.17,
+      "equal": true
+    },
+    "scale": {
+      "actual": 0.735,
+      "recorded": 0.735,
+      "equal": true
+    },
+    "shear": {
+      "actual": 3.5,
+      "recorded": 3.5,
+      "equal": true
+    },
+    "perspective": {
+      "actual": 0.00055,
+      "recorded": 0.00055,
+      "equal": true
+    },
+    "flipud": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "fliplr": {
+      "actual": 0.5,
+      "recorded": 0.5,
+      "equal": true
+    },
+    "bgr": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "mosaic": {
+      "actual": 1.0,
+      "recorded": 1.0,
+      "equal": true
+    },
+    "mixup": {
+      "actual": 0.135,
+      "recorded": 0.135,
+      "equal": true
+    },
+    "cutmix": {
+      "actual": 0.03,
+      "recorded": 0.03,
+      "equal": true
+    },
+    "copy_paste": {
+      "actual": 0.0,
+      "recorded": 0.0,
+      "equal": true
+    },
+    "copy_paste_mode": {
+      "actual": "flip",
+      "recorded": "flip",
+      "equal": true
+    },
+    "auto_augment": {
+      "actual": "randaugment",
+      "recorded": "randaugment",
+      "equal": true
+    },
+    "erasing": {
+      "actual": 0.4,
+      "recorded": 0.4,
+      "equal": true
+    },
+    "cfg": {
+      "actual": null,
+      "recorded": null,
+      "equal": true
+    },
+    "tracker": {
+      "actual": "tracktrack.yaml",
+      "recorded": "tracktrack.yaml",
+      "equal": true
+    },
+    "save_dir": {
+      "actual": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "recorded": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "equal": true
+    }
+  },
+  "launcher": {
+    "verified": true,
+    "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bci-c2psa-v1\\tools\\experiments\\b19_launcher_expanded.txt",
+    "sha256": "b86ccfa18ecdae5b97c0663d242548dd70e61b570a026b52dcee02eff775b594",
+    "command": [
+      "yolo",
+      "detect",
+      "train",
+      "model=yolo26n.pt",
+      "data=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "epochs=200",
+      "patience=60",
+      "imgsz=640",
+      "batch=32",
+      "workers=8",
+      "device=0",
+      "seed=42",
+      "deterministic=True",
+      "amp=True",
+      "cache=False",
+      "optimizer=MuSGD",
+      "lr0=0.01",
+      "lrf=0.003",
+      "momentum=0.937",
+      "weight_decay=0.0005",
+      "warmup_epochs=3.0",
+      "warmup_momentum=0.8",
+      "warmup_bias_lr=0.1",
+      "cos_lr=True",
+      "close_mosaic=10",
+      "hsv_h=0.024",
+      "hsv_s=0.84",
+      "hsv_v=0.535",
+      "degrees=11.0",
+      "translate=0.17",
+      "scale=0.735",
+      "shear=3.5",
+      "perspective=0.00055",
+      "flipud=0.0",
+      "fliplr=0.5",
+      "bgr=0.0",
+      "mosaic=1.0",
+      "mixup=0.135",
+      "cutmix=0.03",
+      "copy_paste=0.0",
+      "box=7.5",
+      "cls=0.5",
+      "dfl=1.5",
+      "save=True",
+      "save_period=20",
+      "plots=True",
+      "val=True",
+      "project=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "name=b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "exist_ok=False"
+    ],
+    "trainer": "native DetectionTrainer",
+    "source": "archived expanded launch record; original shell script was not included in the b19 archive"
+  },
+  "counts": {
+    "train": {
+      "images": 8414,
+      "instances": 10243
+    },
+    "val": {
+      "images": 2404,
+      "instances": 2985
+    },
+    "test": {
+      "images": 1202,
+      "instances": 1477
+    }
+  },
+  "original_weight_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
+}

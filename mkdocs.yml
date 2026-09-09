@@ -809,6 +809,7 @@ nav:
           - distill_model: reference/nn/distill_model.md
           - modules:
               - activation: reference/nn/modules/activation.md
+              - bci_c2psa: reference/nn/modules/bci_c2psa.md
               - block: reference/nn/modules/block.md
               - conv: reference/nn/modules/conv.md
               - head: reference/nn/modules/head.md

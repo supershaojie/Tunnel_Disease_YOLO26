@@ -1,0 +1,12 @@
+{
+  "archive_path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+  "archive_sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "reference_member": "YOLO26缝合/ultralytics/nn/newsAddmodules/HMHA_2025CVPR.py",
+  "member_sha256": "5b267bd82cfd1ddea89daf0a6b18e633013966bd590f7d36b9dd2b39719ffb1a",
+  "scope": "Only channel matrix and spatial normalization ideas; no external code imported",
+  "infrastructure_source": "MSI lifecycle 578a513; PKC bounded observation reviewed at 1b4b98ede9499eae225010893c12c57ac5c3cd5f",
+  "references": [
+    "https://arxiv.org/html/2111.09881v2",
+    "https://github.com/joshyZhou/HINT"
+  ]
+}

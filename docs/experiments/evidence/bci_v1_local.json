@@ -1,0 +1,233 @@
+{
+  "server_preflight": false,
+  "formal_training": false,
+  "checks": {
+    "real_detection_musgd": {
+      "batch": 2,
+      "imgsz": 96,
+      "steps": [
+        {
+          "step": 1,
+          "loss": [
+            0.024856338277459145, 0.7790424823760986, 0.0007027682731859386
+          ],
+          "task_gradients": {
+            "pq.weight": 0.0,
+            "dwq.weight": 0.0,
+            "pk.weight": 0.0,
+            "dwk.weight": 0.0,
+            "pv.weight": 0.0,
+            "po.weight": 0.049208998680114746
+          },
+          "updates": {
+            "pq.weight": 8.568167686462402e-7,
+            "dwq.weight": 3.2186508178710938e-6,
+            "pk.weight": 8.568167686462402e-7,
+            "dwk.weight": 3.2186508178710938e-6,
+            "pv.weight": 8.568167686462402e-7,
+            "po.weight": 0.0007030150736682117
+          }
+        },
+        {
+          "step": 2,
+          "loss": [
+            0.37800320982933044, 0.9355188608169556, 0.004616358317434788
+          ],
+          "task_gradients": {
+            "pq.weight": 4.418284879648127e-5,
+            "dwq.weight": 9.056221642822493e-6,
+            "pk.weight": 6.239031063159928e-5,
+            "dwk.weight": 1.0789268344524316e-5,
+            "pv.weight": 0.00012418210098985583,
+            "po.weight": 0.027160510420799255
+          },
+          "updates": {
+            "pq.weight": 0.000561889261007309,
+            "dwq.weight": 0.0010094419121742249,
+            "pk.weight": 0.0006167106330394745,
+            "dwk.weight": 0.00106067955493927,
+            "pv.weight": 0.0005463697016239166,
+            "po.weight": 0.0007548206485807896
+          }
+        }
+      ],
+      "groups": [
+        {
+          "name": "pq.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "dwq.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "pk.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "dwk.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "pv.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "po.weight",
+          "group": "muon",
+          "lr": 0.01
+        }
+      ],
+      "recipe": "development fixed learning rate; not native warmup server preflight",
+      "real_images": [
+        "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\images\\val\\sample_001358410bb49e779de0__degrade.jpg",
+        "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\images\\val\\sample_0022bb57d72b77e5ba30__geo.jpg"
+      ]
+    },
+    "reload_fuse": {
+      "checkpoint": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bci-c2psa-v1\\artifacts\\local_check_03\\preflight.pt",
+      "sha256": "2d32a08685fb231cb4d28c6769431dfb5fcabc42a12ce4e9a14ad4879628791f",
+      "fresh_process": true,
+      "checkpoint_precision": "FP16 EMA, reloaded FP32",
+      "state_exact": true,
+      "fuse": true
+    },
+    "validator": {
+      "precision": "FP32",
+      "images": 2,
+      "targets": 2,
+      "results_dict": {
+        "metrics/precision(B)": 0.0,
+        "metrics/recall(B)": 0.0,
+        "metrics/mAP50(B)": 0.0,
+        "metrics/mAP50-95(B)": 0.0,
+        "fitness": 0.0
+      },
+      "ap_by_iou": {
+        "0.50": 0.0,
+        "0.55": 0.0,
+        "0.60": 0.0,
+        "0.65": 0.0,
+        "0.70": 0.0,
+        "0.75": 0.0,
+        "0.80": 0.0,
+        "0.85": 0.0,
+        "0.90": 0.0,
+        "0.95": 0.0
+      },
+      "actual_parameter_dtype": "torch.float32",
+      "inference_path": {
+        "version": 1,
+        "bci": 2,
+        "one2one": 2
+      }
+    },
+    "cuda": [
+      {
+        "shape": [1, 3, 640, 640],
+        "amp": false,
+        "loss": [3.312227964401245, 10.36825180053711, 0.026000652462244034],
+        "po_gradient": 0.9005424976348877,
+        "peak_allocated_bytes": 314118144
+      },
+      {
+        "shape": [1, 3, 640, 640],
+        "amp": true,
+        "loss": [3.2572383880615234, 10.32517147064209, 0.02560264989733696],
+        "po_gradient": 0.9041529297828674,
+        "peak_allocated_bytes": 231941120
+      },
+      {
+        "shape": [1, 3, 640, 960],
+        "amp": false,
+        "loss": [3.283856153488159, 13.781451225280762, 0.02886965312063694],
+        "po_gradient": 2.452119827270508,
+        "peak_allocated_bytes": 479072768
+      },
+      {
+        "shape": [1, 3, 640, 960],
+        "amp": true,
+        "loss": [3.4908385276794434, 13.867227554321289, 0.03087676502764225],
+        "po_gradient": 5.776802062988281,
+        "peak_allocated_bytes": 304417792
+      }
+    ],
+    "autocast_fp32_math": [
+      "aten.bmm.default",
+      "aten._softmax.default",
+      "aten.bmm.default"
+    ]
+  },
+  "backend": {
+    "threads": 8,
+    "interop_threads": 6,
+    "omp": "1",
+    "mkl": null,
+    "mkldnn": true,
+    "mkldnn_deterministic": false,
+    "mkldnn_allow_tf32": null,
+    "float32_matmul_precision": "highest",
+    "matmul_allow_tf32": false,
+    "cudnn_allow_tf32": true,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "deterministic": true,
+    "deterministic_warn_only": true
+  },
+  "flops_profiler_gflops": {
+    "native": 5.74197708,
+    "bci": 5.757235704
+  },
+  "flops_scope": "Actual 1x3x640x640, unfused eval, operators counted by PyTorch profiler; not all scalar operations",
+  "passed": true,
+  "validation_scope": "Local development only; 2 real val images at training size 96, CUDA batch 1 at 640 square/rectangle. No server receipt or accuracy claim.",
+  "tests": "7 passed; pytest -o addopts= tests/test_bci_c2psa.py --export-env base",
+  "resolved_development_failure": "First reload used different CPU thread counts; record and restore thread count, then exact reload passed. First attempt retained in artifacts/local_check_01.",
+  "structural_nodes": [
+    {
+      "input": [1, 3, 640, 640],
+      "nodes": {
+        "4": [1, 128, 80, 80],
+        "9": [1, 256, 20, 20],
+        "10": [1, 256, 20, 20],
+        "13": [1, 128, 40, 40],
+        "14": [1, 128, 80, 80],
+        "15": [1, 256, 80, 80],
+        "16": [1, 64, 80, 80],
+        "17": [1, 64, 40, 40],
+        "19": [1, 128, 40, 40],
+        "20": [1, 128, 20, 20],
+        "22": [1, 256, 20, 20]
+      },
+      "initial_output_exact": true
+    },
+    {
+      "input": [1, 3, 640, 960],
+      "nodes": {
+        "4": [1, 128, 80, 120],
+        "9": [1, 256, 20, 30],
+        "10": [1, 256, 20, 30],
+        "13": [1, 128, 40, 60],
+        "14": [1, 128, 80, 120],
+        "15": [1, 256, 80, 120],
+        "16": [1, 64, 80, 120],
+        "17": [1, 64, 40, 60],
+        "19": [1, 128, 40, 60],
+        "20": [1, 128, 20, 30],
+        "22": [1, 256, 20, 30]
+      },
+      "initial_output_exact": true
+    }
+  ],
+  "pretrained_whole_model_eval_train_exact": true,
+  "diagnostic_smoke": {
+    "images": 16,
+    "checkpoint": "local development 2-step EMA only",
+    "formal_diagnose": false
+  }
+}
