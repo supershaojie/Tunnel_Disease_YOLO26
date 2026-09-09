@@ -324,12 +324,9 @@ def diagnose(run, data, output, experiment=V1, device="cuda:0"):
         def observe(module, inputs, result, stats=stats):
             from ultralytics.nn.modules.ndp_sppf import ndp_window
 
-            z = module.cv1(inputs[0])  # diagnostic eval-only pass: no BN update
-            pyramid = [z]
-            pyramid.extend(module.m(pyramid[-1]) for _ in range(module.n))
-            base = module.cv2(torch.cat(pyramid, 1))
+            base = captured["cv2"]
             base = base + inputs[0] if module.add else base
-            u = module.ndp_in(z)
+            u = captured["ndp_in"]
             responses, scales = [], {}
             for k in (5, 9, 13):
                 e, weight_stats = ndp_window(u, k, diagnostics=True)
@@ -342,7 +339,7 @@ def diagnose(run, data, output, experiment=V1, device="cuda:0"):
                     E=e.cpu().numpy(),
                     **{key: v.cpu().numpy() for key, v in weight_stats.items()},
                 )
-            delta = module.ndp_out(torch.cat(responses, 1))
+            delta = captured["ndp_out"]
             correlations = {}
             for i, j in ((0, 1), (0, 2), (1, 2)):
                 a, b = responses[i].flatten().float(), responses[j].flatten().float()
@@ -360,11 +357,17 @@ def diagnose(run, data, output, experiment=V1, device="cuda:0"):
             torch.testing.assert_close(result, base + delta, atol=1e-6, rtol=1e-5)
             stats.append(values)
 
-        handle = branch.register_forward_hook(observe)
+        captured = {}
+        handles = [
+            getattr(branch, name).register_forward_hook(lambda m, ins, out, name=name: captured.__setitem__(name, out))
+            for name in ("cv2", "ndp_in", "ndp_out")
+        ]
+        handles.append(branch.register_forward_hook(observe))
         try:
             enabled = model(tensor)
         finally:
-            handle.remove()
+            for handle in handles:
+                handle.remove()
         with bypass(model):
             disabled = model(tensor)
         assert len(stats) == 1

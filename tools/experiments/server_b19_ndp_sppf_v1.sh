@@ -21,6 +21,12 @@ if ! flock -n 9; then
     printf 'NDP is already running; no duplicate started: %s\n' "$BASE/.experiment-locks/${NAME}.lock" >&2
     exit 3
 fi
+# Also detect orphaned/direct Python stages whose launching shell no longer holds the lock.
+command -v pgrep >/dev/null
+if pgrep -af -- "$WORK/tools/experiments/(run|finish)_b19_ndp_sppf_v1[.]py"; then
+    echo 'An experiment Python stage is still present; stopped for inspection.' >&2
+    exit 3
+fi
 if [[ "$STAGE" == train && -e "$RUN" ]]; then
     printf 'No new attempt started; preserving existing NDP run: %s\n' "$RUN" >&2
     exit 3

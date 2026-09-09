@@ -14,6 +14,12 @@ EXPECTED=https://github.com/supershaojie/Tunnel_Disease_YOLO26.git
 mkdir -p -- "$BASE/.experiment-locks"
 exec 9>"$BASE/.experiment-locks/$NAME.lock"
 flock -n 9 || { echo 'This experiment is active; deployment refused' >&2; exit 3; }
+# Also detect orphaned/direct Python stages whose launching shell no longer holds the lock.
+command -v pgrep >/dev/null
+if pgrep -af -- "$WORK/tools/experiments/(run|finish)_b19_ndp_sppf_v1[.]py"; then
+    echo 'An experiment Python stage is still present; stopped for inspection.' >&2
+    exit 3
+fi
 if ! git -C "$BASE" cat-file -e "$SHA^{commit}" 2>/dev/null; then
     git -C "$BASE" -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1024 -c http.lowSpeedTime=120 \
         fetch --progress origin "$BRANCH"
