@@ -1,0 +1,28 @@
+{
+  "passed": true,
+  "scope": "16 real-image local functional probe; not formal full evaluation or preflight",
+  "settings": {
+    "data": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sgk-p3-v1\\artifacts\\sgk_local\\real_val_subset\\data.yaml",
+    "split": "val",
+    "imgsz": 640,
+    "batch": 32,
+    "workers": 8,
+    "device": 0,
+    "conf": 0.001,
+    "iou": 0.7,
+    "max_det": 300,
+    "rect": true,
+    "augment": false,
+    "quantize": null,
+    "plots": true,
+    "save_json": true,
+    "project": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sgk-p3-v1\\artifacts\\sgk_local\\finish-smoke-05h_be4t",
+    "name": "val",
+    "exist_ok": false,
+    "save_dir": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sgk-p3-v1\\artifacts\\sgk_local\\finish-smoke-05h_be4t\\val"
+  },
+  "images": 16,
+  "targets": 18,
+  "missing_stages_rejected": true,
+  "output": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sgk-p3-v1\\artifacts\\sgk_local\\finish-smoke-05h_be4t"
+}

@@ -1,0 +1,27 @@
+{
+  "passed": false,
+  "stage": "optimizer_step",
+  "max_batches": 128,
+  "batches_observed": 0,
+  "attempted_steps": 3,
+  "overflow_skips": 0,
+  "successful_steps": 3,
+  "real_batches": [],
+  "first_finite_nonzero_gradient_step": {
+    "Ps.weight": 2,
+    "DW5.weight": 2,
+    "Pb.weight": 2,
+    "Wk.weight": 2,
+    "Wk.bias": 2,
+    "Po.weight": 1
+  },
+  "first_effective_update_step": {
+    "Ps.weight": 2,
+    "DW5.weight": 2,
+    "Pb.weight": 2,
+    "Wk.weight": 2,
+    "Wk.bias": 2,
+    "Po.weight": 1
+  },
+  "missing_effective_parameters": []
+}

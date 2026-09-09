@@ -36,6 +36,7 @@ from ultralytics.nn.modules import (
     C2fPSA,
     C3Ghost,
     C3k2,
+    C3k2_SGK_P3,
     C3x,
     CBFuse,
     CBLinear,
@@ -1970,6 +1971,13 @@ def parse_model(d, ch, verbose=True):
                     args.extend((True, 1.2))
             if m is C2fCIB:
                 legacy = False
+        elif m is C3k2_SGK_P3:
+            if scale != "n" or nc != 1 or i != 16 or f != [15, 13]:
+                raise ValueError("SGK-P3 v1 supports only single-class nano layer 16 from [15, 13]")
+            c2 = make_divisible(min(args[0], max_channels) * width, 8)
+            args = [ch[f[0]], c2, ch[f[1]], n, *args[1:]]
+            n = 1
+            legacy = False
         elif m is AIFI:
             args = [ch[f], *args]
         elif m in frozenset({HGStem, HGBlock}):

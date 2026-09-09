@@ -107,7 +107,10 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .sgk_p3 import C3k2_SGK_P3
+
 __all__ = (
+    "C3k2_SGK_P3",
     "AIFI",
     "C1",
     "C2",

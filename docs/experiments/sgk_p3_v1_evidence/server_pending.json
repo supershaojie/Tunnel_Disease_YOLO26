@@ -1,0 +1,16 @@
+{
+  "server_preflight_passed": false,
+  "local_environment_mismatches": [
+    "b19 torch=2.8.0+cu128; current torch=2.7.1+cu118",
+    "b19 Python=3.12.3; current=3.11.15",
+    "b19 GPU=NVIDIA GeForce RTX 4090; current=NVIDIA GeForce RTX 2060",
+    "Insufficient verified headroom: free=4.99 GiB; require 8 GiB for preflight."
+  ],
+  "pending": [
+    "Original server launcher validation",
+    "Real batch32 640 native AMP/MuSGD up to 128 batches",
+    "Formal training",
+    "Full independent FP32 val/test and frozen operating point",
+    "Trained checkpoint diagnose and package"
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "scope": "Local development; not formal server preflight, training, full evaluation or experiment package",
+  "unit_tests": 9,
+  "unit_passed": true,
+  "real_validator_images": 16,
+  "real_validator_instances": 18,
+  "finish_smoke_passed": true,
+  "formatters": {
+    "ruff": "0.15.6",
+    "prettier": "3.6.2"
+  },
+  "tested_source_lf_sha256": {
+    "ultralytics/nn/modules/sgk_p3.py": "28c8cd5b0bdc7394ba05d89eb40ab240019c480db1a02b85e1e08490a9690c08",
+    "ultralytics/nn/tasks.py": "2d6c3ba2bbe2d1627361f078593a4726310490dc062327c05d136b70c220954b",
+    "ultralytics/nn/modules/__init__.py": "3afd574b2cd90233d88d87397744bfb2576641cff721d4b170bc260975fdbd35",
+    "ultralytics/cfg/models/26/yolo26n-sgk-p3-v1.yaml": "95fd3fbea799d1ec2c484cb16251fa91a73e58f9582ed54f9b35be29ac58323f",
+    "tests/test_sgk_p3.py": "bb1b76decfbb679008f09a175e3e4182bc33ba19942cdb887855589fbeff5095",
+    "tools/experiments/b19_launcher_expanded.txt": "b86ccfa18ecdae5b97c0663d242548dd70e61b570a026b52dcee02eff775b594",
+    "tools/experiments/b19_reference.json": "8c34c67092c44da107833361735e54aa32ca259cab291dafbd99bb828700bad1",
+    "tools/experiments/finish_b19_sgk_p3.py": "9a01da9188c46c74ccdd2c64b7dfc8e8b41c3e1534fc5488d1145e9eff42a28c",
+    "tools/experiments/run_b19_sgk_p3.py": "0388f299c01f0478dc65bc9721320510da14099bd4c5af6707ee41a53f940507",
+    "tools/experiments/server_b19_sgk_p3_v1.sh": "4d49ad0931e305b944a496558c600280721bbf063e82da77fc98e703ab306b95",
+    "tools/experiments/verify_b19_sgk_p3.py": "d54b25a27777ba92a38558cc6964401288302c85c6d9bd55f35aff1ce08c59c9"
+  },
+  "server_preflight_passed": false
+}
