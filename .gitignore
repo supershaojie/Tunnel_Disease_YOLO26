@@ -207,3 +207,6 @@ results.csv
 
 # CI test asset cache
 .ultralytics_cache/
+
+# Disposable experiment evidence and verified result packages
+/artifacts/

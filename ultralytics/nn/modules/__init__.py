@@ -107,7 +107,10 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .ndp_sppf import SPPF_NDP
+
 __all__ = (
+    "SPPF_NDP",
     "AIFI",
     "C1",
     "C2",

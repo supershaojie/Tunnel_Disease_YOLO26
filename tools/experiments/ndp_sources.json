@@ -1,0 +1,56 @@
+{
+  "archive_path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+  "archive_sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "read_files": {
+    "PATConv_AAAI2026.py": {
+      "sha256": "a3b9418584f58094d85eb1b8ef61ae494bf59c436c91d91c579bfe2d0d09a76b",
+      "classes": ["SRM"]
+    },
+    "RCSSC_2025TGRS.py": {
+      "sha256": "5bfb29fa50f8cf5d96fa0198a0d178bb41bf7913b8aee1bc70b6472279d3c7e4",
+      "classes": ["ChannelPool", "CALayer", "spatial_attn_layer", "RCSSC"]
+    }
+  },
+  "baseline_records": {
+    "train_run/args.yaml": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+      "sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9"
+    },
+    "train_run/results.csv": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\results.csv",
+      "sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507"
+    },
+    "logs/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42.log": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\logs\\b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42.log",
+      "sha256": "1f1c388da9512dc80a2368daaebaec0a6b71cf987c0ecc4838396d5ce33bbeba"
+    },
+    "config/data.yaml": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\config\\data.yaml",
+      "sha256": "1f18760508e9dbf2332cd7102ee9c15e11e08f3d15fc4202c8ee0ed1bb785b12"
+    },
+    "environment/git_state.txt": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\git_state.txt",
+      "sha256": "5ecad24cb7a308e38d33d6c787d2a06370913d001e201e08c71e527dbdf5eabc"
+    }
+  },
+  "infrastructure": {
+    "source_worktree": "exp-yolo26n-b19-bdi-p3-v1",
+    "commit": "662122d442ed1b9a981942cc8b96a824e5bcc032",
+    "ancestry": "PKC/RPCA native preflight fixes"
+  },
+  "formula": "centered population variance +1e-4; softmax(2*tanh(d/sigma)); sum(w*d)",
+  "mechanism_audit": {
+    "sir_sppf.py": {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sir-sppf-v2\\ultralytics\\nn\\modules\\sir_sppf.py",
+      "sha256": "978e0fb8cfc9a9f188c2c4734f0fa4ed5db84ddf36a102beba1bfd981ea5a8c6"
+    },
+    "sir_sppf_v2.py": {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sir-sppf-v2\\ultralytics\\nn\\modules\\sir_sppf_v2.py",
+      "sha256": "7efb9d38a94d4f63e59038f2db368f7b766351ae65ca3aaa2c054cdc6a5a869a"
+    },
+    "pkc_sppf.py": {
+      "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-pkc-sppf-v1\\ultralytics\\nn\\modules\\pkc_sppf.py",
+      "sha256": "357aac5fb00600863bfeaf9237372147e46772ff26bd1aaf5adcd467968eb36f"
+    }
+  }
+}
