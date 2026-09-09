@@ -1,0 +1,36 @@
+{
+  "pytest": {
+    "command": "python -m pytest tests/test_bdi_p3_v1.py -q -o addopts= --basetemp=artifacts/pytest_commit",
+    "passed": 7,
+    "seconds": 5.42
+  },
+  "ruff": "check passed on new/modified experimental sources and tests; baseline tasks.py retains unrelated pre-existing diagnostics",
+  "bash_syntax": "server and deployment passed bash -n; Linux locking/process groups require server runtime",
+  "compileall": "passed",
+  "server_preflight": "not executed",
+  "formal_training": "not started",
+  "final_result_package": "not produced",
+  "code_sha256": {
+    "tests/test_bdi_p3_v1.py": "d254c70bda8512e0aae73ee13342b7090b62fdc762bb17a1171a8652282bdaec",
+    "tools/experiments/b19_common.py": "a6413524e49d44d7540c81b0b647fbbc0b5ac2caed4a4db5f63af13ca213465c",
+    "tools/experiments/b19_launcher_expanded.txt": "b86ccfa18ecdae5b97c0663d242548dd70e61b570a026b52dcee02eff775b594",
+    "tools/experiments/b19_reference.json": "90bc59fd240923aca417d009fbc8f010de190cd9375f84d9895c0ca718551545",
+    "tools/experiments/bdi_experiment.py": "cac22cdc1f2225337b14055928713b0233a562e2cc483c2ca31406971bac43ba",
+    "tools/experiments/bdi_sources.json": "2496118e301bccf5cc4948b27a8f57d9060ff89cca6f2bd813025f24607ac4b6",
+    "tools/experiments/deploy_b19_bdi_p3_v1.sh": "e5e7d03fb120b92183e5dbb9ea8199a9e8583310bcde72f80d5c4364d5652fa8",
+    "tools/experiments/finish_b19_bdi_p3_v1.py": "855aaafab5f058a468e38a7ed4676dab27e4b1e888e38aa55be5c846355b83b5",
+    "tools/experiments/run_b19_bdi_p3_v1.py": "a8808a0ae5d05bdfa00e14c8f18bf276ba7d5be9c0d810f4344ad8816f4c3bed",
+    "tools/experiments/server_b19_bdi_p3_v1.sh": "8f99eb72064602c5afc89e2d4b338ed8aad1321936d9c53a356bb27d7a94504a",
+    "tools/experiments/verify_b19_bdi_p3_v1.py": "a3cbf2ca7127ce308f02c75637c4f3317314d4fc3a62942a588dcb8e4cbd04ab",
+    "ultralytics/cfg/models/26/yolo26n-bdi-p3-v1.yaml": "b85234f161cf495fd58dc7474b638a1d266923508f17bf1f7550055895696536",
+    "ultralytics/nn/modules/__init__.py": "f84b6ed26879dfa4443c931f04be057b10c69f8dd9b54331cba391c7c222ce54",
+    "ultralytics/nn/modules/bdi_p3.py": "50789b461ed789d22077bfd7838ceb05e76f7c157b4ebec1be4f87969efe5e30",
+    "ultralytics/nn/tasks.py": "ea00a9f32e72a7af3c851a0452cc613716dc7e1e9648d3f99e21701f5c758ad5"
+  },
+  "review": {
+    "deleted_instead_of_added": "Replaced only layer-15 experiment graph; reused b19 lifecycle; removed irrelevant BCI diagnosis and unused archived args snapshot",
+    "symptom_suppression": "Shape check rejects real invalid grids; zero-projection learning and FP16 EMA readiness belong to preflight stop criteria; no coefficient/batch/gradient-threshold changes",
+    "core_changes": "Only normal export/import/parser branch; native training/optimizer/Detect/fuse unchanged",
+    "limits": "Final code inspected locally; full real server batch32/640 and Linux stage execution pending; no claim of independent reviewer LGTM"
+  }
+}

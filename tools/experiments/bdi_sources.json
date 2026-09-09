@@ -1,0 +1,31 @@
+{
+  "zip_path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+  "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "archive_member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HFP_SDP_2025AAAI.py",
+  "source_sha256": "e8b507b02bcfafdf4c31d84d30472f78fe4b6eeda5828e5479ec0c6a46ba21fd",
+  "extracted_file_matches": true,
+  "classes_read": [
+    "DctSpatialInteraction",
+    "DctChannelInteraction",
+    "HFP"
+  ],
+  "borrowed": "frequency-selection motivation only",
+  "excluded": [
+    "torch_dct",
+    "global high-pass mask",
+    "GroupNorm",
+    "sigmoid gates",
+    "SDP attention"
+  ],
+  "paper_sources": [
+    "https://ojs.aaai.org/index.php/AAAI/article/view/32740",
+    "https://arxiv.org/html/2412.10116v2",
+    "https://proceedings.mlr.press/v97/zhang19a.html"
+  ],
+  "reused_infrastructure": {
+    "worktree": "exp-yolo26n-b19-bci-c2psa-v1",
+    "commit": "8a56b9d4d42d0a855a37f4149e3e3d1a3f175cc2",
+    "ancestry": "AMP-preflight fix 6f5f1e2; cross-checked PKC 1b4b98e",
+    "scope": "b19 evidence, native optimizer observation, independent preflight, evaluation, archival utilities; no other experiment modules or weights"
+  }
+}

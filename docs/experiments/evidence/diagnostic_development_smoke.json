@@ -1,0 +1,6 @@
+{
+  "scope": "development smoke on locally updated EMA; not formal best checkpoint or successful server diagnose",
+  "visual_outputs": 16,
+  "expected_missing_production_preflight": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_diagnose_smoke\\provenance\\preflight\\preflight\\checks.json",
+  "formal_diagnose_passed": false
+}

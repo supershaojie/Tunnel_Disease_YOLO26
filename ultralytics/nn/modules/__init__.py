@@ -17,6 +17,7 @@ Examples:
     >>> subprocess.run(f"onnxslim {f} {f} && open {f}", shell=True, check=True)  # pip install onnxslim
 """
 
+from .bdi_p3 import Concat_BDI_P3
 from .block import (
     C1,
     C2,
@@ -144,6 +145,7 @@ __all__ = (
     "ChannelAttention",
     "Classify",
     "Concat",
+    "Concat_BDI_P3",
     "ContrastiveHead",
     "Conv",
     "Conv2",

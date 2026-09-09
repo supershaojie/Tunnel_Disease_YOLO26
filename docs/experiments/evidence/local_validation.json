@@ -1,0 +1,404 @@
+{
+  "server_preflight": false,
+  "formal_training": false,
+  "checks": {
+    "real_detection_musgd": {
+      "batch": 2,
+      "imgsz": 96,
+      "steps": [
+        {
+          "step": 1,
+          "loss": [
+            0.024856338277459145,
+            0.7790424823760986,
+            0.0007027682731859386
+          ],
+          "task_gradients": {
+            "pin.weight": 0.0,
+            "dw.weight": 0.0,
+            "po.weight": 0.002023573499172926
+          },
+          "updates": {
+            "pin.weight": 1.2069940567016602e-06,
+            "dw.weight": 3.2186508178710938e-06,
+            "po.weight": 0.0007316090050153434
+          }
+        },
+        {
+          "step": 2,
+          "loss": [
+            0.37797924876213074,
+            0.9355416893959045,
+            0.004616520833224058
+          ],
+          "task_gradients": {
+            "pin.weight": 6.493132786999922e-06,
+            "dw.weight": 2.4650291834404925e-06,
+            "po.weight": 0.0012500486336648464
+          },
+          "updates": {
+            "pin.weight": 0.0008505210280418396,
+            "dw.weight": 0.0013862848281860352,
+            "po.weight": 0.0007138056098483503
+          }
+        }
+      ],
+      "groups": [
+        {
+          "name": "pin.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "dw.weight",
+          "group": "muon",
+          "lr": 0.01
+        },
+        {
+          "name": "po.weight",
+          "group": "muon",
+          "lr": 0.01
+        }
+      ],
+      "recipe": "development fixed learning rate; not native warmup server preflight",
+      "real_images": [
+        "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\images\\val\\sample_001358410bb49e779de0__degrade.jpg",
+        "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\images\\val\\sample_0022bb57d72b77e5ba30__geo.jpg"
+      ]
+    },
+    "reload_fuse": {
+      "checkpoint": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\preflight.pt",
+      "sha256": "dd95ddc2cbea9506ef616ba4dab27d72bf168b49e7eecd65e2a45bcee584ed08",
+      "fresh_process": true,
+      "checkpoint_precision": "FP16 EMA, reloaded FP32",
+      "state_exact": true,
+      "fuse": true
+    },
+    "validator": {
+      "split": "val",
+      "precision": "FP32",
+      "weight": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\preflight.pt",
+      "weight_sha256": "dd95ddc2cbea9506ef616ba4dab27d72bf168b49e7eecd65e2a45bcee584ed08",
+      "commit": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+      "data_sha256": "f2a8a59482be634d9cef9429ab69b09c5f26b9e3ccd57f83a004b11f4d89d400",
+      "settings": {
+        "data": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\real_val\\data.yaml",
+        "split": "val",
+        "imgsz": 640,
+        "batch": 2,
+        "workers": 0,
+        "device": "cpu",
+        "conf": 0.001,
+        "iou": 0.7,
+        "max_det": 300,
+        "rect": true,
+        "augment": false,
+        "quantize": null,
+        "plots": true,
+        "save_json": true,
+        "save_txt": true,
+        "save_conf": true,
+        "project": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final",
+        "name": "validator",
+        "exist_ok": false,
+        "save_dir": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\validator"
+      },
+      "precision_mapping": "half=False is quantize=None in this pinned source",
+      "images": 2,
+      "targets": 2,
+      "speed": {
+        "preprocess": 1.7411999997420935,
+        "inference": 69.82280000011087,
+        "loss": 0.0010499989002710208,
+        "postprocess": 0.47199999971780926
+      },
+      "args": {
+        "task": "detect",
+        "mode": "val",
+        "model": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\preflight.pt",
+        "data": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\real_val\\data.yaml",
+        "epochs": 100,
+        "time": null,
+        "patience": 100,
+        "batch": 2,
+        "imgsz": 640,
+        "save": true,
+        "save_period": -1,
+        "cache": false,
+        "device": "cpu",
+        "workers": 0,
+        "project": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final",
+        "name": "validator",
+        "exist_ok": false,
+        "pretrained": true,
+        "cls_remap": true,
+        "optimizer": "auto",
+        "verbose": true,
+        "seed": 0,
+        "deterministic": true,
+        "single_cls": false,
+        "rect": true,
+        "cos_lr": false,
+        "close_mosaic": 10,
+        "resume": false,
+        "amp": true,
+        "fraction": 1.0,
+        "profile": false,
+        "freeze": null,
+        "multi_scale": 0.0,
+        "compile": false,
+        "overlap_mask": true,
+        "mask_ratio": 4,
+        "dropout": 0.0,
+        "val": true,
+        "split": "val",
+        "save_json": true,
+        "conf": 0.001,
+        "iou": 0.7,
+        "max_det": 300,
+        "quantize": null,
+        "dnn": false,
+        "plots": true,
+        "end2end": null,
+        "source": null,
+        "vid_stride": 1,
+        "stream_buffer": false,
+        "visualize": false,
+        "augment": false,
+        "agnostic_nms": false,
+        "classes": null,
+        "retina_masks": false,
+        "embed": null,
+        "show": false,
+        "save_frames": false,
+        "save_txt": true,
+        "save_conf": true,
+        "save_crop": false,
+        "show_labels": true,
+        "show_conf": true,
+        "show_boxes": true,
+        "line_width": null,
+        "format": "torchscript",
+        "keras": false,
+        "optimize": false,
+        "dynamic": false,
+        "simplify": true,
+        "opset": null,
+        "workspace": null,
+        "nms": false,
+        "lr0": 0.01,
+        "lrf": 0.01,
+        "momentum": 0.937,
+        "weight_decay": 0.0005,
+        "warmup_epochs": 3.0,
+        "warmup_momentum": 0.8,
+        "warmup_bias_lr": 0.1,
+        "distill_model": null,
+        "dis": 6.0,
+        "box": 7.5,
+        "cls": 0.5,
+        "cls_pw": 0.0,
+        "dfl": 1.5,
+        "pose": 12.0,
+        "kobj": 1.0,
+        "rle": 1.0,
+        "angle": 1.0,
+        "nbs": 64,
+        "hsv_h": 0.015,
+        "hsv_s": 0.7,
+        "hsv_v": 0.4,
+        "degrees": 0.0,
+        "translate": 0.1,
+        "scale": 0.5,
+        "shear": 0.0,
+        "perspective": 0.0,
+        "flipud": 0.0,
+        "fliplr": 0.5,
+        "bgr": 0.0,
+        "mosaic": 1.0,
+        "mixup": 0.0,
+        "cutmix": 0.0,
+        "copy_paste": 0.0,
+        "copy_paste_mode": "flip",
+        "auto_augment": "randaugment",
+        "erasing": 0.4,
+        "cfg": null,
+        "tracker": "tracktrack.yaml",
+        "save_dir": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-bdi-p3-v1\\artifacts\\local_lifecycle_final\\validator"
+      },
+      "results_dict": {
+        "metrics/precision(B)": 0.0,
+        "metrics/recall(B)": 0.0,
+        "metrics/mAP50(B)": 0.0,
+        "metrics/mAP50-95(B)": 0.0,
+        "fitness": 0.0
+      },
+      "ap_by_iou": {
+        "0.50": 0.0,
+        "0.55": 0.0,
+        "0.60": 0.0,
+        "0.65": 0.0,
+        "0.70": 0.0,
+        "0.75": 0.0,
+        "0.80": 0.0,
+        "0.85": 0.0,
+        "0.90": 0.0,
+        "0.95": 0.0
+      },
+      "confusion_matrix": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          2.0,
+          0.0
+        ]
+      ],
+      "confusion_thresholds": {
+        "conf": 0.001,
+        "iou": 0.45
+      },
+      "actual_parameter_dtype": "torch.float32",
+      "fused": true,
+      "precision_recall_rule": "native best-F1 operating point; see recall.json for fixed thresholds",
+      "backend": {
+        "threads": 8,
+        "interop_threads": 6,
+        "omp": "1",
+        "mkl": null,
+        "mkldnn": true,
+        "mkldnn_deterministic": false,
+        "mkldnn_allow_tf32": null,
+        "float32_matmul_precision": "highest",
+        "matmul_allow_tf32": false,
+        "cudnn_allow_tf32": true,
+        "cudnn_benchmark": false,
+        "cudnn_deterministic": true,
+        "deterministic": true,
+        "deterministic_warn_only": true
+      },
+      "recall": {
+        "val_selected": null,
+        "frozen_threshold_result": null
+      },
+      "memory": {
+        "peak_allocated_bytes": 65024,
+        "peak_reserved_bytes": 2097152
+      },
+      "inference_path": {
+        "version": 1,
+        "bdi": 2,
+        "one2one": 2
+      },
+      "artifacts": {
+        "args.yaml": "c7549501eccb5c20dfd14fcefd2d02539908603256360f9b119b3fcabad90daa",
+        "BoxF1_curve.png": "6cab42f4d3a6b99d59fdfda06d3fa2a77caf9b0e16cf18b7b4079950fe9cc10d",
+        "BoxPR_curve.png": "e22888f0318d2d068e8c1fc185e7d95ef60e42b35fb825ada5ccd36738da282c",
+        "BoxP_curve.png": "9dbca39905c7cfc7372ab889848488edea0f3e9ba1a98b0ceab28ad1c2d5bc93",
+        "BoxR_curve.png": "5e14b2a8ff23a536e4040d998fe1eb46510e5d00177a76f9fdecb0f7cc4b3547",
+        "confusion_matrix.png": "5d5f8e8e145f392a5a13899e78a6ff3e5dcf5fb8f29434822984536f2a7a2bed",
+        "confusion_matrix_normalized.png": "ea125ff2cc6bc7968f6b84779a36c3b3a109514e1598b6d3783f60d87ad101ef",
+        "predictions.json": "e17e613c7d78dbda115eb619aca3405b9ff6cb8ef8f84ff47de1e0d18f527db7",
+        "recall.json": "ee5b29f630f00ef3fa358b0e5357ef254cf7f5005dee0d63afd4abbf842090d5",
+        "val_batch0_labels.jpg": "86036cae582d80037da51861e8a38937aff43080fb82883d1cdafeda0a037c0d",
+        "val_batch0_pred.jpg": "fadd7bd3023b19ce99e3706986d70a83c4e383929c106ff837f40b84406eba70",
+        "labels/sample_001358410bb49e779de0__degrade.txt": "b5c829674e49ee782175e3737f6f59b91e026fc126142c60b59ff5f81347c828",
+        "labels/sample_0022bb57d72b77e5ba30__geo.txt": "404500662b98bf211fbf413876f822c19dac68ab0ecc74808c63eafa12ecaac1"
+      }
+    },
+    "cuda": [
+      {
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ],
+        "amp": false,
+        "loss": [
+          3.312227964401245,
+          10.36825180053711,
+          0.026000652462244034
+        ],
+        "po_gradient": 0.11034861207008362,
+        "peak_allocated_bytes": 325624832
+      },
+      {
+        "shape": [
+          1,
+          3,
+          640,
+          640
+        ],
+        "amp": true,
+        "loss": [
+          3.2572383880615234,
+          10.32517147064209,
+          0.02560264989733696
+        ],
+        "po_gradient": 0.10880903899669647,
+        "peak_allocated_bytes": 241395712
+      },
+      {
+        "shape": [
+          1,
+          3,
+          640,
+          960
+        ],
+        "amp": false,
+        "loss": [
+          3.283856153488159,
+          13.781451225280762,
+          0.02886965312063694
+        ],
+        "po_gradient": 0.14462780952453613,
+        "peak_allocated_bytes": 495900672
+      },
+      {
+        "shape": [
+          1,
+          3,
+          640,
+          960
+        ],
+        "amp": true,
+        "loss": [
+          3.4908385276794434,
+          13.867227554321289,
+          0.03087676502764225
+        ],
+        "po_gradient": 0.31244364380836487,
+        "peak_allocated_bytes": 320493056
+      }
+    ]
+  },
+  "backend": {
+    "threads": 8,
+    "interop_threads": 6,
+    "omp": "1",
+    "mkl": null,
+    "mkldnn": true,
+    "mkldnn_deterministic": false,
+    "mkldnn_allow_tf32": null,
+    "float32_matmul_precision": "highest",
+    "matmul_allow_tf32": false,
+    "cudnn_allow_tf32": true,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "deterministic": true,
+    "deterministic_warn_only": true
+  },
+  "flops_profiler_gflops": {
+    "native": 5.74197708,
+    "bdi": 5.85891788
+  },
+  "flops_scope": "Actual 1x3x640x640, unfused eval, operators counted by PyTorch profiler; not all scalar operations",
+  "latency_cpu_ms": {
+    "native": 104.51408000008087,
+    "bdi": 122.78060999997251
+  },
+  "latency_scope": "CPU 4 threads; 3 warmup + 10 timed forwards, batch1 640, unfused FP32; not server performance",
+  "passed": true
+}

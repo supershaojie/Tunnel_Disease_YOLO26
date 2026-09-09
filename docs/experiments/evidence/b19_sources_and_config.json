@@ -1,0 +1,701 @@
+{
+  "baseline_commit": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "args_path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+  "args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+  "results_sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507",
+  "log_sha256": "1f1c388da9512dc80a2368daaebaec0a6b71cf987c0ecc4838396d5ce33bbeba",
+  "original_weight_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+  "local_dataset_counts": {
+    "train": {
+      "images": 8414,
+      "labels": 8414,
+      "targets": 10243
+    },
+    "val": {
+      "images": 2404,
+      "labels": 2404,
+      "targets": 2985
+    },
+    "test": {
+      "images": 1202,
+      "labels": 1202,
+      "targets": 1477
+    }
+  },
+  "field_comparison": {
+    "agnostic_nms": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "amp": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "angle": {
+      "b19": 1.0,
+      "effective": 1.0,
+      "equal": true
+    },
+    "augment": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "auto_augment": {
+      "b19": "randaugment",
+      "effective": "randaugment",
+      "equal": true
+    },
+    "batch": {
+      "b19": 32,
+      "effective": 32,
+      "equal": true
+    },
+    "bgr": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "box": {
+      "b19": 7.5,
+      "effective": 7.5,
+      "equal": true
+    },
+    "cache": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "cfg": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "classes": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "close_mosaic": {
+      "b19": 10,
+      "effective": 10,
+      "equal": true
+    },
+    "cls": {
+      "b19": 0.5,
+      "effective": 0.5,
+      "equal": true
+    },
+    "cls_pw": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "cls_remap": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "compile": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "conf": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "copy_paste": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "copy_paste_mode": {
+      "b19": "flip",
+      "effective": "flip",
+      "equal": true
+    },
+    "cos_lr": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "cutmix": {
+      "b19": 0.03,
+      "effective": 0.03,
+      "equal": true
+    },
+    "data": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "effective": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "equal": true
+    },
+    "degrees": {
+      "b19": 11.0,
+      "effective": 11.0,
+      "equal": true
+    },
+    "deterministic": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "device": {
+      "b19": "0",
+      "effective": "0",
+      "equal": true
+    },
+    "dfl": {
+      "b19": 1.5,
+      "effective": 1.5,
+      "equal": true
+    },
+    "dis": {
+      "b19": 6.0,
+      "effective": 6.0,
+      "equal": true
+    },
+    "distill_model": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "dnn": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "dropout": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "dynamic": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "embed": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "end2end": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "epochs": {
+      "b19": 200,
+      "effective": 200,
+      "equal": true
+    },
+    "erasing": {
+      "b19": 0.4,
+      "effective": 0.4,
+      "equal": true
+    },
+    "exist_ok": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "fliplr": {
+      "b19": 0.5,
+      "effective": 0.5,
+      "equal": true
+    },
+    "flipud": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "format": {
+      "b19": "torchscript",
+      "effective": "torchscript",
+      "equal": true
+    },
+    "fraction": {
+      "b19": 1.0,
+      "effective": 1.0,
+      "equal": true
+    },
+    "freeze": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "hsv_h": {
+      "b19": 0.024,
+      "effective": 0.024,
+      "equal": true
+    },
+    "hsv_s": {
+      "b19": 0.84,
+      "effective": 0.84,
+      "equal": true
+    },
+    "hsv_v": {
+      "b19": 0.535,
+      "effective": 0.535,
+      "equal": true
+    },
+    "imgsz": {
+      "b19": 640,
+      "effective": 640,
+      "equal": true
+    },
+    "iou": {
+      "b19": 0.7,
+      "effective": 0.7,
+      "equal": true
+    },
+    "keras": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "kobj": {
+      "b19": 1.0,
+      "effective": 1.0,
+      "equal": true
+    },
+    "line_width": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "lr0": {
+      "b19": 0.01,
+      "effective": 0.01,
+      "equal": true
+    },
+    "lrf": {
+      "b19": 0.003,
+      "effective": 0.003,
+      "equal": true
+    },
+    "mask_ratio": {
+      "b19": 4,
+      "effective": 4,
+      "equal": true
+    },
+    "max_det": {
+      "b19": 300,
+      "effective": 300,
+      "equal": true
+    },
+    "mixup": {
+      "b19": 0.135,
+      "effective": 0.135,
+      "equal": true
+    },
+    "mode": {
+      "b19": "train",
+      "effective": "train",
+      "equal": true
+    },
+    "model": {
+      "b19": "yolo26n.pt",
+      "effective": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_BDI_P3_v1/ultralytics/cfg/models/26/yolo26n-bdi-p3-v1.yaml",
+      "equal": false
+    },
+    "momentum": {
+      "b19": 0.937,
+      "effective": 0.937,
+      "equal": true
+    },
+    "mosaic": {
+      "b19": 1.0,
+      "effective": 1.0,
+      "equal": true
+    },
+    "multi_scale": {
+      "b19": 0.0,
+      "effective": 0.0,
+      "equal": true
+    },
+    "name": {
+      "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "effective": "yolo26n_b19_bdi_p3_v1",
+      "equal": false
+    },
+    "nbs": {
+      "b19": 64,
+      "effective": 64,
+      "equal": true
+    },
+    "nms": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "opset": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "optimize": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "optimizer": {
+      "b19": "MuSGD",
+      "effective": "MuSGD",
+      "equal": true
+    },
+    "overlap_mask": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "patience": {
+      "b19": 60,
+      "effective": 60,
+      "equal": true
+    },
+    "perspective": {
+      "b19": 0.00055,
+      "effective": 0.00055,
+      "equal": true
+    },
+    "plots": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "pose": {
+      "b19": 12.0,
+      "effective": 12.0,
+      "equal": true
+    },
+    "pretrained": {
+      "b19": true,
+      "effective": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/yolo26n.pt",
+      "equal": false
+    },
+    "profile": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "project": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "effective": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_BDI_P3_v1/runs/detect",
+      "equal": false
+    },
+    "quantize": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "rect": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "resume": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "retina_masks": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "rle": {
+      "b19": 1.0,
+      "effective": 1.0,
+      "equal": true
+    },
+    "save": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "save_conf": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "save_crop": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "save_dir": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "effective": null,
+      "equal": false
+    },
+    "save_frames": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "save_json": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "save_period": {
+      "b19": 20,
+      "effective": 20,
+      "equal": true
+    },
+    "save_txt": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "scale": {
+      "b19": 0.735,
+      "effective": 0.735,
+      "equal": true
+    },
+    "seed": {
+      "b19": 42,
+      "effective": 42,
+      "equal": true
+    },
+    "shear": {
+      "b19": 3.5,
+      "effective": 3.5,
+      "equal": true
+    },
+    "show": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "show_boxes": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "show_conf": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "show_labels": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "simplify": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "single_cls": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "source": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "split": {
+      "b19": "val",
+      "effective": "val",
+      "equal": true
+    },
+    "stream_buffer": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "task": {
+      "b19": "detect",
+      "effective": "detect",
+      "equal": true
+    },
+    "time": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    },
+    "tracker": {
+      "b19": "tracktrack.yaml",
+      "effective": "tracktrack.yaml",
+      "equal": true
+    },
+    "translate": {
+      "b19": 0.17,
+      "effective": 0.17,
+      "equal": true
+    },
+    "val": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "verbose": {
+      "b19": true,
+      "effective": true,
+      "equal": true
+    },
+    "vid_stride": {
+      "b19": 1,
+      "effective": 1,
+      "equal": true
+    },
+    "visualize": {
+      "b19": false,
+      "effective": false,
+      "equal": true
+    },
+    "warmup_bias_lr": {
+      "b19": 0.1,
+      "effective": 0.1,
+      "equal": true
+    },
+    "warmup_epochs": {
+      "b19": 3.0,
+      "effective": 3.0,
+      "equal": true
+    },
+    "warmup_momentum": {
+      "b19": 0.8,
+      "effective": 0.8,
+      "equal": true
+    },
+    "weight_decay": {
+      "b19": 0.0005,
+      "effective": 0.0005,
+      "equal": true
+    },
+    "workers": {
+      "b19": 8,
+      "effective": 8,
+      "equal": true
+    },
+    "workspace": {
+      "b19": null,
+      "effective": null,
+      "equal": true
+    }
+  },
+  "effective_args": {
+    "task": "detect",
+    "mode": "train",
+    "model": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_BDI_P3_v1/ultralytics/cfg/models/26/yolo26n-bdi-p3-v1.yaml",
+    "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+    "epochs": 200,
+    "time": null,
+    "patience": 60,
+    "batch": 32,
+    "imgsz": 640,
+    "save": true,
+    "save_period": 20,
+    "cache": false,
+    "device": "0",
+    "workers": 8,
+    "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_BDI_P3_v1/runs/detect",
+    "name": "yolo26n_b19_bdi_p3_v1",
+    "exist_ok": false,
+    "pretrained": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/yolo26n.pt",
+    "cls_remap": true,
+    "optimizer": "MuSGD",
+    "verbose": true,
+    "seed": 42,
+    "deterministic": true,
+    "single_cls": false,
+    "rect": false,
+    "cos_lr": true,
+    "close_mosaic": 10,
+    "resume": false,
+    "amp": true,
+    "fraction": 1.0,
+    "profile": false,
+    "freeze": null,
+    "multi_scale": 0.0,
+    "compile": false,
+    "overlap_mask": true,
+    "mask_ratio": 4,
+    "dropout": 0.0,
+    "val": true,
+    "split": "val",
+    "save_json": false,
+    "conf": null,
+    "iou": 0.7,
+    "max_det": 300,
+    "quantize": null,
+    "dnn": false,
+    "plots": true,
+    "end2end": null,
+    "source": null,
+    "vid_stride": 1,
+    "stream_buffer": false,
+    "visualize": false,
+    "augment": false,
+    "agnostic_nms": false,
+    "classes": null,
+    "retina_masks": false,
+    "embed": null,
+    "show": false,
+    "save_frames": false,
+    "save_txt": false,
+    "save_conf": false,
+    "save_crop": false,
+    "show_labels": true,
+    "show_conf": true,
+    "show_boxes": true,
+    "line_width": null,
+    "format": "torchscript",
+    "keras": false,
+    "optimize": false,
+    "dynamic": false,
+    "simplify": true,
+    "opset": null,
+    "workspace": null,
+    "nms": false,
+    "lr0": 0.01,
+    "lrf": 0.003,
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 3.0,
+    "warmup_momentum": 0.8,
+    "warmup_bias_lr": 0.1,
+    "distill_model": null,
+    "dis": 6.0,
+    "box": 7.5,
+    "cls": 0.5,
+    "cls_pw": 0.0,
+    "dfl": 1.5,
+    "pose": 12.0,
+    "kobj": 1.0,
+    "rle": 1.0,
+    "angle": 1.0,
+    "nbs": 64,
+    "hsv_h": 0.024,
+    "hsv_s": 0.84,
+    "hsv_v": 0.535,
+    "degrees": 11.0,
+    "translate": 0.17,
+    "scale": 0.735,
+    "shear": 3.5,
+    "perspective": 0.00055,
+    "flipud": 0.0,
+    "fliplr": 0.5,
+    "bgr": 0.0,
+    "mosaic": 1.0,
+    "mixup": 0.135,
+    "cutmix": 0.03,
+    "copy_paste": 0.0,
+    "copy_paste_mode": "flip",
+    "auto_augment": "randaugment",
+    "erasing": 0.4,
+    "tracker": "tracktrack.yaml"
+  },
+  "scope": "Server path plan checked against original archived b19; runtime resolve revalidates full fields and data content before any server training",
+  "launcher_origin": "Historical expanded launch record supplied in Codex_YOLO26n_b19_SIRSPPF_v1.md; not the original shell script (absent from baseline archive). All overrides validated against original args and startup log."
+}
