@@ -1,0 +1,566 @@
+{
+  "scope": "local archived full-field comparison; actual server resolved paths checked again by runner",
+  "field_count": 112,
+  "comparison": {
+    "agnostic_nms": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "amp": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "angle": {
+      "b19": 1.0,
+      "cca": 1.0,
+      "equal": true
+    },
+    "augment": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "auto_augment": {
+      "b19": "randaugment",
+      "cca": "randaugment",
+      "equal": true
+    },
+    "batch": {
+      "b19": 32,
+      "cca": 32,
+      "equal": true
+    },
+    "bgr": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "box": {
+      "b19": 7.5,
+      "cca": 7.5,
+      "equal": true
+    },
+    "cache": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "cfg": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "classes": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "close_mosaic": {
+      "b19": 10,
+      "cca": 10,
+      "equal": true
+    },
+    "cls": {
+      "b19": 0.5,
+      "cca": 0.5,
+      "equal": true
+    },
+    "cls_pw": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "cls_remap": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "compile": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "conf": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "copy_paste": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "copy_paste_mode": {
+      "b19": "flip",
+      "cca": "flip",
+      "equal": true
+    },
+    "cos_lr": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "cutmix": {
+      "b19": 0.03,
+      "cca": 0.03,
+      "equal": true
+    },
+    "data": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "cca": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "equal": true
+    },
+    "degrees": {
+      "b19": 11.0,
+      "cca": 11.0,
+      "equal": true
+    },
+    "deterministic": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "device": {
+      "b19": "0",
+      "cca": "0",
+      "equal": true
+    },
+    "dfl": {
+      "b19": 1.5,
+      "cca": 1.5,
+      "equal": true
+    },
+    "dis": {
+      "b19": 6.0,
+      "cca": 6.0,
+      "equal": true
+    },
+    "distill_model": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "dnn": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "dropout": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "dynamic": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "embed": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "end2end": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "epochs": {
+      "b19": 200,
+      "cca": 200,
+      "equal": true
+    },
+    "erasing": {
+      "b19": 0.4,
+      "cca": 0.4,
+      "equal": true
+    },
+    "exist_ok": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "fliplr": {
+      "b19": 0.5,
+      "cca": 0.5,
+      "equal": true
+    },
+    "flipud": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "format": {
+      "b19": "torchscript",
+      "cca": "torchscript",
+      "equal": true
+    },
+    "fraction": {
+      "b19": 1.0,
+      "cca": 1.0,
+      "equal": true
+    },
+    "freeze": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "hsv_h": {
+      "b19": 0.024,
+      "cca": 0.024,
+      "equal": true
+    },
+    "hsv_s": {
+      "b19": 0.84,
+      "cca": 0.84,
+      "equal": true
+    },
+    "hsv_v": {
+      "b19": 0.535,
+      "cca": 0.535,
+      "equal": true
+    },
+    "imgsz": {
+      "b19": 640,
+      "cca": 640,
+      "equal": true
+    },
+    "iou": {
+      "b19": 0.7,
+      "cca": 0.7,
+      "equal": true
+    },
+    "keras": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "kobj": {
+      "b19": 1.0,
+      "cca": 1.0,
+      "equal": true
+    },
+    "line_width": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "lr0": {
+      "b19": 0.01,
+      "cca": 0.01,
+      "equal": true
+    },
+    "lrf": {
+      "b19": 0.003,
+      "cca": 0.003,
+      "equal": true
+    },
+    "mask_ratio": {
+      "b19": 4,
+      "cca": 4,
+      "equal": true
+    },
+    "max_det": {
+      "b19": 300,
+      "cca": 300,
+      "equal": true
+    },
+    "mixup": {
+      "b19": 0.135,
+      "cca": 0.135,
+      "equal": true
+    },
+    "mode": {
+      "b19": "train",
+      "cca": "train",
+      "equal": true
+    },
+    "model": {
+      "b19": "yolo26n.pt",
+      "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v1\\ultralytics\\cfg\\models\\26\\yolo26n-cca-fusion-v1.yaml",
+      "equal": false
+    },
+    "momentum": {
+      "b19": 0.937,
+      "cca": 0.937,
+      "equal": true
+    },
+    "mosaic": {
+      "b19": 1.0,
+      "cca": 1.0,
+      "equal": true
+    },
+    "multi_scale": {
+      "b19": 0.0,
+      "cca": 0.0,
+      "equal": true
+    },
+    "name": {
+      "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "cca": "yolo26n_b19_cca_fusion_v1",
+      "equal": false
+    },
+    "nbs": {
+      "b19": 64,
+      "cca": 64,
+      "equal": true
+    },
+    "nms": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "opset": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "optimize": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "optimizer": {
+      "b19": "MuSGD",
+      "cca": "MuSGD",
+      "equal": true
+    },
+    "overlap_mask": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "patience": {
+      "b19": 60,
+      "cca": 60,
+      "equal": true
+    },
+    "perspective": {
+      "b19": 0.00055,
+      "cca": 0.00055,
+      "equal": true
+    },
+    "plots": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "pose": {
+      "b19": 12.0,
+      "cca": 12.0,
+      "equal": true
+    },
+    "pretrained": {
+      "b19": true,
+      "cca": "original yolo26n.pt (fixed SHA256)",
+      "equal": false
+    },
+    "profile": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "project": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v1\\runs\\detect",
+      "equal": false
+    },
+    "quantize": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "rect": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "resume": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "retina_masks": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "rle": {
+      "b19": 1.0,
+      "cca": 1.0,
+      "equal": true
+    },
+    "save": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "save_conf": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "save_crop": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "save_dir": {
+      "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "cca": null,
+      "equal": false
+    },
+    "save_frames": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "save_json": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "save_period": {
+      "b19": 20,
+      "cca": 20,
+      "equal": true
+    },
+    "save_txt": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "scale": {
+      "b19": 0.735,
+      "cca": 0.735,
+      "equal": true
+    },
+    "seed": {
+      "b19": 42,
+      "cca": 42,
+      "equal": true
+    },
+    "shear": {
+      "b19": 3.5,
+      "cca": 3.5,
+      "equal": true
+    },
+    "show": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "show_boxes": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "show_conf": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "show_labels": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "simplify": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "single_cls": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "source": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "split": {
+      "b19": "val",
+      "cca": "val",
+      "equal": true
+    },
+    "stream_buffer": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "task": {
+      "b19": "detect",
+      "cca": "detect",
+      "equal": true
+    },
+    "time": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    },
+    "tracker": {
+      "b19": "tracktrack.yaml",
+      "cca": "tracktrack.yaml",
+      "equal": true
+    },
+    "translate": {
+      "b19": 0.17,
+      "cca": 0.17,
+      "equal": true
+    },
+    "val": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "verbose": {
+      "b19": true,
+      "cca": true,
+      "equal": true
+    },
+    "vid_stride": {
+      "b19": 1,
+      "cca": 1,
+      "equal": true
+    },
+    "visualize": {
+      "b19": false,
+      "cca": false,
+      "equal": true
+    },
+    "warmup_bias_lr": {
+      "b19": 0.1,
+      "cca": 0.1,
+      "equal": true
+    },
+    "warmup_epochs": {
+      "b19": 3.0,
+      "cca": 3.0,
+      "equal": true
+    },
+    "warmup_momentum": {
+      "b19": 0.8,
+      "cca": 0.8,
+      "equal": true
+    },
+    "weight_decay": {
+      "b19": 0.0005,
+      "cca": 0.0005,
+      "equal": true
+    },
+    "workers": {
+      "b19": 8,
+      "cca": 8,
+      "equal": true
+    },
+    "workspace": {
+      "b19": null,
+      "cca": null,
+      "equal": true
+    }
+  }
+}

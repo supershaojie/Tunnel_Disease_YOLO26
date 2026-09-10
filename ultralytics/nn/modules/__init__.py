@@ -60,6 +60,7 @@ from .block import (
     SCDown,
     TorchVision,
 )
+from .cca_fusion import Concat_CCA_Fusion
 from .conv import (
     CBAM,
     ChannelAttention,
@@ -108,6 +109,7 @@ from .transformer import (
 )
 
 __all__ = (
+    "Concat_CCA_Fusion",
     "AIFI",
     "C1",
     "C2",

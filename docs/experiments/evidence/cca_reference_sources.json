@@ -1,0 +1,26 @@
+{
+  "args.yaml": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+    "sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9"
+  },
+  "results.csv": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\results.csv",
+    "sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507"
+  },
+  "weights/best.pt": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\weights\\best.pt",
+    "sha256": "d0b2ca5a5d30de9ed002c64c9238b182ddeccce644c055ae5f2dba566878bd5e"
+  },
+  "module_package": {
+    "path": "D:/7.21yolo26改/YOLO26缝合.zip",
+    "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+    "files": {
+      "DPCF_INFFUS2025.py": "f4a0606dc51ecb6f80feb65febb68f70f9d097c449144664acc00f0d7da9dd10",
+      "RLAB_fusion_2025CVPR.py": "9e166e61f96cdfe6588679092de06960ad427d127a80c066c0d538b4a07a6d62"
+    }
+  },
+  "specification": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\CCA-Fusion\\CCA_Fusion_v1_Codex_Instructions.md",
+    "sha256": "579b673ae742f265e623972c66b75d67758ef987c52349968fbcbf6f79141045"
+  }
+}

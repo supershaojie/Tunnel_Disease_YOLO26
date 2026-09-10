@@ -41,6 +41,7 @@ from ultralytics.nn.modules import (
     CBLinear,
     Classify,
     Concat,
+    Concat_CCA_Fusion,
     Conv,
     Conv2,
     ConvTranspose,
@@ -1982,6 +1983,10 @@ def parse_model(d, ch, verbose=True):
             c2 = args[1] if args[3] else args[1] * 4
         elif m is torch.nn.BatchNorm2d:
             args = [ch[f]]
+        elif m is Concat_CCA_Fusion:
+            assert len(f) == 3 and not args
+            args = [ch[x] for x in f]
+            c2 = args[0] + args[1]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
         elif m in frozenset(
