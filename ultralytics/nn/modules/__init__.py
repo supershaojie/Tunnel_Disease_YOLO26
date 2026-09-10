@@ -94,6 +94,7 @@ from .head import (
     YOLOESegment26,
     v10Detect,
 )
+from .sicr_sppf import SICRSPPF
 from .transformer import (
     AIFI,
     MLP,
@@ -125,6 +126,7 @@ __all__ = (
     "SPP",
     "SPPELAN",
     "SPPF",
+    "SICRSPPF",
     "A2C2f",
     "AConv",
     "ADown",
