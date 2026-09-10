@@ -810,6 +810,7 @@ nav:
           - modules:
               - activation: reference/nn/modules/activation.md
               - block: reference/nn/modules/block.md
+              - cca_fusion_v2: reference/nn/modules/cca_fusion_v2.md
               - conv: reference/nn/modules/conv.md
               - head: reference/nn/modules/head.md
               - transformer: reference/nn/modules/transformer.md

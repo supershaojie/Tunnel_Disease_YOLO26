@@ -1,0 +1,2838 @@
+{
+  "scope": "local synthetic checks; NOT server real batch32/640 preflight",
+  "torch": "2.7.1+cu118",
+  "structure": {
+    "common_keys": 708,
+    "common_elements": 2523296,
+    "loaded_keys": [],
+    "loaded_elements": 0,
+    "groups": {
+      "backbone": {
+        "common_keys": 240,
+        "common_elements": 1373880,
+        "loaded_keys": 0,
+        "loaded_elements": 0
+      },
+      "neck": {
+        "common_keys": 228,
+        "common_elements": 903334,
+        "loaded_keys": 0,
+        "loaded_elements": 0
+      },
+      "head": {
+        "common_keys": 240,
+        "common_elements": 246082,
+        "loaded_keys": 0,
+        "loaded_elements": 0
+      }
+    },
+    "unmatched_source_keys": {},
+    "new_parameters": {
+      "model.12.Wq.weight": [
+        16,
+        128,
+        1,
+        1
+      ],
+      "model.12.Wk.weight": [
+        16,
+        256,
+        1,
+        1
+      ],
+      "model.12.Wv.weight": [
+        16,
+        256,
+        1,
+        1
+      ],
+      "model.12.Wo.weight": [
+        256,
+        16,
+        1,
+        1
+      ]
+    },
+    "target_original_keys": [],
+    "all_common_tensors_equal": true,
+    "rng_strategy": "fork CPU RNG only for new CPU branch construction",
+    "baseline_parameters": 2504190,
+    "candidate_parameters": 2518526,
+    "added_parameters": 14336,
+    "layer12_shapes": [
+      [
+        [
+          1,
+          256,
+          40,
+          40
+        ],
+        [
+          1,
+          128,
+          40,
+          40
+        ],
+        [
+          1,
+          256,
+          20,
+          20
+        ],
+        [
+          1,
+          384,
+          40,
+          40
+        ]
+      ],
+      [
+        [
+          1,
+          256,
+          40,
+          60
+        ],
+        [
+          1,
+          128,
+          40,
+          60
+        ],
+        [
+          1,
+          256,
+          20,
+          30
+        ],
+        [
+          1,
+          384,
+          40,
+          60
+        ]
+      ]
+    ],
+    "detection_strides": [
+      8,
+      16,
+      32
+    ],
+    "full_network_zero_cca_equal": true
+  },
+  "pretrained": {
+    "common_keys": 708,
+    "common_elements": 2523296,
+    "loaded_keys": [
+      "model.0.conv.weight",
+      "model.0.bn.weight",
+      "model.0.bn.bias",
+      "model.0.bn.running_mean",
+      "model.0.bn.running_var",
+      "model.0.bn.num_batches_tracked",
+      "model.1.conv.weight",
+      "model.1.bn.weight",
+      "model.1.bn.bias",
+      "model.1.bn.running_mean",
+      "model.1.bn.running_var",
+      "model.1.bn.num_batches_tracked",
+      "model.2.cv1.conv.weight",
+      "model.2.cv1.bn.weight",
+      "model.2.cv1.bn.bias",
+      "model.2.cv1.bn.running_mean",
+      "model.2.cv1.bn.running_var",
+      "model.2.cv1.bn.num_batches_tracked",
+      "model.2.cv2.conv.weight",
+      "model.2.cv2.bn.weight",
+      "model.2.cv2.bn.bias",
+      "model.2.cv2.bn.running_mean",
+      "model.2.cv2.bn.running_var",
+      "model.2.cv2.bn.num_batches_tracked",
+      "model.2.m.0.cv1.conv.weight",
+      "model.2.m.0.cv1.bn.weight",
+      "model.2.m.0.cv1.bn.bias",
+      "model.2.m.0.cv1.bn.running_mean",
+      "model.2.m.0.cv1.bn.running_var",
+      "model.2.m.0.cv1.bn.num_batches_tracked",
+      "model.2.m.0.cv2.conv.weight",
+      "model.2.m.0.cv2.bn.weight",
+      "model.2.m.0.cv2.bn.bias",
+      "model.2.m.0.cv2.bn.running_mean",
+      "model.2.m.0.cv2.bn.running_var",
+      "model.2.m.0.cv2.bn.num_batches_tracked",
+      "model.3.conv.weight",
+      "model.3.bn.weight",
+      "model.3.bn.bias",
+      "model.3.bn.running_mean",
+      "model.3.bn.running_var",
+      "model.3.bn.num_batches_tracked",
+      "model.4.cv1.conv.weight",
+      "model.4.cv1.bn.weight",
+      "model.4.cv1.bn.bias",
+      "model.4.cv1.bn.running_mean",
+      "model.4.cv1.bn.running_var",
+      "model.4.cv1.bn.num_batches_tracked",
+      "model.4.cv2.conv.weight",
+      "model.4.cv2.bn.weight",
+      "model.4.cv2.bn.bias",
+      "model.4.cv2.bn.running_mean",
+      "model.4.cv2.bn.running_var",
+      "model.4.cv2.bn.num_batches_tracked",
+      "model.4.m.0.cv1.conv.weight",
+      "model.4.m.0.cv1.bn.weight",
+      "model.4.m.0.cv1.bn.bias",
+      "model.4.m.0.cv1.bn.running_mean",
+      "model.4.m.0.cv1.bn.running_var",
+      "model.4.m.0.cv1.bn.num_batches_tracked",
+      "model.4.m.0.cv2.conv.weight",
+      "model.4.m.0.cv2.bn.weight",
+      "model.4.m.0.cv2.bn.bias",
+      "model.4.m.0.cv2.bn.running_mean",
+      "model.4.m.0.cv2.bn.running_var",
+      "model.4.m.0.cv2.bn.num_batches_tracked",
+      "model.5.conv.weight",
+      "model.5.bn.weight",
+      "model.5.bn.bias",
+      "model.5.bn.running_mean",
+      "model.5.bn.running_var",
+      "model.5.bn.num_batches_tracked",
+      "model.6.cv1.conv.weight",
+      "model.6.cv1.bn.weight",
+      "model.6.cv1.bn.bias",
+      "model.6.cv1.bn.running_mean",
+      "model.6.cv1.bn.running_var",
+      "model.6.cv1.bn.num_batches_tracked",
+      "model.6.cv2.conv.weight",
+      "model.6.cv2.bn.weight",
+      "model.6.cv2.bn.bias",
+      "model.6.cv2.bn.running_mean",
+      "model.6.cv2.bn.running_var",
+      "model.6.cv2.bn.num_batches_tracked",
+      "model.6.m.0.cv1.conv.weight",
+      "model.6.m.0.cv1.bn.weight",
+      "model.6.m.0.cv1.bn.bias",
+      "model.6.m.0.cv1.bn.running_mean",
+      "model.6.m.0.cv1.bn.running_var",
+      "model.6.m.0.cv1.bn.num_batches_tracked",
+      "model.6.m.0.cv2.conv.weight",
+      "model.6.m.0.cv2.bn.weight",
+      "model.6.m.0.cv2.bn.bias",
+      "model.6.m.0.cv2.bn.running_mean",
+      "model.6.m.0.cv2.bn.running_var",
+      "model.6.m.0.cv2.bn.num_batches_tracked",
+      "model.6.m.0.cv3.conv.weight",
+      "model.6.m.0.cv3.bn.weight",
+      "model.6.m.0.cv3.bn.bias",
+      "model.6.m.0.cv3.bn.running_mean",
+      "model.6.m.0.cv3.bn.running_var",
+      "model.6.m.0.cv3.bn.num_batches_tracked",
+      "model.6.m.0.m.0.cv1.conv.weight",
+      "model.6.m.0.m.0.cv1.bn.weight",
+      "model.6.m.0.m.0.cv1.bn.bias",
+      "model.6.m.0.m.0.cv1.bn.running_mean",
+      "model.6.m.0.m.0.cv1.bn.running_var",
+      "model.6.m.0.m.0.cv1.bn.num_batches_tracked",
+      "model.6.m.0.m.0.cv2.conv.weight",
+      "model.6.m.0.m.0.cv2.bn.weight",
+      "model.6.m.0.m.0.cv2.bn.bias",
+      "model.6.m.0.m.0.cv2.bn.running_mean",
+      "model.6.m.0.m.0.cv2.bn.running_var",
+      "model.6.m.0.m.0.cv2.bn.num_batches_tracked",
+      "model.6.m.0.m.1.cv1.conv.weight",
+      "model.6.m.0.m.1.cv1.bn.weight",
+      "model.6.m.0.m.1.cv1.bn.bias",
+      "model.6.m.0.m.1.cv1.bn.running_mean",
+      "model.6.m.0.m.1.cv1.bn.running_var",
+      "model.6.m.0.m.1.cv1.bn.num_batches_tracked",
+      "model.6.m.0.m.1.cv2.conv.weight",
+      "model.6.m.0.m.1.cv2.bn.weight",
+      "model.6.m.0.m.1.cv2.bn.bias",
+      "model.6.m.0.m.1.cv2.bn.running_mean",
+      "model.6.m.0.m.1.cv2.bn.running_var",
+      "model.6.m.0.m.1.cv2.bn.num_batches_tracked",
+      "model.7.conv.weight",
+      "model.7.bn.weight",
+      "model.7.bn.bias",
+      "model.7.bn.running_mean",
+      "model.7.bn.running_var",
+      "model.7.bn.num_batches_tracked",
+      "model.8.cv1.conv.weight",
+      "model.8.cv1.bn.weight",
+      "model.8.cv1.bn.bias",
+      "model.8.cv1.bn.running_mean",
+      "model.8.cv1.bn.running_var",
+      "model.8.cv1.bn.num_batches_tracked",
+      "model.8.cv2.conv.weight",
+      "model.8.cv2.bn.weight",
+      "model.8.cv2.bn.bias",
+      "model.8.cv2.bn.running_mean",
+      "model.8.cv2.bn.running_var",
+      "model.8.cv2.bn.num_batches_tracked",
+      "model.8.m.0.cv1.conv.weight",
+      "model.8.m.0.cv1.bn.weight",
+      "model.8.m.0.cv1.bn.bias",
+      "model.8.m.0.cv1.bn.running_mean",
+      "model.8.m.0.cv1.bn.running_var",
+      "model.8.m.0.cv1.bn.num_batches_tracked",
+      "model.8.m.0.cv2.conv.weight",
+      "model.8.m.0.cv2.bn.weight",
+      "model.8.m.0.cv2.bn.bias",
+      "model.8.m.0.cv2.bn.running_mean",
+      "model.8.m.0.cv2.bn.running_var",
+      "model.8.m.0.cv2.bn.num_batches_tracked",
+      "model.8.m.0.cv3.conv.weight",
+      "model.8.m.0.cv3.bn.weight",
+      "model.8.m.0.cv3.bn.bias",
+      "model.8.m.0.cv3.bn.running_mean",
+      "model.8.m.0.cv3.bn.running_var",
+      "model.8.m.0.cv3.bn.num_batches_tracked",
+      "model.8.m.0.m.0.cv1.conv.weight",
+      "model.8.m.0.m.0.cv1.bn.weight",
+      "model.8.m.0.m.0.cv1.bn.bias",
+      "model.8.m.0.m.0.cv1.bn.running_mean",
+      "model.8.m.0.m.0.cv1.bn.running_var",
+      "model.8.m.0.m.0.cv1.bn.num_batches_tracked",
+      "model.8.m.0.m.0.cv2.conv.weight",
+      "model.8.m.0.m.0.cv2.bn.weight",
+      "model.8.m.0.m.0.cv2.bn.bias",
+      "model.8.m.0.m.0.cv2.bn.running_mean",
+      "model.8.m.0.m.0.cv2.bn.running_var",
+      "model.8.m.0.m.0.cv2.bn.num_batches_tracked",
+      "model.8.m.0.m.1.cv1.conv.weight",
+      "model.8.m.0.m.1.cv1.bn.weight",
+      "model.8.m.0.m.1.cv1.bn.bias",
+      "model.8.m.0.m.1.cv1.bn.running_mean",
+      "model.8.m.0.m.1.cv1.bn.running_var",
+      "model.8.m.0.m.1.cv1.bn.num_batches_tracked",
+      "model.8.m.0.m.1.cv2.conv.weight",
+      "model.8.m.0.m.1.cv2.bn.weight",
+      "model.8.m.0.m.1.cv2.bn.bias",
+      "model.8.m.0.m.1.cv2.bn.running_mean",
+      "model.8.m.0.m.1.cv2.bn.running_var",
+      "model.8.m.0.m.1.cv2.bn.num_batches_tracked",
+      "model.9.cv1.conv.weight",
+      "model.9.cv1.bn.weight",
+      "model.9.cv1.bn.bias",
+      "model.9.cv1.bn.running_mean",
+      "model.9.cv1.bn.running_var",
+      "model.9.cv1.bn.num_batches_tracked",
+      "model.9.cv2.conv.weight",
+      "model.9.cv2.bn.weight",
+      "model.9.cv2.bn.bias",
+      "model.9.cv2.bn.running_mean",
+      "model.9.cv2.bn.running_var",
+      "model.9.cv2.bn.num_batches_tracked",
+      "model.10.cv1.conv.weight",
+      "model.10.cv1.bn.weight",
+      "model.10.cv1.bn.bias",
+      "model.10.cv1.bn.running_mean",
+      "model.10.cv1.bn.running_var",
+      "model.10.cv1.bn.num_batches_tracked",
+      "model.10.cv2.conv.weight",
+      "model.10.cv2.bn.weight",
+      "model.10.cv2.bn.bias",
+      "model.10.cv2.bn.running_mean",
+      "model.10.cv2.bn.running_var",
+      "model.10.cv2.bn.num_batches_tracked",
+      "model.10.m.0.attn.qkv.conv.weight",
+      "model.10.m.0.attn.qkv.bn.weight",
+      "model.10.m.0.attn.qkv.bn.bias",
+      "model.10.m.0.attn.qkv.bn.running_mean",
+      "model.10.m.0.attn.qkv.bn.running_var",
+      "model.10.m.0.attn.qkv.bn.num_batches_tracked",
+      "model.10.m.0.attn.proj.conv.weight",
+      "model.10.m.0.attn.proj.bn.weight",
+      "model.10.m.0.attn.proj.bn.bias",
+      "model.10.m.0.attn.proj.bn.running_mean",
+      "model.10.m.0.attn.proj.bn.running_var",
+      "model.10.m.0.attn.proj.bn.num_batches_tracked",
+      "model.10.m.0.attn.pe.conv.weight",
+      "model.10.m.0.attn.pe.bn.weight",
+      "model.10.m.0.attn.pe.bn.bias",
+      "model.10.m.0.attn.pe.bn.running_mean",
+      "model.10.m.0.attn.pe.bn.running_var",
+      "model.10.m.0.attn.pe.bn.num_batches_tracked",
+      "model.10.m.0.ffn.0.conv.weight",
+      "model.10.m.0.ffn.0.bn.weight",
+      "model.10.m.0.ffn.0.bn.bias",
+      "model.10.m.0.ffn.0.bn.running_mean",
+      "model.10.m.0.ffn.0.bn.running_var",
+      "model.10.m.0.ffn.0.bn.num_batches_tracked",
+      "model.10.m.0.ffn.1.conv.weight",
+      "model.10.m.0.ffn.1.bn.weight",
+      "model.10.m.0.ffn.1.bn.bias",
+      "model.10.m.0.ffn.1.bn.running_mean",
+      "model.10.m.0.ffn.1.bn.running_var",
+      "model.10.m.0.ffn.1.bn.num_batches_tracked",
+      "model.13.cv1.conv.weight",
+      "model.13.cv1.bn.weight",
+      "model.13.cv1.bn.bias",
+      "model.13.cv1.bn.running_mean",
+      "model.13.cv1.bn.running_var",
+      "model.13.cv1.bn.num_batches_tracked",
+      "model.13.cv2.conv.weight",
+      "model.13.cv2.bn.weight",
+      "model.13.cv2.bn.bias",
+      "model.13.cv2.bn.running_mean",
+      "model.13.cv2.bn.running_var",
+      "model.13.cv2.bn.num_batches_tracked",
+      "model.13.m.0.cv1.conv.weight",
+      "model.13.m.0.cv1.bn.weight",
+      "model.13.m.0.cv1.bn.bias",
+      "model.13.m.0.cv1.bn.running_mean",
+      "model.13.m.0.cv1.bn.running_var",
+      "model.13.m.0.cv1.bn.num_batches_tracked",
+      "model.13.m.0.cv2.conv.weight",
+      "model.13.m.0.cv2.bn.weight",
+      "model.13.m.0.cv2.bn.bias",
+      "model.13.m.0.cv2.bn.running_mean",
+      "model.13.m.0.cv2.bn.running_var",
+      "model.13.m.0.cv2.bn.num_batches_tracked",
+      "model.13.m.0.cv3.conv.weight",
+      "model.13.m.0.cv3.bn.weight",
+      "model.13.m.0.cv3.bn.bias",
+      "model.13.m.0.cv3.bn.running_mean",
+      "model.13.m.0.cv3.bn.running_var",
+      "model.13.m.0.cv3.bn.num_batches_tracked",
+      "model.13.m.0.m.0.cv1.conv.weight",
+      "model.13.m.0.m.0.cv1.bn.weight",
+      "model.13.m.0.m.0.cv1.bn.bias",
+      "model.13.m.0.m.0.cv1.bn.running_mean",
+      "model.13.m.0.m.0.cv1.bn.running_var",
+      "model.13.m.0.m.0.cv1.bn.num_batches_tracked",
+      "model.13.m.0.m.0.cv2.conv.weight",
+      "model.13.m.0.m.0.cv2.bn.weight",
+      "model.13.m.0.m.0.cv2.bn.bias",
+      "model.13.m.0.m.0.cv2.bn.running_mean",
+      "model.13.m.0.m.0.cv2.bn.running_var",
+      "model.13.m.0.m.0.cv2.bn.num_batches_tracked",
+      "model.13.m.0.m.1.cv1.conv.weight",
+      "model.13.m.0.m.1.cv1.bn.weight",
+      "model.13.m.0.m.1.cv1.bn.bias",
+      "model.13.m.0.m.1.cv1.bn.running_mean",
+      "model.13.m.0.m.1.cv1.bn.running_var",
+      "model.13.m.0.m.1.cv1.bn.num_batches_tracked",
+      "model.13.m.0.m.1.cv2.conv.weight",
+      "model.13.m.0.m.1.cv2.bn.weight",
+      "model.13.m.0.m.1.cv2.bn.bias",
+      "model.13.m.0.m.1.cv2.bn.running_mean",
+      "model.13.m.0.m.1.cv2.bn.running_var",
+      "model.13.m.0.m.1.cv2.bn.num_batches_tracked",
+      "model.16.cv1.conv.weight",
+      "model.16.cv1.bn.weight",
+      "model.16.cv1.bn.bias",
+      "model.16.cv1.bn.running_mean",
+      "model.16.cv1.bn.running_var",
+      "model.16.cv1.bn.num_batches_tracked",
+      "model.16.cv2.conv.weight",
+      "model.16.cv2.bn.weight",
+      "model.16.cv2.bn.bias",
+      "model.16.cv2.bn.running_mean",
+      "model.16.cv2.bn.running_var",
+      "model.16.cv2.bn.num_batches_tracked",
+      "model.16.m.0.cv1.conv.weight",
+      "model.16.m.0.cv1.bn.weight",
+      "model.16.m.0.cv1.bn.bias",
+      "model.16.m.0.cv1.bn.running_mean",
+      "model.16.m.0.cv1.bn.running_var",
+      "model.16.m.0.cv1.bn.num_batches_tracked",
+      "model.16.m.0.cv2.conv.weight",
+      "model.16.m.0.cv2.bn.weight",
+      "model.16.m.0.cv2.bn.bias",
+      "model.16.m.0.cv2.bn.running_mean",
+      "model.16.m.0.cv2.bn.running_var",
+      "model.16.m.0.cv2.bn.num_batches_tracked",
+      "model.16.m.0.cv3.conv.weight",
+      "model.16.m.0.cv3.bn.weight",
+      "model.16.m.0.cv3.bn.bias",
+      "model.16.m.0.cv3.bn.running_mean",
+      "model.16.m.0.cv3.bn.running_var",
+      "model.16.m.0.cv3.bn.num_batches_tracked",
+      "model.16.m.0.m.0.cv1.conv.weight",
+      "model.16.m.0.m.0.cv1.bn.weight",
+      "model.16.m.0.m.0.cv1.bn.bias",
+      "model.16.m.0.m.0.cv1.bn.running_mean",
+      "model.16.m.0.m.0.cv1.bn.running_var",
+      "model.16.m.0.m.0.cv1.bn.num_batches_tracked",
+      "model.16.m.0.m.0.cv2.conv.weight",
+      "model.16.m.0.m.0.cv2.bn.weight",
+      "model.16.m.0.m.0.cv2.bn.bias",
+      "model.16.m.0.m.0.cv2.bn.running_mean",
+      "model.16.m.0.m.0.cv2.bn.running_var",
+      "model.16.m.0.m.0.cv2.bn.num_batches_tracked",
+      "model.16.m.0.m.1.cv1.conv.weight",
+      "model.16.m.0.m.1.cv1.bn.weight",
+      "model.16.m.0.m.1.cv1.bn.bias",
+      "model.16.m.0.m.1.cv1.bn.running_mean",
+      "model.16.m.0.m.1.cv1.bn.running_var",
+      "model.16.m.0.m.1.cv1.bn.num_batches_tracked",
+      "model.16.m.0.m.1.cv2.conv.weight",
+      "model.16.m.0.m.1.cv2.bn.weight",
+      "model.16.m.0.m.1.cv2.bn.bias",
+      "model.16.m.0.m.1.cv2.bn.running_mean",
+      "model.16.m.0.m.1.cv2.bn.running_var",
+      "model.16.m.0.m.1.cv2.bn.num_batches_tracked",
+      "model.17.conv.weight",
+      "model.17.bn.weight",
+      "model.17.bn.bias",
+      "model.17.bn.running_mean",
+      "model.17.bn.running_var",
+      "model.17.bn.num_batches_tracked",
+      "model.19.cv1.conv.weight",
+      "model.19.cv1.bn.weight",
+      "model.19.cv1.bn.bias",
+      "model.19.cv1.bn.running_mean",
+      "model.19.cv1.bn.running_var",
+      "model.19.cv1.bn.num_batches_tracked",
+      "model.19.cv2.conv.weight",
+      "model.19.cv2.bn.weight",
+      "model.19.cv2.bn.bias",
+      "model.19.cv2.bn.running_mean",
+      "model.19.cv2.bn.running_var",
+      "model.19.cv2.bn.num_batches_tracked",
+      "model.19.m.0.cv1.conv.weight",
+      "model.19.m.0.cv1.bn.weight",
+      "model.19.m.0.cv1.bn.bias",
+      "model.19.m.0.cv1.bn.running_mean",
+      "model.19.m.0.cv1.bn.running_var",
+      "model.19.m.0.cv1.bn.num_batches_tracked",
+      "model.19.m.0.cv2.conv.weight",
+      "model.19.m.0.cv2.bn.weight",
+      "model.19.m.0.cv2.bn.bias",
+      "model.19.m.0.cv2.bn.running_mean",
+      "model.19.m.0.cv2.bn.running_var",
+      "model.19.m.0.cv2.bn.num_batches_tracked",
+      "model.19.m.0.cv3.conv.weight",
+      "model.19.m.0.cv3.bn.weight",
+      "model.19.m.0.cv3.bn.bias",
+      "model.19.m.0.cv3.bn.running_mean",
+      "model.19.m.0.cv3.bn.running_var",
+      "model.19.m.0.cv3.bn.num_batches_tracked",
+      "model.19.m.0.m.0.cv1.conv.weight",
+      "model.19.m.0.m.0.cv1.bn.weight",
+      "model.19.m.0.m.0.cv1.bn.bias",
+      "model.19.m.0.m.0.cv1.bn.running_mean",
+      "model.19.m.0.m.0.cv1.bn.running_var",
+      "model.19.m.0.m.0.cv1.bn.num_batches_tracked",
+      "model.19.m.0.m.0.cv2.conv.weight",
+      "model.19.m.0.m.0.cv2.bn.weight",
+      "model.19.m.0.m.0.cv2.bn.bias",
+      "model.19.m.0.m.0.cv2.bn.running_mean",
+      "model.19.m.0.m.0.cv2.bn.running_var",
+      "model.19.m.0.m.0.cv2.bn.num_batches_tracked",
+      "model.19.m.0.m.1.cv1.conv.weight",
+      "model.19.m.0.m.1.cv1.bn.weight",
+      "model.19.m.0.m.1.cv1.bn.bias",
+      "model.19.m.0.m.1.cv1.bn.running_mean",
+      "model.19.m.0.m.1.cv1.bn.running_var",
+      "model.19.m.0.m.1.cv1.bn.num_batches_tracked",
+      "model.19.m.0.m.1.cv2.conv.weight",
+      "model.19.m.0.m.1.cv2.bn.weight",
+      "model.19.m.0.m.1.cv2.bn.bias",
+      "model.19.m.0.m.1.cv2.bn.running_mean",
+      "model.19.m.0.m.1.cv2.bn.running_var",
+      "model.19.m.0.m.1.cv2.bn.num_batches_tracked",
+      "model.20.conv.weight",
+      "model.20.bn.weight",
+      "model.20.bn.bias",
+      "model.20.bn.running_mean",
+      "model.20.bn.running_var",
+      "model.20.bn.num_batches_tracked",
+      "model.22.cv1.conv.weight",
+      "model.22.cv1.bn.weight",
+      "model.22.cv1.bn.bias",
+      "model.22.cv1.bn.running_mean",
+      "model.22.cv1.bn.running_var",
+      "model.22.cv1.bn.num_batches_tracked",
+      "model.22.cv2.conv.weight",
+      "model.22.cv2.bn.weight",
+      "model.22.cv2.bn.bias",
+      "model.22.cv2.bn.running_mean",
+      "model.22.cv2.bn.running_var",
+      "model.22.cv2.bn.num_batches_tracked",
+      "model.22.m.0.0.cv1.conv.weight",
+      "model.22.m.0.0.cv1.bn.weight",
+      "model.22.m.0.0.cv1.bn.bias",
+      "model.22.m.0.0.cv1.bn.running_mean",
+      "model.22.m.0.0.cv1.bn.running_var",
+      "model.22.m.0.0.cv1.bn.num_batches_tracked",
+      "model.22.m.0.0.cv2.conv.weight",
+      "model.22.m.0.0.cv2.bn.weight",
+      "model.22.m.0.0.cv2.bn.bias",
+      "model.22.m.0.0.cv2.bn.running_mean",
+      "model.22.m.0.0.cv2.bn.running_var",
+      "model.22.m.0.0.cv2.bn.num_batches_tracked",
+      "model.22.m.0.1.attn.qkv.conv.weight",
+      "model.22.m.0.1.attn.qkv.bn.weight",
+      "model.22.m.0.1.attn.qkv.bn.bias",
+      "model.22.m.0.1.attn.qkv.bn.running_mean",
+      "model.22.m.0.1.attn.qkv.bn.running_var",
+      "model.22.m.0.1.attn.qkv.bn.num_batches_tracked",
+      "model.22.m.0.1.attn.proj.conv.weight",
+      "model.22.m.0.1.attn.proj.bn.weight",
+      "model.22.m.0.1.attn.proj.bn.bias",
+      "model.22.m.0.1.attn.proj.bn.running_mean",
+      "model.22.m.0.1.attn.proj.bn.running_var",
+      "model.22.m.0.1.attn.proj.bn.num_batches_tracked",
+      "model.22.m.0.1.attn.pe.conv.weight",
+      "model.22.m.0.1.attn.pe.bn.weight",
+      "model.22.m.0.1.attn.pe.bn.bias",
+      "model.22.m.0.1.attn.pe.bn.running_mean",
+      "model.22.m.0.1.attn.pe.bn.running_var",
+      "model.22.m.0.1.attn.pe.bn.num_batches_tracked",
+      "model.22.m.0.1.ffn.0.conv.weight",
+      "model.22.m.0.1.ffn.0.bn.weight",
+      "model.22.m.0.1.ffn.0.bn.bias",
+      "model.22.m.0.1.ffn.0.bn.running_mean",
+      "model.22.m.0.1.ffn.0.bn.running_var",
+      "model.22.m.0.1.ffn.0.bn.num_batches_tracked",
+      "model.22.m.0.1.ffn.1.conv.weight",
+      "model.22.m.0.1.ffn.1.bn.weight",
+      "model.22.m.0.1.ffn.1.bn.bias",
+      "model.22.m.0.1.ffn.1.bn.running_mean",
+      "model.22.m.0.1.ffn.1.bn.running_var",
+      "model.22.m.0.1.ffn.1.bn.num_batches_tracked",
+      "model.23.cv2.0.0.conv.weight",
+      "model.23.cv2.0.0.bn.weight",
+      "model.23.cv2.0.0.bn.bias",
+      "model.23.cv2.0.0.bn.running_mean",
+      "model.23.cv2.0.0.bn.running_var",
+      "model.23.cv2.0.0.bn.num_batches_tracked",
+      "model.23.cv2.0.1.conv.weight",
+      "model.23.cv2.0.1.bn.weight",
+      "model.23.cv2.0.1.bn.bias",
+      "model.23.cv2.0.1.bn.running_mean",
+      "model.23.cv2.0.1.bn.running_var",
+      "model.23.cv2.0.1.bn.num_batches_tracked",
+      "model.23.cv2.0.2.weight",
+      "model.23.cv2.0.2.bias",
+      "model.23.cv2.1.0.conv.weight",
+      "model.23.cv2.1.0.bn.weight",
+      "model.23.cv2.1.0.bn.bias",
+      "model.23.cv2.1.0.bn.running_mean",
+      "model.23.cv2.1.0.bn.running_var",
+      "model.23.cv2.1.0.bn.num_batches_tracked",
+      "model.23.cv2.1.1.conv.weight",
+      "model.23.cv2.1.1.bn.weight",
+      "model.23.cv2.1.1.bn.bias",
+      "model.23.cv2.1.1.bn.running_mean",
+      "model.23.cv2.1.1.bn.running_var",
+      "model.23.cv2.1.1.bn.num_batches_tracked",
+      "model.23.cv2.1.2.weight",
+      "model.23.cv2.1.2.bias",
+      "model.23.cv2.2.0.conv.weight",
+      "model.23.cv2.2.0.bn.weight",
+      "model.23.cv2.2.0.bn.bias",
+      "model.23.cv2.2.0.bn.running_mean",
+      "model.23.cv2.2.0.bn.running_var",
+      "model.23.cv2.2.0.bn.num_batches_tracked",
+      "model.23.cv2.2.1.conv.weight",
+      "model.23.cv2.2.1.bn.weight",
+      "model.23.cv2.2.1.bn.bias",
+      "model.23.cv2.2.1.bn.running_mean",
+      "model.23.cv2.2.1.bn.running_var",
+      "model.23.cv2.2.1.bn.num_batches_tracked",
+      "model.23.cv2.2.2.weight",
+      "model.23.cv2.2.2.bias",
+      "model.23.cv3.0.0.0.conv.weight",
+      "model.23.cv3.0.0.0.bn.weight",
+      "model.23.cv3.0.0.0.bn.bias",
+      "model.23.cv3.0.0.0.bn.running_mean",
+      "model.23.cv3.0.0.0.bn.running_var",
+      "model.23.cv3.0.0.0.bn.num_batches_tracked",
+      "model.23.cv3.0.0.1.bn.num_batches_tracked",
+      "model.23.cv3.0.1.0.bn.num_batches_tracked",
+      "model.23.cv3.0.1.1.bn.num_batches_tracked",
+      "model.23.cv3.1.0.0.conv.weight",
+      "model.23.cv3.1.0.0.bn.weight",
+      "model.23.cv3.1.0.0.bn.bias",
+      "model.23.cv3.1.0.0.bn.running_mean",
+      "model.23.cv3.1.0.0.bn.running_var",
+      "model.23.cv3.1.0.0.bn.num_batches_tracked",
+      "model.23.cv3.1.0.1.bn.num_batches_tracked",
+      "model.23.cv3.1.1.0.bn.num_batches_tracked",
+      "model.23.cv3.1.1.1.bn.num_batches_tracked",
+      "model.23.cv3.2.0.0.conv.weight",
+      "model.23.cv3.2.0.0.bn.weight",
+      "model.23.cv3.2.0.0.bn.bias",
+      "model.23.cv3.2.0.0.bn.running_mean",
+      "model.23.cv3.2.0.0.bn.running_var",
+      "model.23.cv3.2.0.0.bn.num_batches_tracked",
+      "model.23.cv3.2.0.1.bn.num_batches_tracked",
+      "model.23.cv3.2.1.0.bn.num_batches_tracked",
+      "model.23.cv3.2.1.1.bn.num_batches_tracked",
+      "model.23.one2one_cv2.0.0.conv.weight",
+      "model.23.one2one_cv2.0.0.bn.weight",
+      "model.23.one2one_cv2.0.0.bn.bias",
+      "model.23.one2one_cv2.0.0.bn.running_mean",
+      "model.23.one2one_cv2.0.0.bn.running_var",
+      "model.23.one2one_cv2.0.0.bn.num_batches_tracked",
+      "model.23.one2one_cv2.0.1.conv.weight",
+      "model.23.one2one_cv2.0.1.bn.weight",
+      "model.23.one2one_cv2.0.1.bn.bias",
+      "model.23.one2one_cv2.0.1.bn.running_mean",
+      "model.23.one2one_cv2.0.1.bn.running_var",
+      "model.23.one2one_cv2.0.1.bn.num_batches_tracked",
+      "model.23.one2one_cv2.0.2.weight",
+      "model.23.one2one_cv2.0.2.bias",
+      "model.23.one2one_cv2.1.0.conv.weight",
+      "model.23.one2one_cv2.1.0.bn.weight",
+      "model.23.one2one_cv2.1.0.bn.bias",
+      "model.23.one2one_cv2.1.0.bn.running_mean",
+      "model.23.one2one_cv2.1.0.bn.running_var",
+      "model.23.one2one_cv2.1.0.bn.num_batches_tracked",
+      "model.23.one2one_cv2.1.1.conv.weight",
+      "model.23.one2one_cv2.1.1.bn.weight",
+      "model.23.one2one_cv2.1.1.bn.bias",
+      "model.23.one2one_cv2.1.1.bn.running_mean",
+      "model.23.one2one_cv2.1.1.bn.running_var",
+      "model.23.one2one_cv2.1.1.bn.num_batches_tracked",
+      "model.23.one2one_cv2.1.2.weight",
+      "model.23.one2one_cv2.1.2.bias",
+      "model.23.one2one_cv2.2.0.conv.weight",
+      "model.23.one2one_cv2.2.0.bn.weight",
+      "model.23.one2one_cv2.2.0.bn.bias",
+      "model.23.one2one_cv2.2.0.bn.running_mean",
+      "model.23.one2one_cv2.2.0.bn.running_var",
+      "model.23.one2one_cv2.2.0.bn.num_batches_tracked",
+      "model.23.one2one_cv2.2.1.conv.weight",
+      "model.23.one2one_cv2.2.1.bn.weight",
+      "model.23.one2one_cv2.2.1.bn.bias",
+      "model.23.one2one_cv2.2.1.bn.running_mean",
+      "model.23.one2one_cv2.2.1.bn.running_var",
+      "model.23.one2one_cv2.2.1.bn.num_batches_tracked",
+      "model.23.one2one_cv2.2.2.weight",
+      "model.23.one2one_cv2.2.2.bias",
+      "model.23.one2one_cv3.0.0.0.conv.weight",
+      "model.23.one2one_cv3.0.0.0.bn.weight",
+      "model.23.one2one_cv3.0.0.0.bn.bias",
+      "model.23.one2one_cv3.0.0.0.bn.running_mean",
+      "model.23.one2one_cv3.0.0.0.bn.running_var",
+      "model.23.one2one_cv3.0.0.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.0.0.1.bn.num_batches_tracked",
+      "model.23.one2one_cv3.0.1.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.0.1.1.bn.num_batches_tracked",
+      "model.23.one2one_cv3.1.0.0.conv.weight",
+      "model.23.one2one_cv3.1.0.0.bn.weight",
+      "model.23.one2one_cv3.1.0.0.bn.bias",
+      "model.23.one2one_cv3.1.0.0.bn.running_mean",
+      "model.23.one2one_cv3.1.0.0.bn.running_var",
+      "model.23.one2one_cv3.1.0.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.1.0.1.bn.num_batches_tracked",
+      "model.23.one2one_cv3.1.1.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.1.1.1.bn.num_batches_tracked",
+      "model.23.one2one_cv3.2.0.0.conv.weight",
+      "model.23.one2one_cv3.2.0.0.bn.weight",
+      "model.23.one2one_cv3.2.0.0.bn.bias",
+      "model.23.one2one_cv3.2.0.0.bn.running_mean",
+      "model.23.one2one_cv3.2.0.0.bn.running_var",
+      "model.23.one2one_cv3.2.0.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.2.0.1.bn.num_batches_tracked",
+      "model.23.one2one_cv3.2.1.0.bn.num_batches_tracked",
+      "model.23.one2one_cv3.2.1.1.bn.num_batches_tracked"
+    ],
+    "loaded_elements": 2432922,
+    "groups": {
+      "backbone": {
+        "common_keys": 240,
+        "common_elements": 1373880,
+        "loaded_keys": 240,
+        "loaded_elements": 1373880
+      },
+      "neck": {
+        "common_keys": 228,
+        "common_elements": 903334,
+        "loaded_keys": 228,
+        "loaded_elements": 903334
+      },
+      "head": {
+        "common_keys": 240,
+        "common_elements": 246082,
+        "loaded_keys": 138,
+        "loaded_elements": 155708
+      }
+    },
+    "unmatched_source_keys": {
+      "model.23.cv3.0.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          64,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.0.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.cv3.0.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.0.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.0.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.0.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      },
+      "model.23.cv3.1.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          128,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          128,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.1.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.cv3.1.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.1.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.1.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.1.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      },
+      "model.23.cv3.2.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          256,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          256,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.2.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.cv3.2.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.2.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.cv3.2.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.cv3.2.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      },
+      "model.23.one2one_cv3.0.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          64,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.0.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.one2one_cv3.0.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.0.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.0.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.0.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      },
+      "model.23.one2one_cv3.1.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          128,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          128,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.1.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.one2one_cv3.1.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.1.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.1.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.1.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      },
+      "model.23.one2one_cv3.2.0.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          256,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          256,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.2.0.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.0.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.0.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.0.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.0.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          1,
+          3,
+          3
+        ],
+        "target": [
+          64,
+          1,
+          3,
+          3
+        ]
+      },
+      "model.23.one2one_cv3.2.1.0.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.0.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.0.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.0.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.1.conv.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          64,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.2.1.1.bn.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.1.bn.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.1.bn.running_mean": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.1.1.bn.running_var": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          64
+        ]
+      },
+      "model.23.one2one_cv3.2.2.weight": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80,
+          80,
+          1,
+          1
+        ],
+        "target": [
+          1,
+          64,
+          1,
+          1
+        ]
+      },
+      "model.23.one2one_cv3.2.2.bias": {
+        "reason": "same nc=80 to nc=1 Detect adaptation as native b19 initialization",
+        "source": [
+          80
+        ],
+        "target": [
+          1
+        ]
+      }
+    },
+    "new_parameters": {
+      "model.12.Wq.weight": [
+        16,
+        128,
+        1,
+        1
+      ],
+      "model.12.Wk.weight": [
+        16,
+        256,
+        1,
+        1
+      ],
+      "model.12.Wv.weight": [
+        16,
+        256,
+        1,
+        1
+      ],
+      "model.12.Wo.weight": [
+        256,
+        16,
+        1,
+        1
+      ]
+    },
+    "target_original_keys": [],
+    "all_common_tensors_equal": true,
+    "rng_strategy": "fork CPU RNG only for new CPU branch construction",
+    "baseline_parameters": 2504190,
+    "candidate_parameters": 2518526,
+    "added_parameters": 14336,
+    "initial_output_errors": [
+      {
+        "path": "raw[0]",
+        "shape": [
+          1,
+          126,
+          6
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 203.2974853515625,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2many.boxes",
+        "shape": [
+          1,
+          4,
+          126
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 8.597660064697266,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2many.scores",
+        "shape": [
+          1,
+          1,
+          126
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 7.105480670928955,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2many.feats[0]",
+        "shape": [
+          1,
+          64,
+          8,
+          12
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 4.6655073165893555,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2many.feats[1]",
+        "shape": [
+          1,
+          128,
+          4,
+          6
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 4.63001012802124,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2many.feats[2]",
+        "shape": [
+          1,
+          256,
+          2,
+          3
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 8.733778953552246,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2one.boxes",
+        "shape": [
+          1,
+          4,
+          126
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 6.7096076011657715,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2one.scores",
+        "shape": [
+          1,
+          1,
+          126
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 7.065854072570801,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2one.feats[0]",
+        "shape": [
+          1,
+          64,
+          8,
+          12
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 4.6655073165893555,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2one.feats[1]",
+        "shape": [
+          1,
+          128,
+          4,
+          6
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 4.63001012802124,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      },
+      {
+        "path": "raw[1].one2one.feats[2]",
+        "shape": [
+          1,
+          256,
+          2,
+          3
+        ],
+        "dtype": "torch.float32",
+        "device": "cpu",
+        "finite": true,
+        "max_abs": 0.0,
+        "mean_abs": 0.0,
+        "reference_max_abs": 8.733778953552246,
+        "scale_floor": 1e-06,
+        "max_error_over_scale": 0.0,
+        "outside_tolerance": 0,
+        "atol": 0,
+        "rtol": 0
+      }
+    ],
+    "loaded_count": 606
+  },
+  "eval_state_unchanged": true,
+  "training": [
+    {
+      "device": "cpu",
+      "amp": false,
+      "batch": 2,
+      "imgsz": [
+        64,
+        96
+      ],
+      "task_updates": {
+        "Wq.weight": true,
+        "Wk.weight": true,
+        "Wv.weight": true,
+        "Wo.weight": true
+      },
+      "rows": [
+        {
+          "step": 0,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.030223430794766734,
+              "max_abs": 0.0031428879592567682,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 1.0
+        },
+        {
+          "step": 1,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 4.943124714644485e-05,
+              "max_abs": 8.090840310615022e-06,
+              "nonzero": 2048,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 8.588386444140384e-05,
+              "max_abs": 1.1870029993588105e-05,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.00030973968197918787,
+              "max_abs": 4.349615846876986e-05,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.04546891976176401,
+              "max_abs": 0.005269375164061785,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 1.0
+        }
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "amp": false,
+      "batch": 2,
+      "imgsz": [
+        64,
+        96
+      ],
+      "task_updates": {
+        "Wq.weight": true,
+        "Wk.weight": true,
+        "Wv.weight": true,
+        "Wo.weight": true
+      },
+      "rows": [
+        {
+          "step": 0,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.25206490194733744,
+              "max_abs": 0.0438271090388298,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 1.0
+        },
+        {
+          "step": 1,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0002748435708531498,
+              "max_abs": 4.869795520789921e-05,
+              "nonzero": 2048,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.00043548561989152846,
+              "max_abs": 5.439958113129251e-05,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0011768966387926219,
+              "max_abs": 0.00016434636199846864,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.1933589441987604,
+              "max_abs": 0.022780226543545723,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 1.0
+        }
+      ]
+    },
+    {
+      "device": "cuda:0",
+      "amp": true,
+      "batch": 2,
+      "imgsz": [
+        64,
+        96
+      ],
+      "task_updates": {
+        "Wq.weight": true,
+        "Wk.weight": true,
+        "Wv.weight": true,
+        "Wo.weight": true
+      },
+      "rows": [
+        {
+          "step": 0,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.018783870556158423,
+              "max_abs": 0.0012655258178710938,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": false,
+          "scale": 32768.0
+        },
+        {
+          "step": 1,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.03833296402364428,
+              "max_abs": 0.00646209716796875,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": false,
+          "scale": 16384.0
+        },
+        {
+          "step": 2,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0985794086067279,
+              "max_abs": 0.0131072998046875,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": false,
+          "scale": 8192.0
+        },
+        {
+          "step": 3,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0,
+              "max_abs": 0.0,
+              "nonzero": 0,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.022529905943395254,
+              "max_abs": 0.0023059844970703125,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 8192.0
+        },
+        {
+          "step": 4,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0003417869708323841,
+              "max_abs": 5.498528480529785e-05,
+              "nonzero": 2048,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0006465006095840481,
+              "max_abs": 8.183717727661133e-05,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.001957479694464025,
+              "max_abs": 0.00022614002227783203,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.2633543873286968,
+              "max_abs": 0.03704833984375,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": false,
+          "scale": 4096.0
+        },
+        {
+          "step": 5,
+          "gradients": {
+            "Wq.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 5.414235549273886e-05,
+              "max_abs": 7.502734661102295e-06,
+              "nonzero": 2047,
+              "dtype": "torch.float32"
+            },
+            "Wk.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 6.401851243221622e-05,
+              "max_abs": 7.1339309215545654e-06,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wv.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.0002703774028219699,
+              "max_abs": 3.057718276977539e-05,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            },
+            "Wo.weight": {
+              "is_none": false,
+              "finite": true,
+              "norm": 0.027054513112485787,
+              "max_abs": 0.004138946533203125,
+              "nonzero": 4096,
+              "dtype": "torch.float32"
+            }
+          },
+          "optimizer_step": true,
+          "scale": 4096.0
+        }
+      ]
+    }
+  ],
+  "reload": {
+    "passed": true,
+    "state_exact": true,
+    "raw_exact": true,
+    "precision": "FP16 snapshot reloaded in FP32",
+    "fuse": {
+      "native_control": [
+        {
+          "path": "raw.boxes",
+          "shape": [
+            1,
+            4,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 1.4066696166992188e-05,
+          "mean_abs": 1.203741819139511e-06,
+          "reference_max_abs": 6.286935329437256,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 2.2374488411114767e-06,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.scores",
+          "shape": [
+            1,
+            1,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 1.430511474609375e-06,
+          "mean_abs": 1.6651456318204364e-07,
+          "reference_max_abs": 7.083353519439697,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 2.0195398559219875e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[0]",
+          "shape": [
+            1,
+            64,
+            8,
+            12
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 6.556510925292969e-06,
+          "mean_abs": 3.107498938321092e-07,
+          "reference_max_abs": 4.575124740600586,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 1.4330780682566226e-06,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[1]",
+          "shape": [
+            1,
+            128,
+            4,
+            6
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 2.86102294921875e-06,
+          "mean_abs": 2.3284483995541136e-07,
+          "reference_max_abs": 4.586195468902588,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 6.238336260672623e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[2]",
+          "shape": [
+            1,
+            256,
+            2,
+            3
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 4.76837158203125e-06,
+          "mean_abs": 2.3271083667471734e-07,
+          "reference_max_abs": 8.180578231811523,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 5.828893076883799e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "decoded_by_anchor",
+          "shape": [
+            1,
+            5,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 0.00011444091796875,
+          "mean_abs": 8.190660053745858e-06,
+          "reference_max_abs": 202.64517211914062,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 5.647354771495225e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "selected_by_anchor",
+          "shape": [
+            1,
+            126,
+            6
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 0.00011444091796875,
+          "mean_abs": 6.825550044788215e-06,
+          "reference_max_abs": 202.64517211914062,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 5.647354771495225e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        }
+      ],
+      "cca": [
+        {
+          "path": "raw.boxes",
+          "shape": [
+            1,
+            4,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 2.09808349609375e-05,
+          "mean_abs": 1.198538239040072e-06,
+          "reference_max_abs": 6.286946773529053,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 3.337205756103503e-06,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.scores",
+          "shape": [
+            1,
+            1,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 1.430511474609375e-06,
+          "mean_abs": 1.7786782885354663e-07,
+          "reference_max_abs": 7.083353519439697,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 2.0195398559219875e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[0]",
+          "shape": [
+            1,
+            64,
+            8,
+            12
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 5.751848220825195e-06,
+          "mean_abs": 3.096989017158565e-07,
+          "reference_max_abs": 4.575125694274902,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 1.2572000432737374e-06,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[1]",
+          "shape": [
+            1,
+            128,
+            4,
+            6
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 7.539987564086914e-06,
+          "mean_abs": 2.2863684250492197e-07,
+          "reference_max_abs": 4.586195945739746,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 1.6440613644279707e-06,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "raw.feats[2]",
+          "shape": [
+            1,
+            256,
+            2,
+            3
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 2.86102294921875e-06,
+          "mean_abs": 1.9576431971775796e-07,
+          "reference_max_abs": 8.180583000183105,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 3.4973338075717977e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "decoded_by_anchor",
+          "shape": [
+            1,
+            5,
+            126
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 0.0001678466796875,
+          "mean_abs": 8.156986552334967e-06,
+          "reference_max_abs": 202.64517211914062,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 8.282786998192997e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        },
+        {
+          "path": "selected_by_anchor",
+          "shape": [
+            1,
+            126,
+            6
+          ],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 0.0001678466796875,
+          "mean_abs": 6.797488793612473e-06,
+          "reference_max_abs": 202.64517211914062,
+          "scale_floor": 1e-06,
+          "max_error_over_scale": 8.282786998192997e-07,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        }
+      ]
+    },
+    "topk_reordered_rows": {
+      "native_control": 0,
+      "cca": 0
+    },
+    "fused_cca_calls": 1
+  },
+  "validator": {
+    "real_validator": true,
+    "synthetic_images": 2,
+    "calls": 1,
+    "residual_max_norm": 0.0006011663936078548
+  },
+  "gpu": "NVIDIA GeForce RTX 2060",
+  "operator_benchmark": {
+    "batch": 32,
+    "feature_shapes": [
+      [
+        32,
+        256,
+        40,
+        40
+      ],
+      [
+        32,
+        128,
+        40,
+        40
+      ],
+      [
+        32,
+        256,
+        20,
+        20
+      ]
+    ],
+    "fp32_forward_backward_ms": 12.562900000193622,
+    "peak_allocated_bytes": 332752896,
+    "scope": "CCA operator only, synthetic tensors; includes other live tensors; not end-to-end training memory"
+  },
+  "experiment": "yolo26n_b19_cca_fusion_v2",
+  "passed": true
+}

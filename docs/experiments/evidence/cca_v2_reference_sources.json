@@ -1,0 +1,20 @@
+{
+  "module_package": {
+    "path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+    "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+    "files": {
+      "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/DPCF_INFFUS2025.py": {
+        "sha256": "f4a0606dc51ecb6f80feb65febb68f70f9d097c449144664acc00f0d7da9dd10",
+        "read_in_full": true
+      },
+      "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/RLAB_fusion_2025CVPR.py": {
+        "sha256": "9e166e61f96cdfe6588679092de06960ad427d127a80c066c0d538b4a07a6d62",
+        "read_in_full": true
+      }
+    }
+  },
+  "specification": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\CCA-Fusion v2\\CCA_Fusion_v2_Codex_Instructions.md",
+    "sha256": "bb6d6563fcd523be0acefd8780b35df7d9b5b5d8939696999f3d8fd74d14ea75"
+  }
+}

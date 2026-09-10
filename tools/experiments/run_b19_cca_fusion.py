@@ -21,6 +21,7 @@ import warnings
 from datetime import datetime, timezone
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -55,6 +56,15 @@ MODULE_CONFIG = dict(
     formula="Y = cat(U + Wo(sum(a*(Vj-Vparent))), L)",
 )
 PRETRAINED_SHA256 = "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
+
+EXPERIMENT = SimpleNamespace(
+    name=NAME,
+    model=MODEL,
+    block_type=Concat_CCA_Fusion,
+    version=1,
+    finish_entry=ROOT / "tools/experiments/finish_b19_cca_fusion.py",
+    source_files=(),
+)
 
 
 def sha256(path):
@@ -117,14 +127,14 @@ def architecture_signature(cfg):
     return json.dumps(values, sort_keys=True).replace('"None"', "null")
 
 
-def resolve_recipe(options, model=MODEL):
+def resolve_recipe(options, model=MODEL, block_type=Concat_CCA_Fusion):
     """Validate the archived b19 recipe and classify every allowed CCA difference."""
     root = options.baseline_root.resolve()
     if Path(ultralytics.__file__).resolve().parent != ROOT / "ultralytics":
         raise RuntimeError(f"Ultralytics import is outside the CCA worktree: {ultralytics.__file__}")
-    module_path = Path(sys.modules["ultralytics.nn.modules.cca_fusion"].__file__).resolve()
+    module_path = Path(sys.modules[block_type.__module__].__file__).resolve()
     if (
-        module_path != ROOT / "ultralytics/nn/modules/cca_fusion.py"
+        module_path != ROOT / (block_type.__module__.replace(".", "/") + ".py")
         or Path(git("rev-parse", "--show-toplevel")).resolve() != ROOT
     ):
         raise RuntimeError("CCA module or Git root is outside the current worktree")
@@ -248,7 +258,7 @@ def resolve_recipe(options, model=MODEL):
             if torch.cuda.is_available()
             else None
         ),
-        module_path=str(Path(sys.modules["ultralytics.nn.modules.cca_fusion"].__file__).resolve()),
+        module_path=str(module_path),
         config_comparison={
             k: dict(b19=raw.get(k), cca=effective.get(k), equal=raw.get(k) == effective.get(k))
             for k in sorted(set(raw) | set(effective))
@@ -365,6 +375,11 @@ class AuditedTrainer(DetectionTrainer):
             cfg={**DEFAULT_CFG_DICT, "save_dir": str(output)}, overrides=overrides.copy(), _callbacks=_callbacks
         )
 
+    @staticmethod
+    def mechanism_diagnostics(module, up, low, high):
+        """Leave v1 diagnostics unchanged; v2 adds its fixed reliability measurements here."""
+        return {}
+
     @property
     def _oom_retries(self):
         """The fixed-batch experiment owns no memory-recovery retries."""
@@ -405,9 +420,14 @@ class AuditedTrainer(DetectionTrainer):
             baseline.eval()
             candidate.eval()
             x = torch.randn(1, 3, 64, 96)
-            assert_close_tree(baseline(x), candidate(x), atol=0, rtol=0)
+            errors = []
+            assert_close_tree(baseline(x), candidate(x), atol=0, rtol=0, report=errors)
+            self.weight_audit["initial_output_errors"] = errors
             candidate.train()
         return candidate
+
+
+EXPERIMENT.trainer_type = AuditedTrainer
 
 
 def optimizer_signature(optimizer):
@@ -580,7 +600,9 @@ def save_reload_check(model, directory, block_type=Concat_CCA_Fusion):
     finally:
         torch.set_num_threads(threads)
     code = (
-        "from tools.experiments.run_b19_cca_fusion import reload_in_process; import sys; reload_in_process(sys.argv[1])"
+        "from tools.experiments.run_b19_cca_fusion import reload_in_process; "
+        f"from {block_type.__module__} import {block_type.__name__}; "
+        f"import sys; reload_in_process(sys.argv[1], {block_type.__name__})"
     )
     result = subprocess.run(
         [sys.executable, "-c", code, str(path)],
@@ -596,7 +618,7 @@ def save_reload_check(model, directory, block_type=Concat_CCA_Fusion):
     return json.loads((directory / "reload_check.json").read_text(encoding="utf-8"))
 
 
-def reload_in_process(path):
+def reload_in_process(path, block_type=Concat_CCA_Fusion):
     """Load through the public YOLO facade and check every retained fused head output on independent copies."""
     from ultralytics import YOLO
 
@@ -605,7 +627,7 @@ def reload_in_process(path):
     torch.set_num_threads(1)
     with torch.no_grad(), torch.backends.mkldnn.flags(enabled=False):
         model = YOLO(path).model.float().eval()
-        assert type(model.model[12]) is Concat_CCA_Fusion
+        assert type(model.model[12]) is block_type
         assert_close_tree(reference["state"], model.state_dict(), 0, 0)
         x = reference["x"]
         assert_close_tree(reference["raw"], model(x), 0, 0)
@@ -735,7 +757,10 @@ def observed_optimizer_step(trainer, params, report, row):
     for name, p in params.items():
         matches = [(i, g) for i, g in enumerate(optimizer.param_groups) for q in g["params"] if q is p]
         row["parameters"][name] = info = dict(
-            registrations=len(matches), dtype=str(p.dtype), requires_grad=p.requires_grad
+            registrations=len(matches),
+            dtype=str(p.dtype),
+            requires_grad=p.requires_grad,
+            norm_before=p.detach().double().norm().item(),
         )
         assert len(matches) == 1, f"{name}: expected exactly one optimizer registration, got {len(matches)}"
         assert p.dtype == torch.float32 and p.requires_grad, f"{name}: invalid dtype/requires_grad"
@@ -791,7 +816,7 @@ def observed_optimizer_step(trainer, params, report, row):
         hook.remove()
     for name, p in params.items():
         info = row["parameters"][name]
-        info.update(parameter_change(before[name], p))
+        info.update(parameter_change(before[name], p), norm_after=p.detach().double().norm().item())
         pre, post = info["gradient_before_clip"], info["gradient_after_clip"]
         eligible = bool(updates) and finite and pre["finite"] and pre["nonzero"] and post["finite"] and post["nonzero"]
         info["different_from_zero_task_replay"] = name in no_task and not torch.equal(no_task[name], p)
@@ -922,6 +947,7 @@ def preflight(config, evidence, directory, block_type=Concat_CCA_Fusion, trainer
                     shape=list(high.shape),
                     valid_counts="corner=4 edge=6 interior=9 (at standard P5 20x20)",
                 )
+                latest.update(trainer_type.mechanism_diagnostics(module, up, low, high))
                 report["latest_numerics"] = latest
                 if not all(
                     latest[name]["finite"] for name in ("q", "k", "q_norm", "k_norm", "weights", "delta", "residual")
@@ -1202,6 +1228,7 @@ def main(
     source_files=(),
     structure_check=structural_checks,
     module_config=MODULE_CONFIG,
+    fixed_name=False,
 ):
     """Resolve and run the sole CCA candidate; missing server evidence never becomes a passing receipt."""
     block_type = trainer_type.block_type
@@ -1216,7 +1243,7 @@ def main(
     )
     parser.add_argument("--baseline-launcher", type=Path, help="Original expanded native b19 CLI command/script")
     parser.add_argument("--stage", choices=("preflight", "train"), required=True)
-    parser.add_argument("--name", default=name)
+    parser.add_argument("--name", default=name, choices=(name,) if fixed_name else None)
     parser.add_argument(
         "--project", type=Path, help="Independent CCA output project; defaults to this worktree/runs/detect"
     )
@@ -1256,7 +1283,7 @@ def main(
         if git("status", "--porcelain", "--untracked-files=no"):
             raise RuntimeError("Commit source changes before server preflight or training")
         structure_check(invocation, model, block_type)
-        raw, config, evidence = resolve_recipe(options, model)
+        raw, config, evidence = resolve_recipe(options, model, block_type)
         write_json(invocation / "configuration.json", dict(raw=raw, effective=config, evidence=evidence))
         launcher = launcher_evidence(options, raw)
         evidence["launch_evidence"] = launcher

@@ -1,0 +1,253 @@
+{
+  "scope": "local checks; no formal training or server preflight",
+  "pytest": {
+    "passed": 30,
+    "skipped": 1,
+    "failed": 0,
+    "cases": [
+      {
+        "name": "test_reference_forward_gradient[shape0]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.141,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_gradient[shape1]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.019,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_gradient[shape2]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.018,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_gradient[shape3]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.109,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_mask_parent_constant_and_queries",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.018,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_tiny_norms_and_rng[0.0]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.009,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_tiny_norms_and_rng[1e-12]",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.004,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_observed_step_matches_native_and_excludes_decay",
+        "file": "tests.test_cca_fusion",
+        "seconds": 30.145,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_cuda_full_resolution_loss",
+        "file": "tests.test_cca_fusion",
+        "seconds": 3.531,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_fixed_recipe_and_package_gate",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.014,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_curve_ties_and_empty_predictions",
+        "file": "tests.test_cca_fusion",
+        "seconds": 0.012,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_and_gradients[shape0]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.031,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_and_gradients[shape1]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.026,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_and_gradients[shape2]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.026,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_reference_forward_and_gradients[shape3]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.149,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_fixed_prior_mask_and_noncenter_evidence",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.047,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_entropy_geometric_counts_detach_and_equal_raw_gate",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.008,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_zero_initialization_rng_constant_value_and_unfreezing",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.017,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_bad_shapes[batch]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.002,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_bad_shapes[channel]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.002,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_bad_shapes[spatial]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.002,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_bad_shapes[inputs]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.002,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_cuda_full_resolution_task",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.577,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_structure_and_checkpoint",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 6.063,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_recipe_identity_and_failure_gates",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.015,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_mechanism_diagnostics",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.048,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_package_excludes_attempts_and_materializes_links[hardlink]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 2.28,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_package_excludes_attempts_and_materializes_links[dangling_symlink]",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.01,
+        "result": "skipped",
+        "reason": "Windows account lacks symlink creation privilege"
+      },
+      {
+        "name": "test_finish_v2_synthetic_diagnose_and_curves",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 16.054,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_v2_entry_identity_and_source_fingerprint",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 0.833,
+        "result": "passed",
+        "reason": null
+      },
+      {
+        "name": "test_v2_full_package_requires_comparison",
+        "file": "tests.test_cca_fusion_v2",
+        "seconds": 2.435,
+        "result": "passed",
+        "reason": null
+      }
+    ]
+  },
+  "verify": {
+    "passed": true,
+    "report": "cca_v2_local_validation.json"
+  },
+  "ruff": {
+    "version": "0.12.12",
+    "passed": true
+  },
+  "bash_syntax": {
+    "scripts": 2,
+    "server_document_blocks": 6,
+    "passed": true
+  },
+  "prettier": {
+    "version": "3.6.2",
+    "passed": true
+  },
+  "git_diff_check": true,
+  "server_formal_training_started": false,
+  "server_real_batch32_640_preflight": false,
+  "review": {
+    "scope": "implementation self-review of full diff",
+    "could_delete_instead": "Removed transient attempt/alias archive collection; reused v1 model and lifecycle instead of duplicated runners.",
+    "symptom_suppression": "No failure checks removed. Fixed required run name, geometric singleton entropy and archive member validation enforce task invariants.",
+    "findings": []
+  }
+}

@@ -35,12 +35,20 @@ class Concat_CCA_Fusion(nn.Module):
             scores = 4.0 * (queries.unsqueeze(2) * neighbors[:, :, :, :, None, :, None]).sum(1)
             valid = F.unfold(v.new_ones(1, 1, h, w, dtype=torch.float32), 3, padding=1)
             valid = valid.reshape(1, 9, h, 1, w, 1).bool()
-            weights = scores.masked_fill(~valid, -torch.inf).softmax(1)
+            weights = self.correspondence_scores(scores).masked_fill(~valid, -torch.inf).softmax(1)
             values = F.unfold(v.float(), 3, padding=1).reshape(b, r, 9, h, w)
             differences = values - v.float().unsqueeze(2)
             delta = (weights.unsqueeze(1) * differences[:, :, :, :, None, :, None]).sum(2)
             delta = delta.reshape(b, r, 2 * h, 2 * w)
         return delta.to(v.dtype), weights.reshape(b, 9, 2 * h, 2 * w), q, k
+
+    def correspondence_scores(self, scores):
+        """Use the original cosine scores without a spatial prior in v1."""
+        return scores
+
+    def residual(self, delta, weights):
+        """Apply the original ungated value-difference projection in v1."""
+        return self.Wo(delta)
 
     def forward(self, inputs):
         """Preserve supplied nearest features and concatenation order; only the semantic branch is corrected."""
@@ -49,6 +57,6 @@ class Concat_CCA_Fusion(nn.Module):
         assert up.shape[1] == high.shape[1] == self.Wo.out_channels
         assert low.shape[1] == self.Wq.in_channels
         assert up.shape[-2:] == low.shape[-2:] == (2 * high.shape[-2], 2 * high.shape[-1])
-        delta, _, _, _ = self.correspondence(low, high)
-        residual = self.Wo(delta)
+        delta, weights, _, _ = self.correspondence(low, high)
+        residual = self.residual(delta, weights)
         return torch.cat((up + residual.to(up.dtype), low), 1)

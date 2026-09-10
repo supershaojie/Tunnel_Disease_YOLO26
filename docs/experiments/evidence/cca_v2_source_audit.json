@@ -1,0 +1,206 @@
+{
+  "v1_archive": "E:\\ditieyolo26跑结果\\8.12离线在线\\CCA-Fusion\\yolo26n_b19_cca_fusion_v1_analysis.tar.gz",
+  "args_count": 112,
+  "v1_b19_differences": {
+    "project": [
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_CCA_Fusion_v1/runs/detect"
+    ],
+    "save_dir": [
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_CCA_Fusion_v1/runs/detect/yolo26n_b19_cca_fusion_v1"
+    ],
+    "name": [
+      "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "yolo26n_b19_cca_fusion_v1"
+    ],
+    "model": [
+      "yolo26n.pt",
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_CCA_Fusion_v1/ultralytics/cfg/models/26/yolo26n-cca-fusion-v1.yaml"
+    ],
+    "pretrained": [
+      true,
+      "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/yolo26n.pt"
+    ]
+  },
+  "metrics": {
+    "yolo26n_b19_cca_fusion_v1/evaluation/val-b881e4d79665add15d88/metrics.json": {
+      "P": 0.8625080785162559,
+      "R": 0.7872696817420436,
+      "AP50": 0.8677182092925059,
+      "AP75": 0.5029098416197648,
+      "mAP50-95": 0.4932134614736805
+    },
+    "yolo26n_b19_cca_fusion_v1/evaluation/test-68f3cf54635630544b41/metrics.json": {
+      "P": 0.869472128671501,
+      "R": 0.7621819784173678,
+      "AP50": 0.8608594752894637,
+      "AP75": 0.49296401404404255,
+      "mAP50-95": 0.49317395637474937
+    },
+    "yolo26n_b19_cca_fusion_v1/baseline_comparison/evaluation/val-e8a1713f9c15ace2a1c3/metrics.json": {
+      "P": 0.863279630249087,
+      "R": 0.788609715242881,
+      "AP50": 0.8607987980098447,
+      "AP75": 0.524806488636925,
+      "mAP50-95": 0.5026482799366365
+    },
+    "yolo26n_b19_cca_fusion_v1/baseline_comparison/evaluation/test-cc03c663f5d668368b03/metrics.json": {
+      "P": 0.8745902315448085,
+      "R": 0.7837921554841997,
+      "AP50": 0.8700567437326795,
+      "AP75": 0.536747589145484,
+      "mAP50-95": 0.5077699389020365
+    }
+  },
+  "v1_commit": "42072916046b7598bf90640fcde907a62265406d",
+  "diagnostic_first_image": {
+    "image": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/images/val/sample_001358410bb49e779de0__degrade.jpg",
+    "sha256": "af282e096bef0e967fb6d9a3deba6243935d6d9033f42ab589137c2a92beebc3",
+    "label_sha256": "e52e3bd324b08316cec1776d21ac83035d78a6573fd41fec4de28ac672d116f3",
+    "q_norm": {
+      "mean": 2.615971565246582,
+      "min": 1.2929471731185913,
+      "max": 6.296234130859375
+    },
+    "k_norm": {
+      "mean": 2.860515594482422,
+      "min": 1.7271960973739624,
+      "max": 5.156512260437012
+    },
+    "residual_over_original_U": {
+      "mean": 0.17380759119987488,
+      "min": 0.038553088903427124,
+      "max": 0.45327967405319214
+    },
+    "denominator_floor": 1e-06,
+    "center_weight": {
+      "mean": 0.12327970564365387,
+      "min": 0.014168765395879745,
+      "max": 0.4475671648979187
+    },
+    "noncenter_weight": {
+      "mean": 0.8767202496528625,
+      "min": 0.5524328351020813,
+      "max": 0.9858312606811523
+    },
+    "phase_distribution_deviation": {
+      "mean": 0.1494026482105255,
+      "min": 0.002589120529592037,
+      "max": 0.9062249660491943
+    },
+    "expected_correspondence_position_displacement": {
+      "mean": 0.4556742012500763,
+      "min": 0.00413172785192728,
+      "max": 1.1202013492584229
+    },
+    "support": {
+      "4": {
+        "positions": 16,
+        "entropy": {
+          "mean": 1.305206060409546,
+          "min": 1.1753846406936646,
+          "max": 1.3717992305755615
+        },
+        "normalized_entropy": {
+          "mean": 0.9415071606636047,
+          "min": 0.8478608131408691,
+          "max": 0.9895439743995667
+        },
+        "center": {
+          "mean": 0.2984076142311096,
+          "min": 0.1816100925207138,
+          "max": 0.4475671648979187
+        }
+      },
+      "6": {
+        "positions": 288,
+        "entropy": {
+          "mean": 1.6401267051696777,
+          "min": 1.1291871070861816,
+          "max": 1.7911804914474487
+        },
+        "normalized_entropy": {
+          "mean": 0.9153720140457153,
+          "min": 0.6302112936973572,
+          "max": 0.9996768236160278
+        },
+        "center": {
+          "mean": 0.1775389462709427,
+          "min": 0.029532747343182564,
+          "max": 0.36597368121147156
+        }
+      },
+      "9": {
+        "positions": 1296,
+        "entropy": {
+          "mean": 1.9405887126922607,
+          "min": 1.0616849660873413,
+          "max": 2.1895391941070557
+        },
+        "normalized_entropy": {
+          "mean": 0.88319993019104,
+          "min": 0.48319363594055176,
+          "max": 0.9965022206306458
+        },
+        "center": {
+          "mean": 0.10906000435352325,
+          "min": 0.014168765395879745,
+          "max": 0.31821003556251526
+        }
+      }
+    },
+    "raw_one2one_max_abs_delta": {
+      "boxes": 4.521921157836914,
+      "scores": 14.105731964111328
+    },
+    "matching": {
+      "0.5": {
+        "on": {
+          "TP": 1,
+          "FP": 0,
+          "FN": 0,
+          "matched": {
+            "0": 0.8069432973861694
+          }
+        },
+        "off": {
+          "TP": 1,
+          "FP": 1,
+          "FN": 0,
+          "matched": {
+            "0": 0.7796467542648315
+          }
+        },
+        "recovered": [],
+        "lost": [],
+        "common_target_iou_delta": {
+          "0": 0.02729654312133789
+        }
+      },
+      "0.75": {
+        "on": {
+          "TP": 1,
+          "FP": 0,
+          "FN": 0,
+          "matched": {
+            "0": 0.8069432973861694
+          }
+        },
+        "off": {
+          "TP": 1,
+          "FP": 1,
+          "FN": 0,
+          "matched": {
+            "0": 0.7796467542648315
+          }
+        },
+        "recovered": [],
+        "lost": [],
+        "common_target_iou_delta": {
+          "0": 0.02729654312133789
+        }
+      }
+    }
+  }
+}

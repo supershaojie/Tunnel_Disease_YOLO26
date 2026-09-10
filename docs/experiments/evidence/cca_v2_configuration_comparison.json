@@ -1,0 +1,1108 @@
+{
+  "scope": "local read-only recipe and full dataset hash audit; NOT server preflight",
+  "config": {
+    "task": "detect",
+    "mode": "train",
+    "model": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\ultralytics\\cfg\\models\\26\\yolo26n-cca-fusion-v2.yaml",
+    "data": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml",
+    "epochs": 200,
+    "time": null,
+    "patience": 60,
+    "batch": 32,
+    "imgsz": 640,
+    "save": true,
+    "save_period": 20,
+    "cache": false,
+    "device": "0",
+    "workers": 8,
+    "project": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\runs\\detect",
+    "name": "yolo26n_b19_cca_fusion_v2",
+    "exist_ok": false,
+    "pretrained": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt",
+    "cls_remap": true,
+    "optimizer": "MuSGD",
+    "verbose": true,
+    "seed": 42,
+    "deterministic": true,
+    "single_cls": false,
+    "rect": false,
+    "cos_lr": true,
+    "close_mosaic": 10,
+    "resume": false,
+    "amp": true,
+    "fraction": 1.0,
+    "profile": false,
+    "freeze": null,
+    "multi_scale": 0.0,
+    "compile": false,
+    "overlap_mask": true,
+    "mask_ratio": 4,
+    "dropout": 0.0,
+    "val": true,
+    "split": "val",
+    "save_json": false,
+    "conf": null,
+    "iou": 0.7,
+    "max_det": 300,
+    "quantize": null,
+    "dnn": false,
+    "plots": true,
+    "end2end": null,
+    "source": null,
+    "vid_stride": 1,
+    "stream_buffer": false,
+    "visualize": false,
+    "augment": false,
+    "agnostic_nms": false,
+    "classes": null,
+    "retina_masks": false,
+    "embed": null,
+    "show": false,
+    "save_frames": false,
+    "save_txt": false,
+    "save_conf": false,
+    "save_crop": false,
+    "show_labels": true,
+    "show_conf": true,
+    "show_boxes": true,
+    "line_width": null,
+    "format": "torchscript",
+    "keras": false,
+    "optimize": false,
+    "dynamic": false,
+    "simplify": true,
+    "opset": null,
+    "workspace": null,
+    "nms": false,
+    "lr0": 0.01,
+    "lrf": 0.003,
+    "momentum": 0.937,
+    "weight_decay": 0.0005,
+    "warmup_epochs": 3.0,
+    "warmup_momentum": 0.8,
+    "warmup_bias_lr": 0.1,
+    "distill_model": null,
+    "dis": 6.0,
+    "box": 7.5,
+    "cls": 0.5,
+    "cls_pw": 0.0,
+    "dfl": 1.5,
+    "pose": 12.0,
+    "kobj": 1.0,
+    "rle": 1.0,
+    "angle": 1.0,
+    "nbs": 64,
+    "hsv_h": 0.024,
+    "hsv_s": 0.84,
+    "hsv_v": 0.535,
+    "degrees": 11.0,
+    "translate": 0.17,
+    "scale": 0.735,
+    "shear": 3.5,
+    "perspective": 0.00055,
+    "flipud": 0.0,
+    "fliplr": 0.5,
+    "bgr": 0.0,
+    "mosaic": 1.0,
+    "mixup": 0.135,
+    "cutmix": 0.03,
+    "copy_paste": 0.0,
+    "copy_paste_mode": "flip",
+    "auto_augment": "randaugment",
+    "erasing": 0.4,
+    "cfg": null,
+    "tracker": "tracktrack.yaml"
+  },
+  "evidence": {
+    "args_path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+    "args_sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+    "args_source": "original b19 args.yaml",
+    "results_sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507",
+    "initial_path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt",
+    "initial_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "historical_initial_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "checkpoint_metadata": {
+      "date": "2025-12-15T06:36:05.381708",
+      "version": "8.3.222",
+      "epoch": -1
+    },
+    "initial_architecture": {
+      "nc": 80,
+      "end2end": true,
+      "reg_max": 1,
+      "scales": {
+        "n": [
+          0.5,
+          0.25,
+          1024
+        ],
+        "s": [
+          0.5,
+          0.5,
+          1024
+        ],
+        "m": [
+          0.5,
+          1.0,
+          512
+        ],
+        "l": [
+          1.0,
+          1.0,
+          512
+        ],
+        "x": [
+          1.0,
+          1.5,
+          512
+        ]
+      },
+      "backbone": [
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            64,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            128,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            256,
+            false,
+            0.25
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            false,
+            0.25
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            1024,
+            3,
+            2
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            1024,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "SPPF",
+          [
+            1024,
+            5,
+            3,
+            true
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C2PSA",
+          [
+            1024
+          ]
+        ]
+      ],
+      "head": [
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            6
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "nn.Upsample",
+          [
+            "None",
+            2,
+            "nearest"
+          ]
+        ],
+        [
+          [
+            -1,
+            4
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            256,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            256,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            13
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          2,
+          "C3k2",
+          [
+            512,
+            true
+          ]
+        ],
+        [
+          -1,
+          1,
+          "Conv",
+          [
+            512,
+            3,
+            2
+          ]
+        ],
+        [
+          [
+            -1,
+            10
+          ],
+          1,
+          "Concat",
+          [
+            1
+          ]
+        ],
+        [
+          -1,
+          1,
+          "C3k2",
+          [
+            1024,
+            true,
+            0.5,
+            true
+          ]
+        ],
+        [
+          [
+            16,
+            19,
+            22
+          ],
+          1,
+          "Detect",
+          [
+            "nc"
+          ]
+        ]
+      ],
+      "scale": "n",
+      "yaml_file": "yolo26n.yaml",
+      "channels": 3
+    },
+    "initial_nc": 80,
+    "initial_scale": "n",
+    "data_path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml",
+    "data_sha256": "1f18760508e9dbf2332cd7102ee9c15e11e08f3d15fc4202c8ee0ed1bb785b12",
+    "config_differences": {
+      "model": {
+        "b19": "yolo26n.pt",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\ultralytics\\cfg\\models\\26\\yolo26n-cca-fusion-v2.yaml"
+      },
+      "data": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml"
+      },
+      "project": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\runs\\detect"
+      },
+      "name": {
+        "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+        "cca": "yolo26n_b19_cca_fusion_v2"
+      },
+      "pretrained": {
+        "b19": true,
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt"
+      }
+    },
+    "excluded_fields": {
+      "save_dir": "run output, regenerated",
+      "cfg": "already resolved into args"
+    },
+    "source_commit": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+    "commit": "42072916046b7598bf90640fcde907a62265406d",
+    "import_path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\ultralytics\\__init__.py",
+    "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Jun 11 2026, 15:12:53) [MSC v.1942 64 bit (AMD64)]",
+    "executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
+    "omp_num_threads": "1",
+    "torch_num_threads": 1,
+    "ultralytics": "8.4.98",
+    "torch": "2.7.1+cu118",
+    "cuda": "11.8",
+    "cuda_visible_devices": null,
+    "gpu_identity": {
+      "logical_device": 0,
+      "name": "NVIDIA GeForce RTX 2060",
+      "uuid": "898c2aa5-61f1-c418-3da9-94b51b1be78b"
+    },
+    "module_path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\ultralytics\\nn\\modules\\cca_fusion_v2.py",
+    "config_comparison": {
+      "agnostic_nms": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "amp": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "angle": {
+        "b19": 1.0,
+        "cca": 1.0,
+        "equal": true
+      },
+      "augment": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "auto_augment": {
+        "b19": "randaugment",
+        "cca": "randaugment",
+        "equal": true
+      },
+      "batch": {
+        "b19": 32,
+        "cca": 32,
+        "equal": true
+      },
+      "bgr": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "box": {
+        "b19": 7.5,
+        "cca": 7.5,
+        "equal": true
+      },
+      "cache": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "cfg": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "classes": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "close_mosaic": {
+        "b19": 10,
+        "cca": 10,
+        "equal": true
+      },
+      "cls": {
+        "b19": 0.5,
+        "cca": 0.5,
+        "equal": true
+      },
+      "cls_pw": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "cls_remap": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "compile": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "conf": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "copy_paste": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "copy_paste_mode": {
+        "b19": "flip",
+        "cca": "flip",
+        "equal": true
+      },
+      "cos_lr": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "cutmix": {
+        "b19": 0.03,
+        "cca": 0.03,
+        "equal": true
+      },
+      "data": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\datasets\\Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42\\data.yaml",
+        "equal": false
+      },
+      "degrees": {
+        "b19": 11.0,
+        "cca": 11.0,
+        "equal": true
+      },
+      "deterministic": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "device": {
+        "b19": "0",
+        "cca": "0",
+        "equal": true
+      },
+      "dfl": {
+        "b19": 1.5,
+        "cca": 1.5,
+        "equal": true
+      },
+      "dis": {
+        "b19": 6.0,
+        "cca": 6.0,
+        "equal": true
+      },
+      "distill_model": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "dnn": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "dropout": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "dynamic": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "embed": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "end2end": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "epochs": {
+        "b19": 200,
+        "cca": 200,
+        "equal": true
+      },
+      "erasing": {
+        "b19": 0.4,
+        "cca": 0.4,
+        "equal": true
+      },
+      "exist_ok": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "fliplr": {
+        "b19": 0.5,
+        "cca": 0.5,
+        "equal": true
+      },
+      "flipud": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "format": {
+        "b19": "torchscript",
+        "cca": "torchscript",
+        "equal": true
+      },
+      "fraction": {
+        "b19": 1.0,
+        "cca": 1.0,
+        "equal": true
+      },
+      "freeze": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "hsv_h": {
+        "b19": 0.024,
+        "cca": 0.024,
+        "equal": true
+      },
+      "hsv_s": {
+        "b19": 0.84,
+        "cca": 0.84,
+        "equal": true
+      },
+      "hsv_v": {
+        "b19": 0.535,
+        "cca": 0.535,
+        "equal": true
+      },
+      "imgsz": {
+        "b19": 640,
+        "cca": 640,
+        "equal": true
+      },
+      "iou": {
+        "b19": 0.7,
+        "cca": 0.7,
+        "equal": true
+      },
+      "keras": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "kobj": {
+        "b19": 1.0,
+        "cca": 1.0,
+        "equal": true
+      },
+      "line_width": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "lr0": {
+        "b19": 0.01,
+        "cca": 0.01,
+        "equal": true
+      },
+      "lrf": {
+        "b19": 0.003,
+        "cca": 0.003,
+        "equal": true
+      },
+      "mask_ratio": {
+        "b19": 4,
+        "cca": 4,
+        "equal": true
+      },
+      "max_det": {
+        "b19": 300,
+        "cca": 300,
+        "equal": true
+      },
+      "mixup": {
+        "b19": 0.135,
+        "cca": 0.135,
+        "equal": true
+      },
+      "mode": {
+        "b19": "train",
+        "cca": "train",
+        "equal": true
+      },
+      "model": {
+        "b19": "yolo26n.pt",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\ultralytics\\cfg\\models\\26\\yolo26n-cca-fusion-v2.yaml",
+        "equal": false
+      },
+      "momentum": {
+        "b19": 0.937,
+        "cca": 0.937,
+        "equal": true
+      },
+      "mosaic": {
+        "b19": 1.0,
+        "cca": 1.0,
+        "equal": true
+      },
+      "multi_scale": {
+        "b19": 0.0,
+        "cca": 0.0,
+        "equal": true
+      },
+      "name": {
+        "b19": "b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+        "cca": "yolo26n_b19_cca_fusion_v2",
+        "equal": false
+      },
+      "nbs": {
+        "b19": 64,
+        "cca": 64,
+        "equal": true
+      },
+      "nms": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "opset": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "optimize": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "optimizer": {
+        "b19": "MuSGD",
+        "cca": "MuSGD",
+        "equal": true
+      },
+      "overlap_mask": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "patience": {
+        "b19": 60,
+        "cca": 60,
+        "equal": true
+      },
+      "perspective": {
+        "b19": 0.00055,
+        "cca": 0.00055,
+        "equal": true
+      },
+      "plots": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "pose": {
+        "b19": 12.0,
+        "cca": 12.0,
+        "equal": true
+      },
+      "pretrained": {
+        "b19": true,
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt",
+        "equal": false
+      },
+      "profile": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "project": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+        "cca": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\runs\\detect",
+        "equal": false
+      },
+      "quantize": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "rect": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "resume": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "retina_masks": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "rle": {
+        "b19": 1.0,
+        "cca": 1.0,
+        "equal": true
+      },
+      "save": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "save_conf": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "save_crop": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "save_dir": {
+        "b19": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+        "cca": null,
+        "equal": false
+      },
+      "save_frames": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "save_json": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "save_period": {
+        "b19": 20,
+        "cca": 20,
+        "equal": true
+      },
+      "save_txt": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "scale": {
+        "b19": 0.735,
+        "cca": 0.735,
+        "equal": true
+      },
+      "seed": {
+        "b19": 42,
+        "cca": 42,
+        "equal": true
+      },
+      "shear": {
+        "b19": 3.5,
+        "cca": 3.5,
+        "equal": true
+      },
+      "show": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "show_boxes": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "show_conf": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "show_labels": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "simplify": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "single_cls": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "source": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "split": {
+        "b19": "val",
+        "cca": "val",
+        "equal": true
+      },
+      "stream_buffer": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "task": {
+        "b19": "detect",
+        "cca": "detect",
+        "equal": true
+      },
+      "time": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      },
+      "tracker": {
+        "b19": "tracktrack.yaml",
+        "cca": "tracktrack.yaml",
+        "equal": true
+      },
+      "translate": {
+        "b19": 0.17,
+        "cca": 0.17,
+        "equal": true
+      },
+      "val": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "verbose": {
+        "b19": true,
+        "cca": true,
+        "equal": true
+      },
+      "vid_stride": {
+        "b19": 1,
+        "cca": 1,
+        "equal": true
+      },
+      "visualize": {
+        "b19": false,
+        "cca": false,
+        "equal": true
+      },
+      "warmup_bias_lr": {
+        "b19": 0.1,
+        "cca": 0.1,
+        "equal": true
+      },
+      "warmup_epochs": {
+        "b19": 3.0,
+        "cca": 3.0,
+        "equal": true
+      },
+      "warmup_momentum": {
+        "b19": 0.8,
+        "cca": 0.8,
+        "equal": true
+      },
+      "weight_decay": {
+        "b19": 0.0005,
+        "cca": 0.0005,
+        "equal": true
+      },
+      "workers": {
+        "b19": 8,
+        "cca": 8,
+        "equal": true
+      },
+      "workspace": {
+        "b19": null,
+        "cca": null,
+        "equal": true
+      }
+    },
+    "dataset_metadata_sha256": {
+      "audit_report.json": "4cbdb512e544c2d249097f95d7f9f42fa224035bfa586d42ac32d7acfcafad69",
+      "augmentation_manifest.csv": "2351d9f94512ae50266f190a3cc31a834e4fc828871e4265736e0a266cf1579d",
+      "augmentation_summary.json": "8764e99e5c65e0db3ad875fb7c499178f22a206abaf4ec5a9f2c9b57fa878e00",
+      "dataset_fingerprint.json": "d31edbb6f7af4931dd6158fbfdc9880ebfe438f071941b9be209f5a14ac88d0f",
+      "source_manifest.csv": "1d249189281b9efda915a9c018de077d072f5ae3c5e366f411d0d50720f440bc",
+      "split_manifest.csv": "911056c041f058250f20446a9fe3c73ddc98dc1f0b887b4cc866d0670bc9629e"
+    },
+    "dataset_manifest": {
+      "train": {
+        "images": 8414,
+        "targets": 10243,
+        "image_stat_label_content_sha256": "547efd9311a28af51b813b58d290e1051ffe4825bfc9db340a61cdaeca4bd08e"
+      },
+      "val": {
+        "images": 2404,
+        "targets": 2985,
+        "image_stat_label_content_sha256": "5267a157758e2ef8fbd112348eb28490a45c32e60dd69ded01f64dc7b1db2904"
+      },
+      "test": {
+        "images": 1202,
+        "targets": 1477,
+        "image_stat_label_content_sha256": "ccefa8e2b8e372425ea10c7a5d64f31414680415e9c81b79e65a15841d7065b3"
+      }
+    }
+  },
+  "launcher": {
+    "verified": true,
+    "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-cca-fusion-v2\\tools\\experiments\\b19_launcher_expanded.txt",
+    "sha256": "7589c1fbab84ea9c9b995da87df0ac44348a6ad9094a6fe16d83a47343171334",
+    "command": [
+      "yolo",
+      "detect",
+      "train",
+      "model=yolo26n.pt",
+      "data=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+      "epochs=200",
+      "patience=60",
+      "imgsz=640",
+      "batch=32",
+      "workers=8",
+      "device=0",
+      "seed=42",
+      "deterministic=True",
+      "amp=True",
+      "cache=False",
+      "optimizer=MuSGD",
+      "lr0=0.01",
+      "lrf=0.003",
+      "momentum=0.937",
+      "weight_decay=0.0005",
+      "warmup_epochs=3.0",
+      "warmup_momentum=0.8",
+      "warmup_bias_lr=0.1",
+      "cos_lr=True",
+      "close_mosaic=10",
+      "hsv_h=0.024",
+      "hsv_s=0.84",
+      "hsv_v=0.535",
+      "degrees=11.0",
+      "translate=0.17",
+      "scale=0.735",
+      "shear=3.5",
+      "perspective=0.00055",
+      "flipud=0.0",
+      "fliplr=0.5",
+      "bgr=0.0",
+      "mosaic=1.0",
+      "mixup=0.135",
+      "cutmix=0.03",
+      "copy_paste=0.0",
+      "box=7.5",
+      "cls=0.5",
+      "dfl=1.5",
+      "save=True",
+      "save_period=20",
+      "plots=True",
+      "val=True",
+      "project=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect",
+      "name=b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42",
+      "exist_ok=False"
+    ],
+    "trainer": "native DetectionTrainer"
+  },
+  "runtime_issues": [
+    "b19 torch=2.8.0+cu128; current torch=2.7.1+cu118",
+    "b19 Python=3.12.3; current=3.11.15",
+    "b19 GPU=NVIDIA GeForce RTX 4090; current=NVIDIA GeForce RTX 2060",
+    "Insufficient verified headroom: free=4.99 GiB; require 8 GiB for preflight."
+  ]
+}

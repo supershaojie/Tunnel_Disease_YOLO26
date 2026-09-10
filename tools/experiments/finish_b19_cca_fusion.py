@@ -17,7 +17,6 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from tools.experiments import run_b19_cca_fusion as shared
-from tools.experiments.run_b19_cca_fusion import MODEL
 
 import torch
 
@@ -31,7 +30,7 @@ from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import LOGGER, YAML
 
 
-def checkpoint_provenance(run):
+def checkpoint_provenance(run, experiment=shared.EXPERIMENT):
     """Identify the selected checkpoint and the exact source/environment used for postprocessing."""
     path = run / "weights/best.pt"
     return dict(
@@ -52,7 +51,11 @@ def checkpoint_provenance(run):
         ),
         source_sha256={
             str(p.relative_to(ROOT)): shared.sha256(p)
-            for p in (MODEL, Path(__file__), ROOT / "ultralytics/nn/modules/cca_fusion.py")
+            for p in (
+                experiment.model,
+                experiment.finish_entry,
+                Path(sys.modules[experiment.block_type.__module__].__file__),
+            )
         },
     )
 
@@ -197,6 +200,7 @@ def archive_package(run, output, *, source_files=(), required_files=None, eviden
             "completed.json",
         ]
     )
+    required = [Path(name).as_posix() for name in required]
     for name in required:
         if not (run / name).is_file():
             raise FileNotFoundError(run / name)
@@ -206,13 +210,17 @@ def archive_package(run, output, *, source_files=(), required_files=None, eviden
     )
     files = {}
     for path in run.rglob("*"):
-        if any(folder in path.parents for folder in exclude_dirs):
+        if any(folder in path.parents for folder in exclude_dirs) or any(
+            ".attempt." in part for part in path.relative_to(run).parts
+        ):
             continue
-        if path.is_file() and path != run / "package_manifest.json":
+        if path.is_file() and path.name not in {"package_manifest.json", "package_result.json"}:
             if path.suffix == ".pt" and path != run / "weights/best.pt":
                 continue
             if path.suffix in {".yaml", ".json", ".jsonl", ".csv", ".log", ".txt", ".png", ".jpg", ".pt"}:
                 files["run/" + path.relative_to(run).as_posix()] = path
+    for name in required:
+        assert "run/" + name in files, f"Required result was not selected for archival: {name}"
     source = [
         "tools/experiments/verify_b19_cca_fusion.py",
         "docs/experiments/b19_cca_fusion_v1_server.md",
@@ -231,20 +239,8 @@ def archive_package(run, output, *, source_files=(), required_files=None, eviden
         "docs/experiments/b19_cca_fusion_v1.md",
         "tests/test_cca_fusion.py",
     ] + list(source_files)
-    for suffix in (
-        f"{stage}.{extension}"
-        for stage in ("preflight", "train", "test", "diagnose")
-        for extension in ("exit_status", "process_status.json", "console.log")
-    ):
-        path = run.parent / f"{run.name}_{suffix}"
-        if path.is_file():
-            files["run/" + path.name] = path
-    for stage in ("train", "test", "diagnose"):
-        pointer = run.parent / f"{run.name}_{stage}.current_attempt"
-        attempt = Path(pointer.read_text(encoding="utf-8").strip())
-        for path in attempt.iterdir():
-            if path.is_file():
-                files[f"attempts/{stage}/{path.name}"] = path
+    # Transient attempts and their console aliases are not archival inputs. Durable train/eval logs
+    # already live in the final run. Successful stage receipts are verified by package() before this call.
     patch = run / "source.patch"
     patch.write_bytes(
         subprocess.check_output(
@@ -285,16 +281,19 @@ def archive_package(run, output, *, source_files=(), required_files=None, eviden
     shared.write_json(run / "package_manifest.json", manifest)
     files["package_manifest.json"] = run / "package_manifest.json"
     output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("xb") as target, tarfile.open(fileobj=target, mode="w:gz") as archive:
+    with output.open("xb") as target, tarfile.open(fileobj=target, mode="w:gz", dereference=True) as archive:
         for name, path in files.items():
             archive.add(path, arcname=name, recursive=False)
     with tarfile.open(output, "r:gz") as archive:
         for name, expected in manifest.items():
+            member = archive.getmember(name)
+            if not member.isfile():
+                raise ValueError(f"Expected materialized regular archive member: {name}")
             digest = hashlib.sha256()
-            with archive.extractfile(name) as stream:
+            with archive.extractfile(member) as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                     digest.update(chunk)
-            if digest.hexdigest() != expected["sha256"] or archive.getmember(name).size != expected["size_bytes"]:
+            if digest.hexdigest() != expected["sha256"] or member.size != expected["size_bytes"]:
                 raise ValueError(f"Archive integrity mismatch: {name}")
     with gzip.open(output, "rb") as stream:
         while stream.read(1024 * 1024):
@@ -302,7 +301,12 @@ def archive_package(run, output, *, source_files=(), required_files=None, eviden
     digest = shared.sha256(output)
     output.with_name(output.name + ".sha256").write_text(f"{digest}  {output.name}\n", encoding="utf-8")
     result = dict(
-        archive=str(output.resolve()), size_bytes=output.stat().st_size, sha256=digest, verified_files=len(manifest)
+        archive=str(output.resolve()),
+        size_bytes=output.stat().st_size,
+        sha256=digest,
+        verified_files=len(manifest),
+        gzip_crc_verified=True,
+        key_members=["run/" + name for name in required] + ["source.tar", "package_manifest.json"],
     )
     shared.write_json(output.with_name(output.name + ".json"), result)
     shared.write_json(run / "package_result.json", result)
@@ -346,18 +350,25 @@ EVAL_ARTIFACTS = (
     "args.yaml",
     "predictions.json",
     "BoxPR_curve.png",
+    "BoxP_curve.png",
+    "BoxR_curve.png",
+    "BoxF1_curve.png",
     "confusion_matrix.png",
     "confusion_matrix_normalized.png",
 )
 
 
-def provenance(run, data):
-    """Bind reports to CCA v1 code, best weight, effective data file, and current image/label manifests."""
-    evidence = checkpoint_provenance(run)
+def provenance(run, data, experiment=shared.EXPERIMENT):
+    """Bind reports to the selected CCA code, best weight, effective data file, and current image/label manifests."""
+    evidence = checkpoint_provenance(run, experiment)
     evidence["source_sha256"] = shared.source_hashes(
-        (Path(__file__), ROOT / "tools/experiments/server_b19_cca_fusion_v1.sh")
+        (
+            Path(__file__),
+            ROOT / "tools/experiments/server_b19_cca_fusion_v1.sh",
+            *(ROOT / p for p in experiment.source_files),
+        )
     )
-    evidence.update(version=1, data=str(data), data_sha256=shared.sha256(data))
+    evidence.update(version=experiment.version, data=str(data), data_sha256=shared.sha256(data))
     evidence["dataset_manifest"] = shared.dataset_manifest(data)
     return evidence
 
@@ -385,9 +396,9 @@ def report_directory(run, stage, evidence):
     return candidate
 
 
-def evaluate_best(run, data, only_split=None, baseline_best=None):
+def evaluate_best(run, data, only_split=None, baseline_best=None, experiment=shared.EXPERIMENT):
     """Run one independent FP32 val and test each, preserving full precision and native matrix thresholds."""
-    evidence = provenance(run, data)
+    evidence = provenance(run, data, experiment)
     report_run = run if baseline_best is None else run / "baseline_comparison"
     if baseline_best is not None:
         evidence.update(
@@ -406,7 +417,7 @@ def evaluate_best(run, data, only_split=None, baseline_best=None):
         records, operating = {}, None
         for split in COUNTS:
             subprocess.run(
-                [sys.executable, str(Path(__file__)), "--stage", "test", "--run", str(run), "--split", split]
+                [sys.executable, str(experiment.finish_entry), "--stage", "test", "--run", str(run), "--split", split]
                 + (["--baseline-best", str(baseline_best)] if baseline_best is not None else []),
                 check=True,
                 cwd=ROOT,
@@ -473,7 +484,7 @@ def evaluate_best(run, data, only_split=None, baseline_best=None):
             run,
             data,
             split=split,
-            block_type=Concat_CCA_Fusion if baseline_best is None else None,
+            block_type=experiment.block_type if baseline_best is None else None,
             evidence=evidence.copy(),
             output=output,
             capture=capture,
@@ -507,7 +518,7 @@ def match_boxes(detected, targets, threshold):
 
 
 @torch.no_grad()
-def diagnose(run, data, device="cuda:0"):
+def diagnose(run, data, device="cuda:0", experiment=shared.EXPERIMENT):
     """Inspect fixed validation images with unchanged weights and a temporary residual-output bypass."""
     import matplotlib
 
@@ -516,7 +527,7 @@ def diagnose(run, data, device="cuda:0"):
     from matplotlib.patches import Rectangle
     from ultralytics.utils.ops import xywh2xyxy
 
-    evidence = provenance(run, data)
+    evidence = provenance(run, data, experiment)
     cfg = check_det_dataset(str(data), autodownload=False)
     images = sorted(p for p in Path(cfg["val"]).rglob("*") if p.suffix[1:].lower() in IMG_FORMATS)[:16]
     assert len(images) == 16
@@ -527,7 +538,7 @@ def diagnose(run, data, device="cuda:0"):
     model, _ = load_checkpoint(evidence["weight"])
     model = model.float().eval().to(device)
     block = model.model[12]
-    assert type(block) is Concat_CCA_Fusion
+    assert type(block) is experiment.block_type
     assert torch.count_nonzero(block.Wo.weight) > 0
     validator = DetectionValidator(
         args=dict(
@@ -587,6 +598,7 @@ def diagnose(run, data, device="cuda:0"):
                     for n in valid_count.unique().tolist()
                 },
             )
+            row.update(experiment.trainer_type.mechanism_diagnostics(block, up, tensors["low"], tensors["high"]))
             # This hook changes only the returned R, with no parameter/checkpoint mutation.
             bypass = block.Wo.register_forward_hook(lambda m, a, v: torch.zeros_like(v))
             try:
@@ -653,9 +665,9 @@ def diagnose(run, data, device="cuda:0"):
     )
 
 
-def package(run, data, output):
+def package(run, data, output, experiment=shared.EXPERIMENT):
     """Package existing matching evaluation and diagnosis, never invoking training or evaluation."""
-    evidence = provenance(run, data)
+    evidence = provenance(run, data, experiment)
     for stage in ("train", "test", "diagnose"):
         pointer = run.parent / f"{run.name}_{stage}.current_attempt"
         attempt = Path(pointer.read_text(encoding="utf-8").strip())
@@ -717,8 +729,14 @@ def package(run, data, output):
     assert frozen_record["operating"] == {k: v for k, v in index["recall_at_precision"].items() if k != "test"}
     required.append(str(frozen.relative_to(run)))
     comparison = run / "baseline_comparison/evaluation.json"
+    if experiment.version == 2 and not comparison.is_file():
+        raise FileNotFoundError(f"CCA v2 requires the same-condition b19 comparison: {comparison}")
     if comparison.exists():
         baseline_index = json.loads(comparison.read_text(encoding="utf-8"))
+        assert (
+            baseline_index["evidence"]["weight_sha256"]
+            == "d0b2ca5a5d30de9ed002c64c9238b182ddeccce644c055ae5f2dba566878bd5e"
+        )
         assert baseline_index["evidence"]["commit"] == evidence["commit"]
         assert baseline_index["evidence"]["data_sha256"] == evidence["data_sha256"]
         for item in baseline_index["reports"].values():
@@ -730,14 +748,15 @@ def package(run, data, output):
     archive_package(
         run,
         output,
+        source_files=experiment.source_files,
         required_files=required,
         evidence=evidence,
         exclude_dirs=tuple(p for p in (run / "evaluation").iterdir() if p not in selected),
     )
 
 
-def main(argv=None):
-    """Expose the CCA v1 completion stages; test includes both independent val and held-out test."""
+def main(argv=None, experiment=shared.EXPERIMENT):
+    """Expose the selected CCA completion stages; test includes both independent val and held-out test."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--stage", choices=("test", "diagnose", "package"), required=True)
     parser.add_argument("--run", type=Path, required=True)
@@ -750,7 +769,7 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
     run = args.run.resolve()
-    assert run == ROOT / "runs/detect" / shared.NAME
+    assert run == ROOT / "runs/detect" / experiment.name
     completed_run(run)
     data = Path(YAML.load(run / "args.yaml")["data"]).resolve()
     if args.stage == "package":
@@ -761,14 +780,15 @@ def main(argv=None):
                 args.output
                 or ROOT
                 / "artifacts/experiments"
-                / f"{shared.NAME}_{shared.git('rev-parse', '--short=12', 'HEAD')}.tar.gz"
+                / f"{experiment.name}_{shared.git('rev-parse', '--short=12', 'HEAD')}.tar.gz"
             ).resolve(),
+            experiment=experiment,
         )
     else:
         if args.stage == "test":
-            evaluate_best(run, data, args.split, args.baseline_best)
+            evaluate_best(run, data, args.split, args.baseline_best, experiment)
         else:
-            diagnose(run, data)
+            diagnose(run, data, experiment=experiment)
 
 
 if __name__ == "__main__":

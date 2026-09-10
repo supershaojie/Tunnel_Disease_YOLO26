@@ -13,19 +13,19 @@ from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils.torch_utils import ModelEMA, autocast
 
 
-def verify(weights, output):
+def verify(weights, output, experiment=shared.EXPERIMENT, trainer_type=shared.AuditedTrainer):
     """Check native reconstruction, task gradients, nonzero EMA, reload/fuse and actual Validator calls."""
     output.mkdir(parents=True, exist_ok=False)
     torch.set_num_threads(2)
     report = dict(scope="local synthetic checks; NOT server real batch32/640 preflight", torch=torch.__version__)
-    report["structure"] = shared.structural_checks(output)
+    report["structure"] = shared.structural_checks(output, experiment.model, experiment.block_type)
     assert shared.sha256(weights) == shared.PRETRAINED_SHA256
     source, _ = load_checkpoint(weights)
-    trainer = object.__new__(shared.AuditedTrainer)
+    trainer = object.__new__(trainer_type)
     trainer.args = shared.get_cfg(overrides=shared.REFERENCE["args"] | {"save_dir": None})
     trainer.data = dict(nc=1, channels=3, names={0: "crack"})
     torch.manual_seed(42)
-    model = trainer.get_model(str(shared.MODEL), source, verbose=False)
+    model = trainer.get_model(str(experiment.model), source, verbose=False)
     model.args = trainer.args
     report["pretrained"] = trainer.weight_audit
     report["pretrained"]["loaded_count"] = len(trainer.weight_audit["loaded_keys"])
@@ -79,7 +79,7 @@ def verify(weights, output):
         )
         if device == "cpu":
             ema.ema.args = model.args
-            report["reload"] = shared.save_reload_check(ema.ema, output)
+            report["reload"] = shared.save_reload_check(ema.ema, output, experiment.block_type)
         del candidate, optimizer, ema
     # Tiny generated labeled dataset drives the real standalone Validator after warmup.
     from PIL import Image
@@ -142,6 +142,7 @@ def verify(weights, output):
             peak_allocated_bytes=torch.cuda.max_memory_allocated(),
             scope="CCA operator only, synthetic tensors; includes other live tensors; not end-to-end training memory",
         )
+    report["experiment"] = experiment.name
     report["passed"] = True
     shared.write_json(output / "local_validation.json", report)
     return report
