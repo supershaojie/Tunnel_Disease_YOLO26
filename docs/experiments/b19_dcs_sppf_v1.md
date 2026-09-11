@@ -120,7 +120,7 @@ Y   = Y_native + 0.10 × tanh(theta) × R
 
 AMP 完整模型测试的前 5 次默认 GradScaler 尝试发生**缩放梯度溢出**，原生机制将 scale 从 65536 降到 2048，并跳过这 5 次 optimizer 更新；审计确认跳步时所有参数不变。后续接受的梯度、损失、输出及参数均有限，且所有新增参数都实际更新。不能将该结果表述成“从未出现任何缩放梯度 Inf”。模块 autocast 的独立直接 backward 则无需 loss scaling，数值有限。
 
-B32/640 的本地结果是形式检查，不冒充 RTX 4090 上的正式 B32 训练通过。服务器独立预检还会使用原数据加载器、B32、AMP、原 MuSGD 和原 warmup，最多观察 64 个 batch，严格要求 theta、refine、fuse 的全部新增参数有有限梯度并发生更新；不满足则失败，不能启动正式训练。预检与正式训练分属独立进程，训练重新从原始预训练文件和 seed42 初始化。
+B32/640 的本地结果是形式检查，不冒充 RTX 4090 上的正式 B32 训练通过。服务器独立预检使用原数据加载器、B32、AMP、原 MuSGD 和原 warmup，记录 64 个 batch，要求 theta 先解锁、随后全部新增支路参数通过有限梯度和有效任务更新审计；不满足仍失败。四个 BN gamma 的 FP32 舍入证明、原生/零任务梯度重放及真实服务器证据边界见 [preflight 修复报告](b19_dcs_sppf_v1_preflight_fix.md)。预检与正式训练分属独立进程，训练重新从原始预训练文件和 seed42 初始化。
 
 完整数值见 [local validation](evidence/dcs_sppf_v1_local_validation.json)。诊断样例见 [JSON](evidence/dcs_sppf_v1_diagnostic_smoke.json) / [CSV](evidence/dcs_sppf_v1_diagnostic_smoke.csv)，均来自未训练的非零 theta 测试副本，不能当作训练结果。
 

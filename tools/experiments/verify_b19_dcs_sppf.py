@@ -25,6 +25,7 @@ from ultralytics import YOLO
 from ultralytics.models.yolo.detect import DetectionTrainer
 from ultralytics.nn.modules import C2PSA, DCS_SPPF, SPPF
 from ultralytics.nn.tasks import DetectionModel, load_checkpoint
+from ultralytics.optim.muon import MuSGD
 from ultralytics.utils.torch_utils import autocast, get_flops, init_seeds
 
 
@@ -193,41 +194,209 @@ def reload_in_process(directory):
     common.write_json(directory / "reload_checks.json", errors)
 
 
-def observe_step(model, parameters, scaler, step):
-    """Observe native scaler acceptance: overflows must skip all updates and lower scale; accepted gradients must be finite."""
+def tensor_stats(value):
+    """Use the CCA/NDP finite-gradient ledger convention, retaining FP64 diagnostic norms only."""
+    if value is None:
+        return dict(is_none=True, finite=None, norm=None, max_abs=None)
+    value = value.detach()
+    finite = bool(torch.isfinite(value).all())
+    return dict(
+        is_none=False,
+        finite=finite,
+        norm=value.double().norm().item() if finite else None,
+        max_abs=value.abs().max().item() if finite else None,
+    )
+
+
+def parameter_snapshot(value):
+    """Keep full scalar/BN values and compact convolution statistics without changing live tensor precision."""
+    return {**tensor_stats(value), "values": value.detach().cpu().tolist() if value.ndim < 2 else None}
+
+
+def optimizer_replay(optimizer, group, parameter, zero_task=False):
+    """Reuse CCA/NDP's isolated native MuSGD replay to separate task gradients from decay and stale momentum."""
+    replica = torch.nn.Parameter(parameter.detach().clone())
+    replica.grad = torch.zeros_like(parameter) if zero_task else parameter.grad.detach().clone()
+    replay = type(optimizer)([dict(group, params=[replica])], muon=optimizer.muon, sgd=optimizer.sgd)
+    replay.state[replica] = copy.deepcopy(optimizer.state.get(parameter, {}))
+    replay.step()
+    return replica.detach(), replay.state[replica]
+
+
+def observe_step(model, parameters, optimizer, scaler, step):
+    """Observe the actual native step after unscale/clip; prove task updates with exact FP32 and zero-task replays."""
+    assert type(optimizer) is MuSGD, "The fixed b19 audit requires native MuSGD"
     before = {k: p.detach().clone() for k, p in parameters.items()}
     all_before = [p.detach().clone() for p in model.parameters()]
     scale = scaler.get_scale()
     nonfinite = [
         name for name, p in model.named_parameters() if p.grad is not None and not torch.isfinite(p.grad).all()
     ]
-    gradients = {}
+    rows, groups, expected, no_task = {}, {}, {}, {}
     for name, parameter in parameters.items():
-        assert parameter.grad is not None, name
-        gradients[name] = (
-            parameter.grad.detach().float().abs().max().item() / scale if torch.isfinite(parameter.grad).all() else None
+        matches = [(i, g) for i, g in enumerate(optimizer.param_groups) for p in g["params"] if p is parameter]
+        assert len(matches) == 1, f"{name}: missing/duplicate optimizer membership"
+        assert parameter.dtype == torch.float32 and parameter.requires_grad, name
+        index, groups[name] = matches[0]
+        rows[name] = dict(
+            registrations=len(matches),
+            dtype=str(parameter.dtype),
+            before=parameter_snapshot(parameter),
+            gradient_before_clip=tensor_stats(
+                None if parameter.grad is None else parameter.grad.detach().double() / scale
+            ),
+            optimizer_group={
+                "index": index,
+                **{
+                    k: groups[name].get(k)
+                    for k in ("param_group", "lr", "momentum", "weight_decay", "use_muon", "nesterov")
+                },
+            },
         )
-    step()
-    skipped = scaler.get_scale() < scale
+        assert parameter.grad is not None, f"{name}: disconnected gradient"
+    calls = []
+
+    def before_step(opt, args, kwargs):
+        calls.append("before")
+        for name, p in parameters.items():
+            info = rows[name]
+            info["gradient_after_clip"] = tensor_stats(p.grad)
+            assert info["gradient_after_clip"]["finite"], f"{name}: nonfinite accepted gradient"
+            expected[name] = optimizer_replay(opt, groups[name], p)
+            no_task[name] = optimizer_replay(opt, groups[name], p, zero_task=True)
+            if name.endswith("bn.weight"):
+                group = groups[name]
+                assert group["param_group"] == "bn" and not group["use_muon"] and group["weight_decay"] == 0
+                assert group["nesterov"]
+                # Native MuSGD SGD arithmetic, including its FP32 momentum/Nesterov rounding.
+                direction = p.grad.add(expected[name][1]["momentum_buffer"], alpha=group["momentum"])
+                zero_direction = torch.zeros_like(p).add(no_task[name][1]["momentum_buffer"], alpha=group["momentum"])
+                requested = -group["lr"] * direction.double()
+                task_component = -group["lr"] * (direction.double() - zero_direction.double())
+                neighbor = torch.nextafter(before[name], torch.where(requested > 0, float("inf"), -float("inf")))
+                half_ulp = (neighbor.double() - before[name].double()).abs() / 2
+                info["rounding"] = dict(
+                    requested_update_max_abs=requested.abs().max().item(),
+                    current_task_component_max_abs=task_component.abs().max().item(),
+                    half_ulp_min=half_ulp.min().item(),
+                    max_half_ulp_fraction=(requested.abs() / half_ulp).max().item(),
+                    strictly_below_half_ulp=bool((requested.abs() < half_ulp).all()),
+                    fp64_requested_step_rounds_to_before=torch.equal(
+                        (before[name].double() + requested).float(), before[name]
+                    ),
+                    momentum_before=parameter_snapshot(
+                        opt.state.get(p, {}).get("momentum_buffer", torch.zeros_like(p))
+                    ),
+                    momentum_after=parameter_snapshot(expected[name][1]["momentum_buffer"]),
+                    task_changes_momentum=not torch.equal(
+                        expected[name][1]["momentum_buffer"], no_task[name][1]["momentum_buffer"]
+                    ),
+                )
+
+    handles = [
+        optimizer.register_step_pre_hook(before_step),
+        optimizer.register_step_post_hook(lambda *args: calls.append("after")),
+    ]
+    try:
+        step()  # The trainer still owns unscale, clipping, native MuSGD, scaler, zero_grad and EMA.
+    finally:
+        for handle in handles:
+            handle.remove()
+    skipped = not calls
     if skipped:
-        assert nonfinite, "Scaler skipped despite finite gradients"
+        assert nonfinite and scaler.get_scale() < scale, "No optimizer step without an AMP overflow"
         assert all(torch.equal(a, b) for a, b in zip(all_before, model.parameters())), "Overflow changed parameters"
     else:
+        assert calls == ["before", "after"], f"Unexpected optimizer invocation: {calls}"
         assert not nonfinite, f"Accepted nonfinite gradients: {nonfinite}"
+    for name, p in parameters.items():
+        info = rows[name]
+        info.update(
+            after=parameter_snapshot(p), update_max_abs=(p.detach().double() - before[name].double()).abs().max().item()
+        )
+        info["gradient_max_abs"] = info["gradient_before_clip"]["max_abs"]
+        info["effective_update"] = False
+        info["update_kind"] = "overflow_skip" if skipped else "no_task_update"
+        if skipped:
+            continue
+        predicted, state = expected[name]
+        assert torch.equal(predicted, p), f"{name}: actual parameter differs from native FP32 replay"
+        assert set(state) == set(optimizer.state[p]), f"{name}: optimizer state keys differ"
+        assert all(torch.equal(value, optimizer.state[p][key]) for key, value in state.items()), (
+            f"{name}: optimizer did not apply expected task momentum"
+        )
+        info["native_replay_exact"] = True
+        info["current_task_update_max_abs"] = (p.detach().double() - no_task[name][0].double()).abs().max().item()
+        post = info["gradient_after_clip"]
+        eligible = post["max_abs"] > 0 and info["gradient_max_abs"] > 0 and groups[name]["lr"] > 0
+        if eligible and info["update_max_abs"] > 0 and info["current_task_update_max_abs"] > 0:
+            info.update(effective_update=True, update_kind="observable_task_update")
+        elif eligible and name.endswith("bn.weight") and info["update_max_abs"] == 0:
+            rounding = info["rounding"]
+            if (
+                rounding["requested_update_max_abs"] > 0
+                and rounding["current_task_component_max_abs"] > 0
+                and rounding["task_changes_momentum"]
+                and rounding["strictly_below_half_ulp"]
+                and rounding["fp64_requested_step_rounds_to_before"]
+            ):
+                info.update(effective_update=True, update_kind="verified_sub_ulp_task_step")
     assert all(torch.isfinite(p).all() for p in model.parameters())
     return {
-        "parameters": {
-            name: {
-                "gradient_max_abs": gradients[name],
-                "update_max_abs": (p.detach() - before[name]).abs().max().item(),
-            }
-            for name, p in parameters.items()
-        },
+        "parameters": rows,
+        "theta_before": before["theta"].item(),
+        "theta_after": parameters["theta"].item(),
+        "alpha_before": (0.10 * before["theta"].tanh()).item(),
+        "alpha_after": (0.10 * parameters["theta"].detach().tanh()).item(),
         "scaler_before": scale,
         "scaler_after": scaler.get_scale(),
         "skipped": skipped,
         "nonfinite_scaled_gradient_keys": nonfinite,
     }
+
+
+def staged_gradient_audit(rows, require_complete=True):
+    """Require theta to unlock before branch learning; retain every parameter and separate rounded from physical updates."""
+    summary = {
+        name: dict(
+            initial_value=info["before"],
+            dtype=info["dtype"],
+            optimizer_group=info["optimizer_group"],
+            first_nonzero_gradient_batch=None,
+            first_observable_update_batch=None,
+            first_effective_update_batch=None,
+            effective_update_kind=None,
+        )
+        for name, info in rows[0]["parameters"].items()
+    }
+    assert rows[0]["theta_before"] == rows[0]["alpha_before"] == 0, "Expected zero-init identity gate"
+    for name, info in summary.items():
+        if name.endswith("bn.weight"):
+            assert all(x == 1 for x in info["initial_value"]["values"]), f"{name}: unexpected gamma initialization"
+    first_unlock = None
+    for row in rows:
+        batch = row["batch"]
+        for name, info in row["parameters"].items():
+            entry = summary[name]
+            grad = info["gradient_before_clip"]
+            if grad["finite"] and grad["max_abs"] > 0 and entry["first_nonzero_gradient_batch"] is None:
+                entry["first_nonzero_gradient_batch"] = batch
+            if info["update_max_abs"] > 0 and entry["first_observable_update_batch"] is None:
+                entry["first_observable_update_batch"] = batch
+            if row["alpha_before"] == 0 and name != "theta" and grad["finite"]:
+                assert grad["max_abs"] == 0, f"{name}: branch task gradient before gate unlock"
+            if info["effective_update"] and entry["first_effective_update_batch"] is None:
+                if name == "theta":
+                    assert info["update_kind"] == "observable_task_update" and row["alpha_after"] != 0
+                    first_unlock = batch
+                else:
+                    assert first_unlock is not None and batch > first_unlock and row["alpha_before"] != 0, name
+                entry.update(first_effective_update_batch=batch, effective_update_kind=info["update_kind"])
+    missing = [name for name, info in summary.items() if info["first_effective_update_batch"] is None]
+    result = dict(parameters=summary, first_gate_unlock_batch=first_unlock, missing_effective_parameters=missing)
+    if require_complete:
+        assert not missing, f"No finite gradient-backed effective update within {len(rows)} batches: {missing}"
+    return result
 
 
 def synthetic_model_updates(model, device, amp, directory):
@@ -244,7 +413,7 @@ def synthetic_model_updates(model, device, amp, directory):
         "bboxes": torch.tensor([[0.5, 0.5, 0.08, 0.6], [0.3, 0.6, 0.6, 0.08]], device=device),
     }
     rows, observed = [], set()
-    for _ in range(64):
+    for i in range(64):
         optimizer.zero_grad(set_to_none=True)
         with autocast(amp, device=torch.device(device).type):
             loss, _ = model(batch)
@@ -259,15 +428,24 @@ def synthetic_model_updates(model, device, amp, directory):
             scaler.update()
             optimizer.zero_grad(set_to_none=True)
 
-        row = observe_step(model, params, scaler, native_step)
+        row = observe_step(model, params, optimizer, scaler, native_step)
+        row["batch"] = i
         row["loss"] = loss.item()
         rows.append(row)
-        observed.update(k for k, v in row["parameters"].items() if v["gradient_max_abs"] and v["update_max_abs"] > 0)
+        observed.update(k for k, v in row["parameters"].items() if v["effective_update"])
         if observed == set(params):
             break
     common.write_json(directory / f"synthetic_amp_{amp}.json", rows)
     assert observed == set(params), f"No gradient-backed update: {set(params) - observed}"
-    return {"batch": 2, "imgsz": 640, "amp": amp, "optimizer": "MuSGD", "max_batches": 64, "steps": rows}
+    return {
+        "batch": 2,
+        "imgsz": 640,
+        "amp": amp,
+        "optimizer": "MuSGD",
+        "max_batches": 64,
+        "staged_audit": staged_gradient_audit(rows),
+        "steps": rows,
+    }
 
 
 def model_checks(source, directory, device="cpu"):
@@ -313,7 +491,7 @@ def native_preflight(config, directory):
     parameters = new_parameters(trainer.model.model[9])
     nb = len(trainer.train_loader)
     nw = max(round(trainer.args.warmup_epochs * nb), 100)
-    rows, observed = [], set()
+    rows = []
     last_step = -1
     for i, batch in enumerate(trainer.train_loader):
         trainer.accumulate = max(1, int(np.interp(i, [0, nw], [1, trainer.args.nbs / trainer.batch_size]).round()))
@@ -338,29 +516,23 @@ def native_preflight(config, directory):
         assert torch.isfinite(loss)
         trainer.scaler.scale(loss).backward()
         if i - last_step >= trainer.accumulate:
-            row = observe_step(trainer.model, parameters, trainer.scaler, trainer.optimizer_step)
-            observed.update(
-                name
-                for name, value in row["parameters"].items()
-                if value["gradient_max_abs"] and value["update_max_abs"] > 0
-            )
+            row = observe_step(trainer.model, parameters, trainer.optimizer, trainer.scaler, trainer.optimizer_step)
             rows.append({"batch": i, "loss": loss.item(), **row})
             last_step = i
         common.write_json(directory / "native_steps.json", rows)
-        if observed == set(parameters):
-            break
+        summary = staged_gradient_audit(rows, require_complete=False)
+        common.write_json(directory / "native_gradient_summary.json", summary)
         if i >= 63:
-            raise AssertionError(
-                f"No finite gradient-backed update within 64 native B32 batches: {set(parameters) - observed}"
-            )
-    assert observed == set(parameters)
+            break
+    assert i == 63 and len(rows) == 64, "Expected exactly 64 original warmup B32 optimizer attempts"
+    summary = staged_gradient_audit(rows)
     return {
         "batch": 32,
         "imgsz": 640,
         "amp": trainer.amp,
         "max_batches": 64,
         "batches_observed": i + 1,
-        "updated_parameters": sorted(observed),
+        "staged_audit": summary,
     }
 
 

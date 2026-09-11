@@ -13,14 +13,119 @@ import torch
 from tools.experiments import b19_common as common
 from tools.experiments.finish_b19_dcs_sppf import archive_package, package
 from tools.experiments.run_b19_dcs_sppf import audit_arguments
-from tools.experiments.verify_b19_dcs_sppf import build_pair, module_checks, module_identity, topology_checks
+from tools.experiments.verify_b19_dcs_sppf import (
+    build_pair,
+    module_checks,
+    module_identity,
+    new_parameters,
+    observe_step,
+    staged_gradient_audit,
+    topology_checks,
+)
+from ultralytics.models.yolo.detect import DetectionTrainer
 from ultralytics.nn.modules import DCS_SPPF, SPPF
+from ultralytics.utils.torch_utils import init_seeds
 
 
 def test_zero_init_and_delayed_updates():
     """Require exact native identity and nonzero gradient-backed updates, including the zero-first-step invariant."""
     report = module_checks()
     assert report["identity"][-1]["max_abs"] == report["identity"][-1]["mean_abs"] == 0
+
+
+def test_zero_init_gated_residual_branch_staged_update(tmp_path):
+    """Expose FP32 gamma rounding at native warmup LR while requiring every branch's task-attributable update."""
+    init_seeds(42, deterministic=True)
+    native, model = SPPF(32, 32, shortcut=True).train(), DCS_SPPF(32, 32, shortcut=True).train()
+    model.load_state_dict(native.state_dict(), strict=False)
+    x = torch.randn(32, 32, 8, 13)
+    identity = module_identity(native, model, x)
+    params = new_parameters(model)
+    optimizer = DetectionTrainer.build_optimizer(None, model, "MuSGD", 0.01, 0.937, 0.0005)
+    scaler = torch.amp.GradScaler("cuda", enabled=False)
+    target = torch.randn_like(x)
+    rows = []
+    for i in range(64):
+        for group in optimizer.param_groups:
+            start = 0.1 if group["param_group"] == "bias" else 0.0
+            group["lr"] = start + (0.01 - start) * i / 792
+            group["momentum"] = 0.8 + (0.937 - 0.8) * i / 792
+        optimizer.zero_grad(set_to_none=True)
+        (model(x) - target).square().mean().backward()
+
+        def step():
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+            optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
+
+        rows.append({"batch": i, **observe_step(model, params, optimizer, scaler, step)})
+    summary = staged_gradient_audit(rows)
+    assert rows[0]["parameters"]["theta"]["gradient_max_abs"] > 0
+    assert summary["first_gate_unlock_batch"] == 1  # All non-bias groups have LR=0 on batch 0.
+    for name, info in summary["parameters"].items():
+        if name != "theta":
+            assert info["first_nonzero_gradient_batch"] == 2
+            assert info["first_effective_update_batch"] >= 2
+        if name.endswith("bn.weight"):
+            assert info["first_observable_update_batch"] is None
+            assert info["effective_update_kind"] == "verified_sub_ulp_task_step"
+    common.write_json(
+        tmp_path / "staged_module_b32.json",
+        dict(scope="local B32 module fixture, not server data", identity=identity, summary=summary, rows=rows),
+    )
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "disconnected",
+        "zero_gradient",
+        "zero_lr",
+        "missing_member",
+        "noop",
+        "zero_gamma",
+        "stale_momentum",
+        "lost_state",
+    ],
+)
+def test_staged_audit_rejects_dead_or_unapplied_parameters(fault):
+    """Tiny-gradient acceptance must still reject missing chains, no-op optimizers and double-zero initialization."""
+    model = DCS_SPPF(8, 8)
+    params = new_parameters(model)
+    optimizer = DetectionTrainer.build_optimizer(None, model, "MuSGD", 0.01, 0.937, 0.0005)
+    scaler = torch.amp.GradScaler("cuda", enabled=False)
+    gamma = params["fuse.bn.weight"]
+    if fault == "zero_gamma":
+        gamma.data.zero_()
+    for p in model.parameters():
+        p.grad = torch.zeros_like(p)
+    params["theta"].grad.fill_(0.01)
+    if fault == "missing_member":
+        for group in optimizer.param_groups:
+            group["params"] = [p for p in group["params"] if p is not gamma]
+    if fault == "disconnected":
+        gamma.grad = None
+    if fault == "stale_momentum":
+        optimizer.state[gamma]["momentum_buffer"] = torch.full_like(gamma, 0.1)
+    if fault == "zero_lr":
+        for group in optimizer.param_groups:
+            group["lr"] = 0
+    if fault == "lost_state":
+
+        def lose_state():
+            optimizer.step()
+            optimizer.state[params["theta"]]["momentum_buffer"].zero_()
+
+        with pytest.raises(AssertionError, match="expected task momentum"):
+            observe_step(model, params, optimizer, scaler, lose_state)
+        return
+    if fault in {"disconnected", "missing_member", "noop"}:
+        with pytest.raises(AssertionError, match="disconnected|membership|No optimizer step"):
+            observe_step(model, params, optimizer, scaler, (lambda: None) if fault == "noop" else optimizer.step)
+        return
+    row = observe_step(model, params, optimizer, scaler, optimizer.step)
+    with pytest.raises(AssertionError, match="No finite gradient|gamma initialization"):
+        staged_gradient_audit([{"batch": 0, **row}])
 
 
 @pytest.mark.parametrize("channels,shortcut", [((32, 32), True), ((32, 48), True), ((32, 32), False)])
