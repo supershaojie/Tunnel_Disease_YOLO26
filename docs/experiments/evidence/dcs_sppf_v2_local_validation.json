@@ -1665,9 +1665,9 @@
     "tools/experiments/b19_launcher_expanded.txt": "7589c1fbab84ea9c9b995da87df0ac44348a6ad9094a6fe16d83a47343171334",
     "tools/experiments/b19_reference.json": "60dea5253d0814abc97d73111c273a8948aafb877ca0f8f219b5fa87e5bc2780",
     "tools/experiments/b19_test_reference.json": "2c3fbf5ef90aa16db3789f8f32a06352caa1682784f0047fa81c994835664dec",
-    "tools/experiments/finish_b19_dcs_sppf.py": "172a8e81a12f7bc4870d7934d0af474b736d1ea1474317b94c424556891d1966",
+    "tools/experiments/finish_b19_dcs_sppf.py": "1edd78d08f8894ad48dcfc30850177c1c7af987fb6fbaacc8c1e83ec9c9d4a4b",
     "tools/experiments/finish_b19_dcs_sppf_v2.py": "8b90258c45fec6c194414e0751bde920c690104b159d4d060cddd6e874306a6b",
-    "tools/experiments/run_b19_dcs_sppf.py": "e73a9dc8a4837da5fb6bff2d33f21dd09e918a8cb1abfe2cd61158dd4c28b4ca",
+    "tools/experiments/run_b19_dcs_sppf.py": "c22dc68a178f3198ae1adde2f13ed5dfe0e92514b138103a9ef4864cbf51ab49",
     "tools/experiments/run_b19_dcs_sppf_v2.py": "8920a1e3699eaf8fe6433d6281926041bd3d20fd83bf064de54679188d02ddd2",
     "tools/experiments/server_b19_dcs_sppf_v1.sh": "15945d00f7f2a921f83c6ffe16764e938735d14f10a2e69fb5fe61c043ccaef9",
     "tools/experiments/server_b19_dcs_sppf_v2.sh": "2a8ee4c771f2f97b7dfb4bf14de974414f77fe07d5bd07ba58f5d475ef00d94f",
@@ -9527,5 +9527,19 @@
     "Latency trials vary and are not an exclusive-GPU server benchmark.",
     "No claim of new AP gain, convergence sufficiency, significant benefit or unique causality.",
     "Initial local fuse tree check failed because native Detect removes one2many; corrected to verify native removal and retain full one2one/output checks; original evidence retained locally."
-  ]
+  ],
+  "post_validation_delta": {
+    "change": "Only argparse help descriptions now show the explicit experiment name instead of the shared v1 description. No model, recipe, data, optimizer, validation or archive logic changed.",
+    "files": {
+      "tools/experiments/finish_b19_dcs_sppf.py": {
+        "full_validation_sha256": "172a8e81a12f7bc4870d7934d0af474b736d1ea1474317b94c424556891d1966",
+        "delivery_sha256": "1edd78d08f8894ad48dcfc30850177c1c7af987fb6fbaacc8c1e83ec9c9d4a4b"
+      },
+      "tools/experiments/run_b19_dcs_sppf.py": {
+        "full_validation_sha256": "e73a9dc8a4837da5fb6bff2d33f21dd09e918a8cb1abfe2cd61158dd4c28b4ca",
+        "delivery_sha256": "c22dc68a178f3198ae1adde2f13ed5dfe0e92514b138103a9ef4864cbf51ab49"
+      }
+    },
+    "verification": "All three v2 --help entries executed and asserted the v2 identity; Ruff and diff checks passed."
+  }
 }

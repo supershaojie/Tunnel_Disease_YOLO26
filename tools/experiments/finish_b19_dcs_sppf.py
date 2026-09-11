@@ -566,7 +566,7 @@ def package(run, output, evidence):
 
 def main(argv=None, name=NAME, model=common.MODEL, block_type=DCS_SPPF, residual_control=None, historical=None):
     """Dispatch each finish stage and report failures under its actual stage name."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=f"Evaluate, diagnose and archive {name} with fixed b19 provenance.")
     parser.add_argument("--stage", choices=["test", "diagnose", "package", "all"], required=True)
     parser.add_argument("--run", type=Path, default=ROOT / "runs/detect" / name)
     parser.add_argument("--data", type=Path, default=Path(common.REFERENCE["args"]["data"]))

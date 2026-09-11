@@ -31,7 +31,7 @@ BASE = Path("/root/autodl-tmp/projects/Tunnel_Disease_YOLO26")
 
 def options_parser(name=NAME):
     """Expose locations and audit stages, with no training hyperparameter override interface."""
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=f"{name}: fixed b19 recipe and original COCO checkpoint.")
     parser.add_argument("--baseline-root", type=Path, default=BASE)
     parser.add_argument("--baseline-args", type=Path)
     parser.add_argument("--pretrained", type=Path)
