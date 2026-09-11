@@ -1667,7 +1667,7 @@
     "tools/experiments/b19_test_reference.json": "2c3fbf5ef90aa16db3789f8f32a06352caa1682784f0047fa81c994835664dec",
     "tools/experiments/finish_b19_dcs_sppf.py": "1edd78d08f8894ad48dcfc30850177c1c7af987fb6fbaacc8c1e83ec9c9d4a4b",
     "tools/experiments/finish_b19_dcs_sppf_v2.py": "8b90258c45fec6c194414e0751bde920c690104b159d4d060cddd6e874306a6b",
-    "tools/experiments/run_b19_dcs_sppf.py": "c22dc68a178f3198ae1adde2f13ed5dfe0e92514b138103a9ef4864cbf51ab49",
+    "tools/experiments/run_b19_dcs_sppf.py": "3547a8b8246020ce3510b3286b94077caf3d7983d16e0a0a74a8c1049a795280",
     "tools/experiments/run_b19_dcs_sppf_v2.py": "8920a1e3699eaf8fe6433d6281926041bd3d20fd83bf064de54679188d02ddd2",
     "tools/experiments/server_b19_dcs_sppf_v1.sh": "15945d00f7f2a921f83c6ffe16764e938735d14f10a2e69fb5fe61c043ccaef9",
     "tools/experiments/server_b19_dcs_sppf_v2.sh": "2a8ee4c771f2f97b7dfb4bf14de974414f77fe07d5bd07ba58f5d475ef00d94f",
@@ -9537,9 +9537,9 @@
       },
       "tools/experiments/run_b19_dcs_sppf.py": {
         "full_validation_sha256": "e73a9dc8a4837da5fb6bff2d33f21dd09e918a8cb1abfe2cd61158dd4c28b4ca",
-        "delivery_sha256": "c22dc68a178f3198ae1adde2f13ed5dfe0e92514b138103a9ef4864cbf51ab49"
+        "delivery_sha256": "3547a8b8246020ce3510b3286b94077caf3d7983d16e0a0a74a8c1049a795280"
       }
     },
-    "verification": "All three v2 --help entries executed and asserted the v2 identity; Ruff and diff checks passed."
+    "verification": "All three v2 --help entries executed and asserted the v2 identity; Ruff format/check and diff checks passed."
   }
 }
