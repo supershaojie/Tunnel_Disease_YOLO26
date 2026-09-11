@@ -253,3 +253,31 @@ def test_source_core_unchanged():
             cwd=common.ROOT,
         )
         assert original.replace(b"\r\n", b"\n") == (common.ROOT / name).read_bytes().replace(b"\r\n", b"\n")
+
+
+@pytest.mark.parametrize("nonfinite,expected_batches", [(True, 1), (False, 64)])
+def test_preflight_failure_receipts_and_fixed_bound(tmp_path, monkeypatch, nonfinite, expected_batches):
+    """Test only callback failure ownership with a stub; this is not native trainer or server validation."""
+    from tools.experiments import verify_b19_lbi_fusion as verifier
+
+    class CallbackDriver:
+        def __init__(self, config):
+            self.callbacks = {}
+            self.loss = torch.tensor(float("nan") if nonfinite else 1.0)
+            self.audit_images, self.accumulate = ["fixture-only"], 1
+
+        def add_callback(self, name, callback):
+            self.callbacks[name] = callback
+
+        def train(self):
+            for _ in range(65):
+                self.callbacks["on_train_batch_start"](self)
+                self.callbacks["on_train_batch_end"](self)
+
+    monkeypatch.setattr(verifier, "PreflightTrainer", CallbackDriver)
+    with pytest.raises(AssertionError):
+        verifier.native_preflight({}, tmp_path)
+    batches = json.loads((tmp_path / "native_batches.json").read_text())
+    assert len(batches) == expected_batches and batches[-1]["batch"] == expected_batches - 1
+    assert batches[-1]["loss"] == ("nan" if nonfinite else 1.0)
+    assert (tmp_path / "native_steps.json").is_file() and (tmp_path / "native_gradient_summary.json").is_file()

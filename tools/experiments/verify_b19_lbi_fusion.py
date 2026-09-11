@@ -492,21 +492,22 @@ def native_preflight(config, directory):
 
     def end(t):
         stepped = bool(t.audit_rows and t.audit_rows[-1]["batch"] == t.audit_batch)
+        loss_value, loss_finite = t.loss.item(), bool(torch.isfinite(t.loss))
         t.audit_batches.append(
             dict(
                 batch=t.audit_batch,
                 images=t.audit_images,
-                loss=t.loss.item(),
+                loss=loss_value if loss_finite else str(loss_value),
                 accumulate=t.accumulate,
                 optimizer_attempt=stepped,
                 status=("overflow_skip" if t.audit_rows[-1]["skipped"] else "step") if stepped else "accumulation",
             )
         )
-        assert torch.isfinite(t.loss)
-        summary = staged_gradient_audit(t.audit_rows, False)
         common.write_json(directory / "native_steps.json", t.audit_rows)
         common.write_json(directory / "native_batches.json", t.audit_batches)
+        summary = staged_gradient_audit(t.audit_rows, False)
         common.write_json(directory / "native_gradient_summary.json", summary)
+        assert loss_finite, "Nonfinite native loss; failed batch evidence saved"
         if not summary["missing"] or t.audit_batch + 1 == MAX_BATCHES:
             staged_gradient_audit(t.audit_rows)
             raise PreflightComplete
