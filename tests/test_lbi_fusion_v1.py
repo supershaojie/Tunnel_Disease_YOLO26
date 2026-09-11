@@ -1,6 +1,7 @@
 """Regressions for ordered LBI interaction, native parser/loading and auditable experiment lifecycle."""
 
 import io
+import copy
 import json
 import subprocess
 import tarfile
@@ -11,8 +12,11 @@ import torch
 
 from tools.experiments import b19_common as common
 from tools.experiments.finish_b19_lbi_fusion import archive_package, package
+from tools.experiments.lbi_fuse_audit import audit_candidates, capture, fuse_audit, snapshot
 from tools.experiments.run_b19_lbi_fusion import audit_arguments, require_runtime
 from tools.experiments.verify_b19_lbi_fusion import (
+    FUSE_ATOL,
+    FUSE_RTOL,
     build_pair,
     module_checks,
     staged_gradient_audit,
@@ -20,6 +24,7 @@ from tools.experiments.verify_b19_lbi_fusion import (
     whole_identity,
 )
 from ultralytics.nn.modules import Concat_LBI_Fusion
+from ultralytics.nn.tasks import DetectionModel
 
 
 @pytest.fixture(autouse=True)
@@ -176,6 +181,9 @@ def test_archive_dry_run(tmp_path):
     (run / "weights").mkdir(parents=True)
     for name in ("weights/best.pt", "weights/last.pt", "args.yaml"):
         (run / name).write_bytes(b"LOCAL FIXTURE ONLY; no training results")
+    evidence = run / "provenance/preflight/cuda_0/fuse_lbi_nonzero/before.pt"
+    evidence.parent.mkdir(parents=True)
+    torch.save(candidate_fixture([0.9, 0.8, 0.7, 0.1], [0, 1]), evidence)
     (run / "args_hard.txt").hardlink_to(run / "args.yaml")
     (run / "failed.attempt.1").mkdir()
     (run / "failed.attempt.1/console.log").write_text("excluded")
@@ -185,12 +193,14 @@ def test_archive_dry_run(tmp_path):
         assert not any(".attempt." in n for n in archive.getnames())
         assert archive.getmember("run/args_hard.txt").isfile()
         assert archive.extractfile("run/args_hard.txt").read() == (run / "args.yaml").read_bytes()
+        assert archive.extractfile("run/" + evidence.relative_to(run).as_posix()).read() == evidence.read_bytes()
         with tarfile.open(fileobj=io.BytesIO(archive.extractfile("run/source.tar").read())) as source:
             required = [
                 "ultralytics/nn/modules/lbi_fusion.py",
                 "tools/experiments/b19_common.py",
                 "tools/experiments/run_b19_lbi_fusion.py",
                 "tools/experiments/verify_b19_lbi_fusion.py",
+                "tools/experiments/lbi_fuse_audit.py",
                 "tools/experiments/diagnose_b19_lbi_fusion.py",
                 "tools/experiments/finish_b19_lbi_fusion.py",
             ]
@@ -281,3 +291,154 @@ def test_preflight_failure_receipts_and_fixed_bound(tmp_path, monkeypatch, nonfi
     assert len(batches) == expected_batches and batches[-1]["batch"] == expected_batches - 1
     assert batches[-1]["loss"] == ("nan" if nonfinite else 1.0)
     assert (tmp_path / "native_steps.json").is_file() and (tmp_path / "native_gradient_summary.json").is_file()
+
+
+def candidate_fixture(scores, ids):
+    """Represent a single-class postprocess with explicit grid identities, including off-screen boxes."""
+    scores = torch.tensor(scores, dtype=torch.float32).view(1, -1, 1)
+    boxes = (torch.arange(scores.numel() * 4).float() * 100).reshape(1, -1, 4)
+    decoded = torch.cat((boxes, scores), -1)
+    indices = torch.tensor(ids, dtype=torch.int64).view(1, -1, 1)
+    classes = torch.zeros_like(indices, dtype=torch.float32)
+    selected = decoded.gather(1, indices.expand(-1, -1, 5))
+    return dict(
+        raw=dict(boxes=boxes.transpose(1, 2), scores=scores.logit().transpose(1, 2)),
+        decoded=decoded,
+        indices=indices,
+        classes=classes,
+        final=torch.cat((selected, classes), -1),
+        selected_scores=selected[..., 4:5].clone(),
+    )
+
+
+@pytest.mark.parametrize("boundary,tied", [(False, False), (False, True), (True, False), (True, True)])
+def test_fuse_candidate_permutation_and_boundary(boundary, tied):
+    """Large positional box errors may pass only after all candidates and actual selection remain valid."""
+    before = candidate_fixture([0.8, 0.5, 0.5 if tied else 0.500001, 0.1], [0, 2] if boundary else [0, 2, 1])
+    after = candidate_fixture([0.8, 0.5 if tied else 0.500002, 0.5, 0.1], [0, 1] if boundary else [0, 1, 2])
+    report = {}
+    audit_candidates(before, after, 2 if boundary else 3, FUSE_ATOL, FUSE_RTOL, report)
+    assert not report["positional"]["passed"] and report["stage"] == "complete"
+    batch = report["batches"][0]
+    assert batch["same_set"] != boundary
+    assert batch["compared_union"] == 3
+    if boundary:
+        assert batch["dropped"] == [2] and batch["added"] == [1]
+        assert batch["max_gap_minus_measured_budget"] <= 0
+        assert len(batch["boundary"]) == 2
+
+
+@pytest.mark.parametrize(
+    "corruption", ["raw_box", "decoded_box", "score", "omit_higher", "gather", "class", "duplicate"]
+)
+def test_fuse_candidate_negative_controls(corruption):
+    """Reject real same-grid errors and broken selection even when both final tables look identical."""
+    before = candidate_fixture([0.9, 0.8, 0.7, 0.1], [0, 1])
+    after = copy.deepcopy(before)
+    if corruption == "raw_box":
+        after["raw"]["boxes"][0, 0, 2] += 100  # outside the selected intersection, still audited
+    elif corruption == "decoded_box":
+        after["decoded"][0, 2, 0] += 100
+    elif corruption == "score":
+        after = candidate_fixture([0.9, 0.8, 0.75, 0.1], [0, 1])
+    elif corruption == "omit_higher":
+        before = candidate_fixture([0.9, 0.8, 0.7, 0.1], [0, 2])
+        after = copy.deepcopy(before)
+    elif corruption == "gather":
+        after["final"][0, 0, 0] += 100
+    elif corruption == "class":
+        after["classes"][0, 0, 0] = 1
+    else:
+        before = candidate_fixture([0.9, 0.8, 0.7, 0.1], [0, 0])
+        after = copy.deepcopy(before)
+    with pytest.raises(AssertionError):
+        audit_candidates(before, after, 2, FUSE_ATOL, FUSE_RTOL, {})
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda:0"])
+@pytest.mark.parametrize("variant", ["native", "zero", "nonzero"])
+def test_real_fuse_candidates(tmp_path, device, variant):
+    """Run native Conv-BN fuse with both zero and learned-path LBI projections and preserve CPU evidence."""
+    if device.startswith("cuda") and not torch.cuda.is_available():
+        pytest.skip("CUDA unavailable")
+    baseline, candidate = build_pair()
+    if variant == "nonzero":
+        with torch.no_grad():
+            candidate.model[15].out.weight.normal_(0, 0.01)
+    model = baseline if variant == "native" else candidate
+    original = snapshot(model.state_dict())
+    result = fuse_audit(model, torch.randn(1, 3, 160, 160, device=device), tmp_path / "audit", FUSE_ATOL, FUSE_RTOL)
+    assert result["passed"] and result["stage"] == "complete"
+    common.assert_close_tree(original, snapshot(model.state_dict()), 0, 0)
+    if variant != "native":
+        assert bool(result["lbi_out_nonzero"]) == (variant == "nonzero")
+    saved = torch.load(tmp_path / "audit/after.pt", weights_only=False)
+    assert saved["indices"].device.type == saved["raw"]["boxes"].device.type == "cpu"
+    assert not saved["one2many_keys"]
+
+
+def test_fuse_failure_evidence_and_localization(tmp_path, monkeypatch):
+    """A deliberate real head error must fail with pre-assert tensors, traceback and per-layer localization."""
+    baseline, _ = build_pair()
+    native_fuse = DetectionModel.fuse
+
+    def broken_fuse(model, verbose=True):
+        model = native_fuse(model, verbose=verbose)
+        with torch.no_grad():
+            model.model[-1].one2one_cv3[0][-1].bias.add_(0.5)
+        return model
+
+    monkeypatch.setattr(DetectionModel, "fuse", broken_fuse)
+    directory = tmp_path / "broken"
+    with pytest.raises(AssertionError, match="raw.one2one.scores"):
+        fuse_audit(baseline, torch.randn(1, 3, 160, 160), directory, FUSE_ATOL, FUSE_RTOL)
+    report = json.loads((directory / "audit.json").read_text())
+    assert not report["passed"] and "AssertionError" in report["traceback"]
+    assert report["candidate_rows"][-1]["outside_tolerance"] > 0
+    assert report["first_layer_outside_tolerance"] == "model.23.one2one_cv3.0.2"
+    for name in ("source.pt", "fused_state.pt", "before.pt", "after.pt", "layer_outputs.pt"):
+        assert (directory / name).is_file()
+
+
+def test_diagnostic_capture_restores_methods_and_clones():
+    """Observers neither persist on models nor retain output aliases that a later inference could mutate."""
+    baseline, _ = build_pair()
+    baseline.eval()
+    head = baseline.model[-1]
+    result = capture(baseline, torch.randn(1, 3, 160, 160))
+    saved = copy.deepcopy(result)
+    assert "_inference" not in head.__dict__ and "get_topk_index" not in head.__dict__
+    capture(baseline, torch.randn(1, 3, 160, 160))
+    common.assert_close_tree(saved, result, 0, 0)
+
+
+def test_diagnostic_capture_restores_on_failure(monkeypatch):
+    """An exception inside production postprocess cannot leave diagnostic methods or hooks installed."""
+    baseline, _ = build_pair()
+    baseline.eval()
+    head = baseline.model[-1]
+
+    def failed_postprocess(predictions):
+        raise RuntimeError("injected postprocess failure")
+
+    monkeypatch.setattr(head, "postprocess", failed_postprocess)
+    with pytest.raises(RuntimeError, match="injected"):
+        capture(baseline, torch.randn(1, 3, 160, 160), {})
+    assert "_inference" not in head.__dict__ and "get_topk_index" not in head.__dict__
+    assert all(not m._forward_hooks for m in baseline.modules())
+
+
+def test_lifecycle_preserves_partial_receipt(tmp_path, monkeypatch):
+    """Test receipt ownership alone: accumulated results survive an exception before lifecycle return."""
+    from tools.experiments import verify_b19_lbi_fusion as verifier
+
+    def failed_lifecycle(baseline, candidate, directory, device, report):
+        report["rows"].append(dict(path="fixture_only", outside_tolerance=1))
+        raise AssertionError("injected lifecycle failure")
+
+    monkeypatch.setattr(verifier, "_lifecycle_checks", failed_lifecycle)
+    with pytest.raises(AssertionError, match="injected"):
+        verifier.lifecycle_checks(None, None, tmp_path)
+    report = json.loads((tmp_path / "lifecycle_checks.json").read_text())
+    assert not report["passed"] and report["rows"][0]["outside_tolerance"] == 1
+    assert "injected lifecycle failure" in report["traceback"]

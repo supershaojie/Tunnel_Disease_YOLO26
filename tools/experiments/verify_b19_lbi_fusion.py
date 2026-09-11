@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 import torch
 
 from tools.experiments import b19_common as common
+from tools.experiments.lbi_fuse_audit import fuse_audit, snapshot
 from tools.experiments.run_b19_lbi_fusion import (
     AuditedTrainer,
     audit_arguments,
@@ -209,19 +210,51 @@ def reload_in_process(directory):
 
 
 def lifecycle_checks(baseline, candidate, directory, device="cpu"):
-    """Separate FP32 round trips, native half-save quantization, EMA preservation and Conv-BN fusion."""
+    """Own lifecycle failure receipts so exceptions cannot discard partial audits in model_checks."""
+    report = dict(
+        passed=False,
+        rows=[],
+        fuse={},
+        device=device,
+        commit=common.git("rev-parse", "HEAD"),
+        new_state_count=4,
+        fuse_tolerance=dict(atol=FUSE_ATOL, rtol=FUSE_RTOL),
+    )
     directory.mkdir(parents=True, exist_ok=True)
+    try:
+        _lifecycle_checks(baseline, candidate, directory, device, report)
+        report["passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        raise
+    finally:
+        common.write_json(directory / "lifecycle_checks.json", report)
+    return report
+
+
+def _lifecycle_checks(baseline, candidate, directory, device, report):
+    """Separate FP32 round trips, native half-save quantization, EMA preservation and Conv-BN fusion."""
     model = copy.deepcopy(candidate).to(device).eval()
     with torch.no_grad():
         model.model[15].out.weight.normal_(0, 0.01)
     x = torch.randn(1, 3, 160, 160, device=device)
     original_state = copy.deepcopy(model.state_dict())
+    torch.save(
+        dict(
+            input=snapshot(x),
+            state=snapshot(original_state),
+            seed=torch.initial_seed(),
+            backend=common.computation_conditions(),
+        ),
+        directory / "lifecycle_source.pt",
+    )
     torch.save(original_state, directory / "state_dict.pt")
     restored = copy.deepcopy(candidate).to(device).eval()
     restored.load_state_dict(torch.load(directory / "state_dict.pt", map_location=device, weights_only=True))
-    rows = []
+    rows = report["rows"]
     with torch.no_grad():
-        expected = model(x)
+        expected = copy.deepcopy(model(x))
+        torch.save(snapshot(expected), directory / "lifecycle_expected.pt")
         common.assert_close_tree(expected, restored(x), 0, 0, "state_dict_output", rows)
     common.assert_close_tree(original_state, restored.state_dict(), 0, 0, "state_dict")
     torch.save({"model": model, "train_args": common.REFERENCE["args"]}, directory / "reload.pt")
@@ -233,6 +266,7 @@ def lifecycle_checks(baseline, candidate, directory, device="cpu"):
     subprocess.run(
         [sys.executable, "-u", str(Path(__file__).resolve()), "--reload", str(directory)], cwd=ROOT, check=True
     )
+    report["fresh_process"] = True
     ema = ModelEMA(model)
     ema.update(model)
     assert set(ema.ema.state_dict()) == set(model.state_dict())
@@ -248,7 +282,8 @@ def lifecycle_checks(baseline, candidate, directory, device="cpu"):
     ema_loaded, checkpoint = load_checkpoint(directory / "ema.pt", device=device)
     common.assert_close_tree(ema.ema.state_dict(), ema_loaded.state_dict(), 0, 0, "ema_reload_state")
     assert checkpoint["updates"] == 1
-    quantization = []
+    report["ema_preserved"] = True
+    quantization = report["quantization"] = []
     for label, m in (("baseline", baseline), ("candidate_nonzero", model)):
         m = copy.deepcopy(m).to(device).eval()
         api = YOLO(str(common.MODEL))
@@ -276,19 +311,16 @@ def lifecycle_checks(baseline, candidate, directory, device="cpu"):
                 aligned_raw_heads=raw,
             )
         )
-    fused = copy.deepcopy(model).fuse(verbose=False)
-    assert torch.equal(fused.model[15].out.weight, model.model[15].out.weight)
-    with torch.no_grad():
-        # Native fuse intentionally removes one2many; compare retained one2one prediction tensors.
-        common.assert_close_tree(expected[0], fused(x)[0], FUSE_ATOL, FUSE_RTOL, "fused_predictions", rows)
-    return dict(
-        rows=rows,
-        fresh_process=True,
-        quantization=quantization,
-        ema_preserved=True,
-        new_state_count=4,
-        fuse_tolerance=dict(atol=FUSE_ATOL, rtol=FUSE_RTOL),
-    )
+    errors = []
+    for label, fixture in (("native", baseline), ("lbi_zero", candidate), ("lbi_nonzero", model)):
+        try:
+            report["fuse"][label] = fuse_audit(fixture, x, directory / f"fuse_{label}", FUSE_ATOL, FUSE_RTOL)
+        except Exception:
+            # Run the same-input native control and both LBI states even if one fails, then fail the lifecycle.
+            report["fuse"][label] = dict(passed=False, traceback=traceback.format_exc())
+            errors.append(label)
+    if errors:
+        raise AssertionError(f"Fuse audit failed: {errors}; see fuse_*/audit.json and original CPU tensors")
 
 
 def optimizer_replay(optimizer, group, parameter, zero_task=False):
@@ -596,13 +628,14 @@ def main():
         report.update(model_checks(source, args.output))
         if not args.local:
             report["module_B32_P3"] = module_checks("cuda:0", True, spatial=(80, 80), batch=32)
+            report["native_server_b32"] = "RUNNING"
             report["native_preflight"] = native_preflight(effective, args.output)
             report["native_server_b32"] = "PASSED"
         report["passed"] = True
     except BaseException as error:
         report["error"] = str(error)
         report["traceback"] = traceback.format_exc()
-        if not args.local:
+        if report["native_server_b32"] == "RUNNING":
             report["native_server_b32"] = "FAILED"
         raise
     finally:

@@ -257,8 +257,6 @@ def archive_package(run, output, required):
                     }
                 )
                 continue
-            if path.suffix == ".pt" and path.relative_to(run).as_posix() not in {"weights/best.pt", "weights/last.pt"}:
-                continue
             files["run/" + path.relative_to(run).as_posix()] = path
     assert all("run/" + name in files for name in required)
     common.write_json(
