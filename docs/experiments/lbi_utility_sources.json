@@ -1,0 +1,79 @@
+[
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/b19_common.py",
+    "target": "tools/experiments/b19_common.py",
+    "source_sha256": "e6cfa4f3f2f9be93afe078846be8106b644e6a8d15acd4ea593efd84a5194846",
+    "adaptations": "LBI module import/source identity, four-tensor weight audit, progress logging and immutable native core gate; historical recipe and fingerprints retained."
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/run_b19_fdv_c2psa.py",
+    "target": "tools/experiments/run_b19_lbi_fusion.py",
+    "source_sha256": "d458a3b13e1158fb0bc635c292fa4c744ee065181da09d4c7d1873b692eb70fa",
+    "adaptations": "LBI layer15/four tensors; removed hardcoded historical transfer count; retained fresh-process preflight ownership and native trainer; compared scaled decay."
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/finish_b19_fdv_c2psa.py",
+    "target": "tools/experiments/finish_b19_lbi_fusion.py",
+    "source_sha256": "7220860fce815b8b0bb71dfde40da075f9c11b074da691848936cf958ec25571",
+    "adaptations": "LBI layer15; candidate evaluation paths separate from b19; fixed diagnostic/artifact binding; no automatic design selection."
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/b19_reference.json",
+    "target": "tools/experiments/b19_reference.json",
+    "source_sha256": "90bc59fd240923aca417d009fbc8f010de190cd9375f84d9895c0ca718551545",
+    "adaptations": "Historical evidence retained unchanged"
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/b19_test_reference.json",
+    "target": "tools/experiments/b19_test_reference.json",
+    "source_sha256": "a415a456b306afa85036a7103ee92025e0e5ea934b6fe387828164e3bb68f88c",
+    "adaptations": "Historical evidence retained unchanged"
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/b19_dataset_manifest.json",
+    "target": "tools/experiments/b19_dataset_manifest.json",
+    "source_sha256": "1231ba80cf364b2f086bc173519749305e5885b9acadacc0aa75e9b0b7850547",
+    "adaptations": "Historical evidence retained unchanged"
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/b19_launcher_expanded.txt",
+    "target": "tools/experiments/b19_launcher_expanded.txt",
+    "source_sha256": "b86ccfa18ecdae5b97c0663d242548dd70e61b570a026b52dcee02eff775b594",
+    "adaptations": "Historical evidence retained unchanged"
+  },
+  {
+    "commit": "d4a3b83940bdb306d008ede322b1e45bcd08cafb",
+    "source": "tools/experiments/finish_b19_dcs_sppf.py",
+    "symbols": ["archive_package"],
+    "target": "tools/experiments/finish_b19_lbi_fusion.py",
+    "adaptations": "Retained core.autocrlf=false source archive, byte-preserving patch and full readback; explicitly recorded attempts/symlink exclusions and materialized hardlinks.",
+    "source_sha256": "539808095ba6b9087dc91aa4af89bcadf8fdddd718acad7a507317e304031b98"
+  },
+  {
+    "commit": "d4a3b83940bdb306d008ede322b1e45bcd08cafb",
+    "source": "tools/experiments/verify_b19_dcs_sppf.py",
+    "target": "tools/experiments/verify_b19_lbi_fusion.py",
+    "symbols": ["optimizer_replay", "observe_step", "staged_gradient_audit"],
+    "adaptations": "Reuse native MuSGD replay/counterfactual convention; replace theta/BN-specific checks with four-tensor out-first ledger; remove handwritten native warmup loop and invoke BaseTrainer._do_train with bounded callbacks."
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/diagnose_b19_fdv_c2psa.py",
+    "target": "tools/experiments/diagnose_b19_lbi_fusion.py",
+    "symbols": ["state_digest", "distribution", "diagnose"],
+    "adaptations": "Retain fixed sorted validation images, LetterBox and state hashing; capture LBI projections/interaction/residual; remove FDV attention/gamma diagnostics and report long-term gradients as unmeasured."
+  },
+  {
+    "commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+    "source": "tools/experiments/server_b19_fdv_c2psa_v1.sh",
+    "target": "tools/experiments/server_b19_lbi_fusion_v1.sh",
+    "adaptations": "Retain native offline environment, lock and PIPESTATUS; add pre-import banner, attempt directories, signal receipts and canonical log copies; replace every experiment identifier."
+  }
+]

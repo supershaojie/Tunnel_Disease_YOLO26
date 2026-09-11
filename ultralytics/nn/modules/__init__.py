@@ -107,7 +107,10 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .lbi_fusion import Concat_LBI_Fusion
+
 __all__ = (
+    "Concat_LBI_Fusion",
     "AIFI",
     "C1",
     "C2",

@@ -1,0 +1,250 @@
+{
+  "scope": "Local implementation evidence; pre-commit working tree. Final commit receipts are generated under ignored runs/lbi_local.",
+  "formal_training": "NOT STARTED",
+  "native_server_b32": "NOT RUN",
+  "runtime": {
+    "python": "3.11.15",
+    "torch": "2.7.1+cu118",
+    "ultralytics": "8.4.98",
+    "gpu": "NVIDIA GeForce RTX 2060"
+  },
+  "baseline_sha": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "shared_state": {
+    "common_keys": 708,
+    "exact_matches": 708,
+    "matched_tensors": 606,
+    "added_parameters": 6288,
+    "missing_shared_keys": [],
+    "unexpected_keys": [],
+    "new_parameters": {
+      "model.15.proj_l.weight": [16, 128, 1, 1],
+      "model.15.proj_s.weight": [16, 128, 1, 1],
+      "model.15.dw.weight": [16, 1, 3, 3],
+      "model.15.out.weight": [128, 16, 1, 1]
+    }
+  },
+  "coco_nc_adaptation_items": 102,
+  "recipe_keys": 112,
+  "config_changed_fields": ["data", "model", "name", "pretrained", "project"],
+  "complexity": {
+    "parameters": [2504190, 2510478],
+    "gflops": [5.771775999999999, 5.8522624],
+    "added_conv_gflops": 0.0804864,
+    "convention": "THOP whole-model; 2 operations/MAC; extra conv budget excludes RMS/elementwise/memory"
+  },
+  "zero_identity": [
+    {
+      "device": "cpu",
+      "amp": false,
+      "max_abs": 0.0,
+      "mean_abs_max": 0.0
+    },
+    {
+      "device": "cuda:0",
+      "amp": false,
+      "max_abs": 0.0,
+      "mean_abs_max": 0.0
+    },
+    {
+      "device": "cuda:0",
+      "amp": true,
+      "max_abs": 0.0,
+      "mean_abs_max": 0.0
+    }
+  ],
+  "staged_updates": [
+    {
+      "device": "cpu",
+      "amp": false,
+      "batch": 2,
+      "imgsz": 160,
+      "summary": {
+        "parameters": {
+          "proj_l.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "proj_s.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "dw.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "out.weight": {
+            "first_gradient_batch": 0,
+            "first_effective_update_batch": 0
+          }
+        },
+        "missing": [],
+        "first_output_update_batch": 0
+      },
+      "overflow_skips": 0
+    },
+    {
+      "device": "cuda:0",
+      "amp": false,
+      "batch": 2,
+      "imgsz": 160,
+      "summary": {
+        "parameters": {
+          "proj_l.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "proj_s.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "dw.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 1
+          },
+          "out.weight": {
+            "first_gradient_batch": 0,
+            "first_effective_update_batch": 0
+          }
+        },
+        "missing": [],
+        "first_output_update_batch": 0
+      },
+      "overflow_skips": 0
+    },
+    {
+      "device": "cuda:0",
+      "amp": true,
+      "batch": 2,
+      "imgsz": 160,
+      "summary": {
+        "parameters": {
+          "proj_l.weight": {
+            "first_gradient_batch": 6,
+            "first_effective_update_batch": 6
+          },
+          "proj_s.weight": {
+            "first_gradient_batch": 6,
+            "first_effective_update_batch": 6
+          },
+          "dw.weight": {
+            "first_gradient_batch": 6,
+            "first_effective_update_batch": 6
+          },
+          "out.weight": {
+            "first_gradient_batch": 1,
+            "first_effective_update_batch": 5
+          }
+        },
+        "missing": [],
+        "first_output_update_batch": 5
+      },
+      "overflow_skips": 5
+    }
+  ],
+  "lifecycle": {
+    "cpu": {
+      "fresh_process": true,
+      "ema_preserved": true,
+      "fuse": [
+        {
+          "path": "fused_predictions",
+          "shape": [1, 300, 6],
+          "dtype": "torch.float32",
+          "device": "cpu",
+          "finite": true,
+          "max_abs": 0.0007476806640625,
+          "mean_abs": 1.529301141595675e-5,
+          "reference_max_abs": 300.23388671875,
+          "scale_floor": 1e-6,
+          "max_error_over_scale": 2.49032736522145e-6,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        }
+      ]
+    },
+    "cuda:0": {
+      "fresh_process": true,
+      "ema_preserved": true,
+      "fuse": [
+        {
+          "path": "fused_predictions",
+          "shape": [1, 300, 6],
+          "dtype": "torch.float32",
+          "device": "cuda:0",
+          "finite": true,
+          "max_abs": 0.00031280517578125,
+          "mean_abs": 8.108630200796244e-6,
+          "reference_max_abs": 300.235107421875,
+          "scale_floor": 1e-6,
+          "max_error_over_scale": 1.0418674167298903e-6,
+          "outside_tolerance": 0,
+          "atol": 0.0001,
+          "rtol": 0.0001
+        }
+      ]
+    }
+  },
+  "local_module_b32": {
+    "shape": [32, 256, 80, 80],
+    "dtype": "torch.float32",
+    "max_abs": 0.0,
+    "scope": "local RTX2060 module forward only, not native B32 server training"
+  },
+  "local_latency": {
+    "device": "NVIDIA GeForce RTX 2060",
+    "dtype": "FP32",
+    "batch": 1,
+    "imgsz": 640,
+    "mode": "unfused eval; model forward including native postprocess, no data IO",
+    "warmup": 5,
+    "iterations": 20,
+    "concurrent_gpu_load_not_controlled": true,
+    "results": [
+      {
+        "model": "native",
+        "median_ms": 28.76269999978831,
+        "mean_ms": 28.401185000439,
+        "all_ms": [
+          30.131299998174654, 28.323099999397527, 33.10770000098273, 31.45090000180062, 31.493800001044292,
+          25.72869999858085, 21.66150000266498, 21.790700000565266, 25.79440000044997, 28.76269999978831,
+          28.755900002579438, 30.469799999991665, 28.704000000288943, 27.881299996806774, 25.536299999657786,
+          29.675400000996888, 27.52660000260221, 30.503000001772307, 30.477399999654153, 30.249200000980636
+        ],
+        "shape": {
+          "inputs": [
+            [1, 128, 80, 80],
+            [1, 128, 80, 80]
+          ],
+          "output": [1, 256, 80, 80]
+        }
+      },
+      {
+        "model": "lbi",
+        "median_ms": 29.107099999237107,
+        "mean_ms": 29.680069999812986,
+        "all_ms": [
+          29.107099999237107, 27.32819999800995, 30.137800000375137, 33.242499997868435, 36.58589999758988,
+          35.040000002481975, 32.8613999990921, 34.77449999991222, 35.85590000147931, 24.44919999834383,
+          25.025300001288997, 33.046399999875575, 26.54659999825526, 26.975799999490846, 24.137600001267856,
+          26.86829999947804, 27.489100000821054, 30.8580000018992, 25.64200000051642, 27.629799998976523
+        ],
+        "shape": {
+          "inputs": [
+            [1, 128, 80, 80],
+            [1, 128, 80, 80]
+          ],
+          "output": [1, 256, 80, 80]
+        }
+      }
+    ]
+  },
+  "diagnostics": "16 fixed validation IDs, untrained nonzero residual checkpoint; no long-term gradient claim",
+  "precommit_pytest": "24 passed; two archive tests deferred until sources committed",
+  "initial_failed_attempt": "Rejected legal native AMP mixed input dtypes; removed equality constraint, regression added; failed evidence retained",
+  "source_evidence_sha256": {
+    "runs/lbi_local/validation_v2/checks.json": "975fa30ec22441e9dd481dd4324c97b73df1b987a816e7cef7f3d48c5028d008",
+    "runs/lbi_local/supplemental/profile.json": "85254a45d8eaf66c4cc5d8a5d27f27bea817bd0270e3c5b4b4af87a523b3a765",
+    "runs/lbi_local/pytest-v2.xml": "eb2b72f3e58c916d1de5098a643a78f411125e5d5778a9939128670454b97007"
+  }
+}
