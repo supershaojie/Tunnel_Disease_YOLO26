@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .fdv_c2psa import FDV_C2PSA, FDVAttention
 from .head import (
     OBB,
     OBB26,
@@ -118,6 +119,7 @@ __all__ = (
     "CIB",
     "DFL",
     "ELAN1",
+    "FDV_C2PSA",
     "MLP",
     "OBB",
     "OBB26",
@@ -153,6 +155,7 @@ __all__ = (
     "DeformableTransformerDecoder",
     "DeformableTransformerDecoderLayer",
     "Detect",
+    "FDVAttention",
     "Focus",
     "GhostBottleneck",
     "GhostConv",

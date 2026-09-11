@@ -1,0 +1,37 @@
+{
+  "base_commit": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "infrastructure_source_commit": "d6e9009",
+  "package_reference": "CCA v2 05c79c6, via SICR lifecycle; no model code imported",
+  "zip_path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+  "zip_sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "package_files": {
+    "YOLO26╖∞║╧/ultralytics/cfg/models/26/yolo26.yaml": "b1d1fa0c69eced64f9939536038bd8d697c32e72200b34187a767de431af7ef0",
+    "YOLO26╖∞║╧/ultralytics/cfg/models/add26/yolo26_C2PSA_HMHA.yaml": "c872cc9628f7d916f192fa3266b925ddf5e007cfa1b35b3a192f3967964e14c6",
+    "YOLO26╖∞║╧/ultralytics/cfg/models/add26/yolo26_C2PSA_MultipoleAttention.yaml": "2297014a36b37c642f36b7e190348efb8e9c90001d3186440a58216bbe9634a1",
+    "YOLO26╖∞║╧/ultralytics/cfg/models/add26/yolo26_C2PSA_MultipoleAttention_DyT.yaml": "07dbd08e6c237f77218211a1203c5bd8410c75e5e30b955ec0db6ba7fa0bf186",
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HMHA_2025CVPR.py": "5b267bd82cfd1ddea89daf0a6b18e633013966bd590f7d36b9dd2b39719ffb1a",
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/MALA_2025ICCV.py": "0dad62c223222cba3ccea69a10564a1538c55f612e9129f7ac7822a261159231",
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/MultipoleAttention_2025ICCV.py": "4384b51d42ad84b443181c02b3f6ab898118a1a286ae96a3d1d5f7bc4c7317cb",
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/RHDWT_TGRS2025.py": "e322cd0f116348a6ddef05ca86caf2224c9110829e4506cfa7373a076608497c",
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/__init__.py": "6bdae0d69699488dfdf24cb03d84396cd42aed6e2de5980270050655b44e4a21",
+    "YOLO26╖∞║╧/ultralytics/nn/tasks.py": "e06185e22e7b80e4a86091935c8e267b6840c78fc656bbfa82ff240c965ac3d1"
+  },
+  "read_files": {
+    "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\git_state.txt": "5ecad24cb7a308e38d33d6c787d2a06370913d001e201e08c71e527dbdf5eabc",
+    "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9",
+    "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\results.csv": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507",
+    "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\weights\\best.pt": "d0b2ca5a5d30de9ed002c64c9238b182ddeccce644c055ae5f2dba566878bd5e",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\yolo26n.pt": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sicr-sppf-v1\\tools\\experiments\\b19_common.py": "3986ce9fb6622e0a53f6c36f5965b2ecbf559b37661c6625fc98052480649bde",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sicr-sppf-v1\\tools\\experiments\\run_b19_sicr_sppf.py": "cbdfca01668ab714fe7412a1fc8991c7c6c8c9d5f8fc2311948f803dceee485d",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sicr-sppf-v1\\tools\\experiments\\verify_b19_sicr_sppf.py": "fe6287c5244fe2f46bacb77ead45da00d5b44eaf5ac5ffd903664c046cf12a8e",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sicr-sppf-v1\\tools\\experiments\\finish_b19_sicr_sppf.py": "d31d2da2d43744fd7e8c2c82e145e0ec2b8aced7431cee528ab030ffa631fbd3",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-sicr-sppf-v1\\tools\\experiments\\server_b19_sicr_sppf_v1.sh": "ec3f032501134d9f90ca2fad9d06e69b413fdc419f762f439baa1bc8f84ccb8c",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rpca-c2psa-v1\\ultralytics\\nn\\modules\\rpca_c2psa.py": "f7b0385e304a855e113d37a4623c9a0136697a26d8a16461347aee94e6b4325a",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-msi-c2psa-v1\\ultralytics\\nn\\modules\\msi_c2psa.py": "b9d1896796b8fb2e76bc50a027727d69c8a5dc457a8023810a76537dd6e5fe2f",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rsc-c2psa-v1\\ultralytics\\nn\\modules\\rsc_c2psa.py": "980f5b5187c26454d7f2105a5404c99951471c16cb60cdc995dbb478e5e5ffed",
+    "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\exp-yolo26n-b19-rsc-c2psa-v2\\ultralytics\\nn\\modules\\rsc_c2psa_v2.py": "6cccc52c5ef028b8d8ff6cf301dd057ef3f6d8b2466635358c092970d1d8a0a3"
+  },
+  "instruction_path": "E:/ditieyolo26跑结果/8.12离线在线/FDV_C2PSA/FDV_C2PSA_v1_Codex_Instructions.md",
+  "instruction_sha256": "e1e59eb095a8783ebee6df17021a2fd25d5a26f68401621a1a5bbfc22fdd73c8"
+}

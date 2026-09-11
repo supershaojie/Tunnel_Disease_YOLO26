@@ -1,0 +1,547 @@
+{
+  "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 RPCA_C2PSA_v1\\yolo26n_b19_e1_rpca_c2psa_v1.tar.gz": {
+    "run/results.csv": {
+      "sha256": "b3a42888fb83d370fca28296411a3392c05cb14c69bebc5475f04f319a4551f7",
+      "epochs": 200,
+      "last": {
+        "epoch": "200",
+        "time": "22022.2",
+        "train/box_loss": "1.31683",
+        "train/cls_loss": "0.76127",
+        "train/dfl_loss": "0.00845",
+        "metrics/precision(B)": "0.85642",
+        "metrics/recall(B)": "0.79329",
+        "metrics/mAP50(B)": "0.86317",
+        "metrics/mAP50-95(B)": "0.49859",
+        "val/box_loss": "1.52199",
+        "val/cls_loss": "0.90474",
+        "val/dfl_loss": "0.01169",
+        "lr/pg0": "9.1845e-05",
+        "lr/pg1": "3.0615e-05",
+        "lr/pg2": "9.1845e-05",
+        "lr/pg3": "3.0615e-05",
+        "lr/pg4": "9.1845e-05",
+        "lr/pg5": "3.0615e-05",
+        "lr/pg6": "9.1845e-05",
+        "lr/pg7": "3.0615e-05"
+      }
+    },
+    "run/val_metrics.json": {
+      "sha256": "2b9035c617e33e67cdfded88f991ef95fc2fe5929249c9bdf9ad3d13ea397653",
+      "data": {
+        "split": "val",
+        "results_dict": {
+          "metrics/precision(B)": 0.8556099682436983,
+          "metrics/recall(B)": 0.7946398659966499,
+          "metrics/mAP50(B)": 0.8632808520261926,
+          "metrics/mAP50-95(B)": 0.49805058987540873,
+          "fitness": 0.49805058987540873
+        },
+        "images": 2404,
+        "targets": 2985,
+        "ap75": 0.5079757941139198
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    },
+    "run/evaluation/val-2ef663169ad61e9ef7be/metrics.json": {
+      "sha256": "7c9ffd513c7bf636ba6fa26591ce29d27e06f712d77ff3c4295d35a5450074a2",
+      "data": {
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "val",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RPCA_C2PSA_v1/runs/detect/yolo26n_b19_e1_rpca_c2psa_v1/evaluation",
+          "name": "val-2ef663169ad61e9ef7be",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RPCA_C2PSA_v1/runs/detect/yolo26n_b19_e1_rpca_c2psa_v1/evaluation/val-2ef663169ad61e9ef7be"
+        },
+        "results_dict": {
+          "metrics/precision(B)": 0.8586641259795638,
+          "metrics/recall(B)": 0.7896930432963586,
+          "metrics/mAP50(B)": 0.8634826560433471,
+          "metrics/mAP50-95(B)": 0.4981259605909617,
+          "fitness": 0.4981259605909617
+        },
+        "ap75": 0.5076836891556268,
+        "images": 2404,
+        "targets": 2985,
+        "metrics": {
+          "P": 0.8586641259795638,
+          "R": 0.7896930432963586,
+          "AP50": 0.8634826560433471,
+          "AP75": 0.5076836891556268,
+          "mAP50-95": 0.4981259605909617
+        },
+        "ap_by_iou": {
+          "0.50": 0.8634826560433471,
+          "0.55": 0.8419794736015479,
+          "0.60": 0.7964065435428738,
+          "0.65": 0.734667027344318,
+          "0.70": 0.642065397547116,
+          "0.75": 0.5076836891556268,
+          "0.80": 0.34621665534236074,
+          "0.85": 0.19033104781803853,
+          "0.90": 0.05671418038030629,
+          "0.95": 0.0017129351340812388
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    },
+    "run/evaluation/test-0e977ccf9ee072f26450/metrics.json": {
+      "sha256": "6977491e1e48b99b9444d1464d3bd846f82f8c64800148f2c6a95598fe06d570",
+      "data": {
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "test",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RPCA_C2PSA_v1/runs/detect/yolo26n_b19_e1_rpca_c2psa_v1/evaluation",
+          "name": "test-0e977ccf9ee072f26450",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RPCA_C2PSA_v1/runs/detect/yolo26n_b19_e1_rpca_c2psa_v1/evaluation/test-0e977ccf9ee072f26450"
+        },
+        "results_dict": {
+          "metrics/precision(B)": 0.8551394774349544,
+          "metrics/recall(B)": 0.7833619836150708,
+          "metrics/mAP50(B)": 0.8627065009845261,
+          "metrics/mAP50-95(B)": 0.49675183772627485,
+          "fitness": 0.49675183772627485
+        },
+        "ap75": 0.5156637753713427,
+        "images": 1202,
+        "targets": 1477,
+        "metrics": {
+          "P": 0.8551394774349544,
+          "R": 0.7833619836150708,
+          "AP50": 0.8627065009845261,
+          "AP75": 0.5156637753713427,
+          "mAP50-95": 0.49675183772627485
+        },
+        "ap_by_iou": {
+          "0.50": 0.8627065009845261,
+          "0.55": 0.835020817263131,
+          "0.60": 0.7961028422019483,
+          "0.65": 0.7305032687992918,
+          "0.70": 0.643876721925773,
+          "0.75": 0.5156637753713427,
+          "0.80": 0.3458251155858216,
+          "0.85": 0.18337983959198345,
+          "0.90": 0.05174511379031374,
+          "0.95": 0.0026943817486169536
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    }
+  },
+  "E:\\ditieyolo26跑结果\\8.12离线在线\\MSI-C2PSA停\\yolo26n_b19_msi_c2psa_v1_578a513fb64b.tar.gz": {
+    "yolo26n_b19_msi_c2psa_v1/run/results.csv": {
+      "sha256": "4a52584e2808802d88dba1765f5ecd3bd650c66350b0ebabbf01f8db8c9f65ea",
+      "epochs": 200,
+      "last": {
+        "epoch": "200",
+        "time": "25704.5",
+        "train/box_loss": "1.32264",
+        "train/cls_loss": "0.76373",
+        "train/dfl_loss": "0.00854",
+        "metrics/precision(B)": "0.86864",
+        "metrics/recall(B)": "0.77757",
+        "metrics/mAP50(B)": "0.86202",
+        "metrics/mAP50-95(B)": "0.49911",
+        "val/box_loss": "1.50997",
+        "val/cls_loss": "0.93046",
+        "val/dfl_loss": "0.01177",
+        "lr/pg0": "9.1845e-05",
+        "lr/pg1": "3.0615e-05",
+        "lr/pg2": "9.1845e-05",
+        "lr/pg3": "3.0615e-05",
+        "lr/pg4": "9.1845e-05",
+        "lr/pg5": "3.0615e-05",
+        "lr/pg6": "9.1845e-05",
+        "lr/pg7": "3.0615e-05"
+      }
+    },
+    "yolo26n_b19_msi_c2psa_v1/run/test_onprz11b/test_fp32/metrics.json": {
+      "sha256": "fac7239f9d8195ec8f38beb25cd1c4d72221d4b324016ac4be10bb0dda839dc7",
+      "data": {
+        "split": "test",
+        "weight_sha256": "14fe514fb036b24d9b2951f88da452d2a64f154c70f27ba5eacac21065b60dbb",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "test",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_MSI_C2PSA_v1/runs/detect/yolo26n_b19_msi_c2psa_v1/test_onprz11b",
+          "name": "test_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_MSI_C2PSA_v1/runs/detect/yolo26n_b19_msi_c2psa_v1/test_onprz11b/test_fp32"
+        },
+        "images": 1202,
+        "targets": 1477,
+        "results_dict": {
+          "metrics/precision(B)": 0.8785088677166797,
+          "metrics/recall(B)": 0.7731888964116452,
+          "metrics/mAP50(B)": 0.8668566059791648,
+          "metrics/mAP50-95(B)": 0.4977859787131654,
+          "fitness": 0.4977859787131654
+        },
+        "ap_by_iou": {
+          "0.50": 0.8668566059791648,
+          "0.55": 0.8370048225120987,
+          "0.60": 0.8053025766278252,
+          "0.65": 0.73596681725609,
+          "0.70": 0.6352617973751351,
+          "0.75": 0.5040107598236498,
+          "0.80": 0.3565156863555605,
+          "0.85": 0.17603690212635847,
+          "0.90": 0.05832917520483573,
+          "0.95": 0.002574643870934139
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    },
+    "yolo26n_b19_msi_c2psa_v1/run/test_onprz11b/val_fp32/metrics.json": {
+      "sha256": "65c5b02ce832b8d45d957dd042a20a9bc4022b639321ee05bfc00b3eef59710a",
+      "data": {
+        "split": "val",
+        "weight_sha256": "14fe514fb036b24d9b2951f88da452d2a64f154c70f27ba5eacac21065b60dbb",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "val",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_MSI_C2PSA_v1/runs/detect/yolo26n_b19_msi_c2psa_v1/test_onprz11b",
+          "name": "val_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_MSI_C2PSA_v1/runs/detect/yolo26n_b19_msi_c2psa_v1/test_onprz11b/val_fp32"
+        },
+        "images": 2404,
+        "targets": 2985,
+        "results_dict": {
+          "metrics/precision(B)": 0.8708552090646894,
+          "metrics/recall(B)": 0.7771112262021439,
+          "metrics/mAP50(B)": 0.8624886302042227,
+          "metrics/mAP50-95(B)": 0.49919632093595706,
+          "fitness": 0.49919632093595706
+        },
+        "ap_by_iou": {
+          "0.50": 0.8624886302042227,
+          "0.55": 0.8398232964953773,
+          "0.60": 0.7923324178737662,
+          "0.65": 0.7324437150318022,
+          "0.70": 0.6366034906562822,
+          "0.75": 0.5214689876780615,
+          "0.80": 0.3597843088479967,
+          "0.85": 0.18030399213215792,
+          "0.90": 0.06046260489894694,
+          "0.95": 0.006251765540956953
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    }
+  },
+  "E:\\ditieyolo26跑结果\\8.12离线在线\\RSC-C2PSA停\\yolo26n_b19_rsc_c2psa_v1_47a81c2e9da2.tar.gz": {
+    "yolo26n_b19_rsc_c2psa_v1/run/results.csv": {
+      "sha256": "995db56b76786ebaabbbf11c99dc216ff3e7bdb3116e6df00ed4e2d5c2fbfb19",
+      "epochs": 200,
+      "last": {
+        "epoch": "200",
+        "time": "15425.7",
+        "train/box_loss": "1.32407",
+        "train/cls_loss": "0.75753",
+        "train/dfl_loss": "0.00855",
+        "metrics/precision(B)": "0.88074",
+        "metrics/recall(B)": "0.77929",
+        "metrics/mAP50(B)": "0.87432",
+        "metrics/mAP50-95(B)": "0.50652",
+        "val/box_loss": "1.48631",
+        "val/cls_loss": "0.91457",
+        "val/dfl_loss": "0.01142",
+        "lr/pg0": "9.1845e-05",
+        "lr/pg1": "3.0615e-05",
+        "lr/pg2": "9.1845e-05",
+        "lr/pg3": "3.0615e-05",
+        "lr/pg4": "9.1845e-05",
+        "lr/pg5": "3.0615e-05",
+        "lr/pg6": "9.1845e-05",
+        "lr/pg7": "3.0615e-05"
+      }
+    },
+    "yolo26n_b19_rsc_c2psa_v1/run/test_tqsqwtte/test_fp32/metrics.json": {
+      "sha256": "87ad554e64a9c1a603fda47e1db189c9e81ccd45942611315f0714087acc3e08",
+      "data": {
+        "split": "test",
+        "weight_sha256": "f7aae4817d2c34003f2995f8e091c9de2a973f85ff45118f1fcef503e0339b47",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "test",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v1/runs/detect/yolo26n_b19_rsc_c2psa_v1/test_tqsqwtte",
+          "name": "test_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v1/runs/detect/yolo26n_b19_rsc_c2psa_v1/test_tqsqwtte/test_fp32"
+        },
+        "images": 1202,
+        "targets": 1477,
+        "results_dict": {
+          "metrics/precision(B)": 0.8643836784164501,
+          "metrics/recall(B)": 0.7982396750169262,
+          "metrics/mAP50(B)": 0.8707401876028493,
+          "metrics/mAP50-95(B)": 0.5014790593361667,
+          "fitness": 0.5014790593361667
+        },
+        "ap_by_iou": {
+          "0.50": 0.8707401876028493,
+          "0.55": 0.8423078639878248,
+          "0.60": 0.8019217475856604,
+          "0.65": 0.7365086443409614,
+          "0.70": 0.6415770604516178,
+          "0.75": 0.519511351699635,
+          "0.80": 0.3641415060191153,
+          "0.85": 0.18709661864659463,
+          "0.90": 0.04971247343307694,
+          "0.95": 0.0012731395943305077
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    },
+    "yolo26n_b19_rsc_c2psa_v1/run/test_tqsqwtte/val_fp32/metrics.json": {
+      "sha256": "5f526f6a9ddefa7587bb2205ec825372e7629aeb91f783439442bbc62f448246",
+      "data": {
+        "split": "val",
+        "weight_sha256": "f7aae4817d2c34003f2995f8e091c9de2a973f85ff45118f1fcef503e0339b47",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "val",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v1/runs/detect/yolo26n_b19_rsc_c2psa_v1/test_tqsqwtte",
+          "name": "val_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v1/runs/detect/yolo26n_b19_rsc_c2psa_v1/test_tqsqwtte/val_fp32"
+        },
+        "images": 2404,
+        "targets": 2985,
+        "results_dict": {
+          "metrics/precision(B)": 0.8831884896447685,
+          "metrics/recall(B)": 0.7788944723618091,
+          "metrics/mAP50(B)": 0.8742265763756226,
+          "metrics/mAP50-95(B)": 0.5063831742034951,
+          "fitness": 0.5063831742034951
+        },
+        "ap_by_iou": {
+          "0.50": 0.8742265763756226,
+          "0.55": 0.8427214330472064,
+          "0.60": 0.8011122144612756,
+          "0.65": 0.742866383231368,
+          "0.70": 0.6589672785657442,
+          "0.75": 0.5346096386221693,
+          "0.80": 0.36324356940866404,
+          "0.85": 0.19204286622762748,
+          "0.90": 0.05207030740997984,
+          "0.95": 0.00197147468529416
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    }
+  },
+  "E:\\ditieyolo26跑结果\\8.12离线在线\\RSC_C2PSA_v2停\\yolo26n_b19_rsc_c2psa_v2_0d44e61a3769.tar.gz": {
+    "yolo26n_b19_rsc_c2psa_v2/run/results.csv": {
+      "sha256": "a7486ff3fac9ac73e30974961a0f6d86671be9b1f8f4415decc50d022269e864",
+      "epochs": 200,
+      "last": {
+        "epoch": "200",
+        "time": "23474.6",
+        "train/box_loss": "1.32592",
+        "train/cls_loss": "0.75172",
+        "train/dfl_loss": "0.00864",
+        "metrics/precision(B)": "0.88619",
+        "metrics/recall(B)": "0.77956",
+        "metrics/mAP50(B)": "0.87072",
+        "metrics/mAP50-95(B)": "0.50549",
+        "val/box_loss": "1.50122",
+        "val/cls_loss": "0.88921",
+        "val/dfl_loss": "0.01168",
+        "lr/pg0": "9.1845e-05",
+        "lr/pg1": "3.0615e-05",
+        "lr/pg2": "9.1845e-05",
+        "lr/pg3": "3.0615e-05",
+        "lr/pg4": "9.1845e-05",
+        "lr/pg5": "3.0615e-05",
+        "lr/pg6": "9.1845e-05",
+        "lr/pg7": "3.0615e-05"
+      }
+    },
+    "yolo26n_b19_rsc_c2psa_v2/run/test_91jm35um/test_fp32/metrics.json": {
+      "sha256": "a3b9cee05d73d1997553e82482f9429fbedb2a4679954bc1a2b62995007c78fd",
+      "data": {
+        "split": "test",
+        "weight_sha256": "b38c85d26c160922aba06fcadb4f876f6b3f5a87903768c9c9ead52cbf7be151",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "test",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v2/runs/detect/yolo26n_b19_rsc_c2psa_v2/test_91jm35um",
+          "name": "test_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v2/runs/detect/yolo26n_b19_rsc_c2psa_v2/test_91jm35um/test_fp32"
+        },
+        "images": 1202,
+        "targets": 1477,
+        "results_dict": {
+          "metrics/precision(B)": 0.8779816993031709,
+          "metrics/recall(B)": 0.7892145301504078,
+          "metrics/mAP50(B)": 0.8775602214365057,
+          "metrics/mAP50-95(B)": 0.5030086144747814,
+          "fitness": 0.5030086144747814
+        },
+        "ap_by_iou": {
+          "0.50": 0.8775602214365057,
+          "0.55": 0.8402140399038353,
+          "0.60": 0.7989836762539703,
+          "0.65": 0.7351440440943071,
+          "0.70": 0.6418932084807119,
+          "0.75": 0.5095256456781305,
+          "0.80": 0.36219339218967456,
+          "0.85": 0.19243504430483585,
+          "0.90": 0.06472377137182644,
+          "0.95": 0.0074131010340170046
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    },
+    "yolo26n_b19_rsc_c2psa_v2/run/test_91jm35um/val_fp32/metrics.json": {
+      "sha256": "8903c254b8e3e1fa3018f3d6a6833d6bd2ddb0fb11ed1e36e38cd9050c2a9ad8",
+      "data": {
+        "split": "val",
+        "weight_sha256": "b38c85d26c160922aba06fcadb4f876f6b3f5a87903768c9c9ead52cbf7be151",
+        "settings": {
+          "data": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml",
+          "split": "val",
+          "imgsz": 640,
+          "batch": 32,
+          "workers": 8,
+          "device": 0,
+          "conf": 0.001,
+          "iou": 0.7,
+          "max_det": 300,
+          "rect": true,
+          "augment": false,
+          "quantize": null,
+          "plots": true,
+          "save_json": true,
+          "save_txt": true,
+          "save_conf": true,
+          "project": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v2/runs/detect/yolo26n_b19_rsc_c2psa_v2/test_91jm35um",
+          "name": "val_fp32",
+          "exist_ok": false,
+          "save_dir": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_RSC_C2PSA_v2/runs/detect/yolo26n_b19_rsc_c2psa_v2/test_91jm35um/val_fp32"
+        },
+        "images": 2404,
+        "targets": 2985,
+        "results_dict": {
+          "metrics/precision(B)": 0.8860228146270582,
+          "metrics/recall(B)": 0.7786707219710755,
+          "metrics/mAP50(B)": 0.8703926252661234,
+          "metrics/mAP50-95(B)": 0.5049093360229487,
+          "fitness": 0.5049093360229487
+        },
+        "ap_by_iou": {
+          "0.50": 0.8703926252661234,
+          "0.55": 0.8402749037640614,
+          "0.60": 0.8028213391064334,
+          "0.65": 0.740644196812787,
+          "0.70": 0.6529044242831368,
+          "0.75": 0.5208064625592925,
+          "0.80": 0.3735179908584975,
+          "0.85": 0.19156675892147512,
+          "0.90": 0.05324229782884363,
+          "0.95": 0.002922360828836405
+        }
+      },
+      "extraction": "Selected metric/provenance fields; sha256 refers to the full original archive member bytes."
+    }
+  }
+}
