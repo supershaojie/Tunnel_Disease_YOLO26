@@ -151,7 +151,7 @@ test 使用验证集选出的 best.pt，对 DCS val/test 与原 b19 test 做相�
 
 package 要求完成训练及匹配的比较/诊断证据。包含 best/last.pt、args.yaml、results.csv、results.png、val/test 曲线及预测、baseline comparison、diagnose、provenance、Git SHA、source.patch、完整 source.tar（含 YAML、模块、注册、实验脚本、文档）和逐文件 SHA-256 清单/包摘要。目录遍历前排除 `.attempt.*` 和符号链接，不要求 `console.log` 存在；不追随 dangling symlink。Windows 无创建真实 symlink 的权限，断链谓词使用仿真覆盖，其余打包与校验路径实际执行。正式 Linux 端仍应实际执行完整 package 阶段。
 
-提交后的完整源码打包复核发现并修复了 Windows 默认 GBK 解码 Git 输出的问题：文本 Git 查询显式按 UTF-8 解码，`source.patch` 直接按原始字节写入，并新增逐字节断言。修复后重新验证打包，保留中文内容、二进制 patch 和末尾换行。
+提交后的完整源码打包复核发现并修复了 Windows 默认 GBK 解码 Git 输出的问题：文本 Git 查询显式按 UTF-8 解码，`source.patch` 直接按原始字节写入，并新增逐字节断言。修复后重新验证打包，保留中文内容、二进制 patch 和末尾换行。`git archive` 显式关闭 checkout 的 autocrlf 转换，确保归档内 shell 脚本与 Git blob 逐字节相同，可供 Linux 使用。
 
 ## 修改文件及审计结论
 

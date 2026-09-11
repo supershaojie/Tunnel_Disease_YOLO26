@@ -1,6 +1,7 @@
 """Regression tests for the fixed DCS formula, native graph inheritance and archive lifecycle."""
 
 import copy
+import io
 import json
 import subprocess
 import tarfile
@@ -112,6 +113,12 @@ def test_archive_ignores_attempts_and_console_aliases(tmp_path, monkeypatch):
         names = archive.getnames()
         assert "run/weights/best.pt" in names and "run/weights/last.pt" in names
         assert not any(".attempt." in n or n.endswith("console.log") for n in names)
+        with tarfile.open(fileobj=io.BytesIO(archive.extractfile("run/source.tar").read())) as source:
+            # Git archive must not apply the Windows checkout's CRLF conversion to portable shell scripts.
+            name = "tools/experiments/server_b19_dcs_sppf_v1.sh"
+            assert source.extractfile(name).read() == subprocess.check_output(
+                ["git", "-c", f"safe.directory={common.ROOT.as_posix()}", "show", f"HEAD:{name}"], cwd=common.ROOT
+            )
     (tmp_path / "dry_run_result.json").write_text(json.dumps({**result, "real_dangling_symlink": real_link}))
     with pytest.raises(ValueError, match="new file"):
         archive_package(run, output, [])

@@ -299,6 +299,8 @@ def archive_package(run, output, required):
             "git",
             "-c",
             f"safe.directory={ROOT.as_posix()}",
+            "-c",
+            "core.autocrlf=false",
             "archive",
             "--format=tar",
             "-o",
