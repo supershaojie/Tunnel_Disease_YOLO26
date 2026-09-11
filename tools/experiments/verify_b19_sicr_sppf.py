@@ -3,6 +3,8 @@
 # ruff: noqa: E402 - Direct script entry must prioritize this worktree before importing Ultralytics.
 
 import copy
+import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,9 +16,49 @@ import torch
 from tools.experiments import b19_common as common
 from tools.experiments.run_b19_sicr_sppf import audit_arguments, options_parser, require_runtime
 from ultralytics import YOLO
+from ultralytics.nn.autobackend import AutoBackend
 from ultralytics.nn.modules import C2PSA, SICRSPPF, SPPF
 from ultralytics.nn.tasks import DetectionModel, load_checkpoint
 from ultralytics.utils.torch_utils import get_flops, init_seeds
+
+
+def module_identity(native, candidate, x):
+    """Locate the first unequal shared state/input/pooling stage using the actual module forwards."""
+    rows = []
+    assert candidate.theta.count_nonzero() == 0
+    alpha = candidate.alpha_max * candidate.theta.tanh()
+    common.assert_close_tree(torch.zeros_like(alpha), alpha, 0, 0, path="alpha", report=rows)
+    for name in ("cv1", "cv2"):
+        a, b = getattr(native, name), getattr(candidate, name)
+        common.assert_close_tree(a.conv.bias, b.conv.bias, 0, 0, path=f"{name}.conv.bias", report=rows)
+        common.assert_close_tree(a.state_dict(), b.state_dict(), 0, 0, path=name, report=rows)
+        assert (a.bn.eps, a.bn.momentum) == (b.bn.eps, b.bn.momentum)
+    traces = []
+    for block in (native, candidate):
+        trace = {"input": x.detach().clone()}
+        stages = []
+        handles = [
+            block.cv1.register_forward_hook(lambda m, ins, out: stages.append(out.detach().clone())),
+            block.m.register_forward_hook(lambda m, ins, out: stages.append(out.detach().clone())),
+            block.cv2.register_forward_pre_hook(lambda m, ins: trace.update(cv2_input=ins[0].detach().clone())),
+        ]
+        try:
+            with torch.no_grad():
+                result = block(x)
+        finally:
+            for handle in handles:
+                handle.remove()
+        assert len(stages) == 4
+        trace.update({f"Z{i}": z for i, z in enumerate(stages)})
+        trace["output"] = result
+        traces.append(trace)
+    for key in ("input", "Z0", "Z1", "Z2", "Z3", "cv2_input", "output"):
+        common.assert_close_tree(traces[0][key], traces[1][key], 0, 0, path=key, report=rows)
+    return {
+        "comparisons": rows,
+        "first_difference": None,
+        "conv_bias_present": {name: getattr(native, name).conv.bias is not None for name in ("cv1", "cv2")},
+    }
 
 
 def module_checks(device="cpu"):
@@ -26,6 +68,7 @@ def module_checks(device="cpu"):
     candidate = SICRSPPF(32, 32, 5, 3, True).to(device).eval()
     candidate.load_state_dict(native.state_dict(), strict=False)
     x = torch.randn(2, 32, 20, 27, device=device, requires_grad=True)
+    identity = module_identity(native, candidate, x)
     expected, actual = native(x), candidate(x)
     torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)
     error = (actual - expected).abs().max().item()
@@ -67,6 +110,7 @@ def module_checks(device="cpu"):
         )
         torch.testing.assert_close(candidate(x), result, rtol=1e-5, atol=1e-6)
     return {
+        "zero_init_audit": identity,
         "native_max_abs_error": error,
         "theta_gradient": True,
         "refine_gradient_after_theta_update": branch_gradients,
@@ -81,7 +125,9 @@ def build_pair(source=None):
     init_seeds(42, deterministic=True)
     with torch.random.fork_rng(devices=[]):
         baseline = DetectionModel(common.baseline_architecture(), verbose=False)
+        baseline_rng = torch.get_rng_state()
     candidate = DetectionModel(str(common.MODEL), nc=1, verbose=False)
+    assert torch.equal(baseline_rng, torch.get_rng_state()), "Constructor changed shared initialization RNG"
     for model in (baseline, candidate):
         model.names = {0: "crack"}
         if source is not None:
@@ -120,7 +166,7 @@ def topology_checks(baseline, candidate):
     }
 
 
-def model_checks(source, device="cpu", batch=1):
+def model_checks(source, device="cpu", batch=1, directory=None):
     """Audit 640 forward/backward, pretrained coverage, complexity and checkpoint/fusion compatibility."""
     baseline, candidate = build_pair(source)
     report = {
@@ -142,19 +188,25 @@ def model_checks(source, device="cpu", batch=1):
     }
     assert report["complexity"]["params_delta_percent"] < 3 and report["complexity"]["gflops_delta_percent"] < 5
     baseline, candidate = baseline.to(device), candidate.to(device)
-    shapes = []
-    hook = candidate.model[9].register_forward_hook(
-        lambda m, args, out: shapes.append([list(args[0].shape), list(out.shape)])
-    )
+    layer9_inputs = []
+    hooks = [
+        m.model[9].register_forward_pre_hook(lambda m, args, values=layer9_inputs: values.append(args[0].clone()))
+        for m in (baseline, candidate)
+    ]
     x = torch.randn(1, 3, 640, 640, device=device)
     with torch.no_grad():
-        errors = []
-        common.assert_close_tree(baseline(x), candidate(x), atol=1e-6, rtol=1e-5, report=errors)
-    hook.remove()
-    assert shapes == [[[1, 256, 20, 20], [1, 256, 20, 20]]]
-    report["topology"]["layer9_shapes_640"] = shapes[0]
+        native_output, candidate_output = baseline(x), candidate(x)
+    for hook in hooks:
+        hook.remove()
+    common.assert_close_tree(*layer9_inputs, 0, 0, path="layer9.input")
+    assert list(layer9_inputs[0].shape) == [1, 256, 20, 20]
+    report["module_at_layer9"] = module_identity(baseline.model[9], candidate.model[9], layer9_inputs[0])
+    errors = []
+    common.assert_close_tree(native_output, candidate_output, atol=1e-6, rtol=1e-5, report=errors)
+    report["topology"]["layer9_shapes_640"] = [[1, 256, 20, 20]] * 2
+    report["weights"]["constructor_rng_equal"] = True
     report["initial_equivalence"] = errors
-    del baseline
+    del baseline, native_output, candidate_output, layer9_inputs
     candidate.train()
     candidate.args = common.get_cfg(overrides={k: v for k, v in common.REFERENCE["args"].items() if k != "save_dir"})
     inputs = {
@@ -178,21 +230,141 @@ def model_checks(source, device="cpu", batch=1):
     candidate.eval().zero_grad(set_to_none=True)
     with torch.no_grad():
         candidate.model[9].theta.copy_(torch.tensor([0.1, -0.2, 0.3], device=device))
-        before = candidate(x)
-        fused = copy.deepcopy(candidate).fuse(verbose=False)
-        after = fused(x)
-        raw_errors = []
-        common.assert_close_tree(before[1]["one2one"], after[1]["one2one"], atol=1e-4, rtol=1e-4, report=raw_errors)
-        # Decoding multiplies raw distances by stride (up to 32) and subtracts anchors.
-        # Scale the raw 1e-4 absolute tolerance by the largest output stride, in pixel units.
-        torch.testing.assert_close(after[0][..., :4], before[0][..., :4], rtol=1e-4, atol=32e-4)
-        torch.testing.assert_close(after[0][..., 4:], before[0][..., 4:], rtol=1e-4, atol=1e-6)
-        report["fusion"] = {
-            "raw_one2one_errors": raw_errors,
-            "coordinate_max_abs_pixels": (after[0][..., :4] - before[0][..., :4]).abs().max().item(),
+    assert directory is not None, "A persistent checkpoint audit directory is required"
+    report["reload"] = save_reload_check(candidate, directory, x)
+    with torch.no_grad():
+        # Match native evaluation: load/fuse the checkpoint on CPU before moving it to the inference device.
+        restored, _ = load_checkpoint(report["reload"]["checkpoint"])
+        fused = copy.deepcopy(restored).fuse(verbose=False).to(device)
+        backend = AutoBackend(model=restored, device=torch.device(device), fp16=False, verbose=False)
+        deployed = backend(x)
+        deployment_errors = []
+        common.assert_close_tree(list(fused(x)), deployed, 1e-6, 1e-5, report=deployment_errors)
+        assert deployed[1]["one2many"] == {} and deployed[1]["one2one"]["boxes"].shape == (1, 4, 8400)
+        backend.model.model[9].theta.zero_()
+        bypassed = backend(x)
+        effect = {
+            key: (deployed[1]["one2one"][key] - bypassed[1]["one2one"][key]).abs().max().item()
+            for key in ("boxes", "scores")
         }
-    report["fused_nonzero_alpha"] = True
+        assert max(effect.values()) > 0, "Nonzero SICR must affect deployed one2one inference"
+        report["deployment"] = {
+            "device": device,
+            "cpu_fusion": True,
+            "comparisons": deployment_errors,
+            "nonzero_alpha_effect": effect,
+        }
     return report
+
+
+def save_reload_check(model, directory, x):
+    """Reuse NDP's FP16 EMA snapshot/FP32 reference lifecycle, preserving the exact same model and input."""
+    directory = Path(directory) / "reload"
+    directory.mkdir(parents=True, exist_ok=True)
+    snapshot = copy.deepcopy(model).cpu().half().eval()
+    snapshot.criterion = None
+    assert snapshot.model[9].theta.count_nonzero() == 3
+    args = snapshot.args if isinstance(snapshot.args, dict) else vars(snapshot.args)
+    path = directory / "preflight.pt"
+    torch.save({"model": None, "ema": snapshot, "train_args": args}, path)
+    snapshot.float()  # Compare the saved quantized snapshot, never the original pre-quantization model.
+    with torch.no_grad():
+        x = x.detach().cpu().float()
+        reference = {
+            "x": x,
+            "state": {k: v.clone() for k, v in snapshot.state_dict().items()},
+            "attributes_before": common.inference_attributes(snapshot),
+            "threads": torch.get_num_threads(),
+            "conditions": common.computation_conditions(),
+        }
+        reference["raw"] = snapshot(x)
+        common.assert_close_tree(reference["state"], snapshot.state_dict(), 0, 0, path="snapshot_after_forward")
+        reference["attributes_after"] = common.inference_attributes(snapshot)
+        torch.save(reference, directory / "reload_reference.pt")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from tools.experiments.verify_b19_sicr_sppf import reload_in_process; "
+            "import sys; reload_in_process(sys.argv[1])",
+            str(path),
+        ],
+        cwd=common.ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=180,
+    )
+    (directory / "reload.log").write_text(result.stdout + result.stderr, encoding="utf-8")
+    result.check_returncode()
+    return {
+        "checkpoint": str(path),
+        "sha256": common.sha256(path),
+        "fresh_process": True,
+        **json.loads((directory / "reload_check.json").read_text(encoding="utf-8")),
+    }
+
+
+def fusion_check(model, x):
+    """Retain the complete one2one assertion on the native CPU checkpoint fusion path."""
+    assert x.device.type == next(model.parameters()).device.type == "cpu"
+    before = model(x)
+    fused = copy.deepcopy(model).fuse(verbose=False)
+    after = fused(x)
+    assert after[1]["one2many"] == {}
+    rows = []
+    common.assert_close_tree(before[1]["one2one"], after[1]["one2one"], atol=1e-4, rtol=1e-4, report=rows)
+    # NDP compares decoded anchors before top-k: tiny score roundoff can reorder otherwise identical boxes.
+    decoded_before = fused.model[-1]._inference(before[1]["one2one"])
+    decoded_after = fused.model[-1]._inference(after[1]["one2one"])
+    assert decoded_before.shape == decoded_after.shape == (x.shape[0], 5, before[1]["one2one"]["boxes"].shape[-1])
+    # Preserve the original pixel-unit bound: decoding multiplies raw distances by stride, up to 32.
+    torch.testing.assert_close(decoded_after[:, :4], decoded_before[:, :4], rtol=1e-4, atol=32e-4)
+    torch.testing.assert_close(decoded_after[:, 4:], decoded_before[:, 4:], rtol=1e-4, atol=1e-6)
+    return {
+        "raw_one2one_errors": rows,
+        "coordinate_max_abs_pixels": (decoded_after[:, :4] - decoded_before[:, :4]).abs().max().item(),
+        "decoded_order": "all anchors before top-k",
+    }
+
+
+def reload_in_process(path):
+    """Audit exact state, Detect caches and all raw outputs before native CPU fusion, as in SIR/NDP."""
+    path = Path(path)
+    reference = torch.load(path.with_name("reload_reference.pt"), map_location="cpu", weights_only=False)
+    torch.set_num_threads(reference["threads"])
+    report = {
+        "passed": False,
+        "state_exact": False,
+        "raw": [],
+        "checkpoint_precision": "FP16 EMA, FP32 reload",
+        "reference_conditions": reference["conditions"],
+        "conditions": common.computation_conditions(),
+    }
+    try:
+        model = YOLO(path).model
+        assert type(model.model[9]) is SICRSPPF and model.model[9].theta.count_nonzero() == 3
+        common.assert_close_tree(reference["state"], model.state_dict(), 0, 0, path="reload.state")
+        common.assert_close_tree(
+            reference["attributes_before"], common.inference_attributes(model), 0, 0, path="reload.attributes_before"
+        )
+        with torch.no_grad():
+            before = model(reference["x"])
+            common.assert_close_tree(reference["state"], model.state_dict(), 0, 0, path="reload.state_after_forward")
+            common.assert_close_tree(
+                reference["attributes_after"], common.inference_attributes(model), 0, 0, path="reload.attributes_after"
+            )
+            common.assert_close_tree(reference["raw"], before, 0, 0, path="reload.raw", report=report["raw"])
+            report.update(state_exact=True, state_keys=len(reference["state"]), attributes_exact=True)
+            # Native control inherits all shared tensors from this same snapshot, including adapted Detect weights.
+            native = DetectionModel(common.baseline_architecture(), verbose=False).eval()
+            native.load_state_dict({k: reference["state"][k] for k in native.state_dict()}, strict=True)
+            report["native_fusion"] = fusion_check(native, reference["x"])
+            report["sicr_fusion"] = fusion_check(model, reference["x"])
+        report["passed"] = True
+    finally:
+        common.write_json(path.with_name("reload_check.json"), report)
+    print("PASS: exact snapshot state/raw/Detect caches; native and SICR CPU one2one fusion")
 
 
 def main():
@@ -214,7 +386,7 @@ def main():
     device = "cpu" if args.local else "cuda:0"
     report = {
         "module": module_checks(device),
-        **model_checks(source, device, 1 if args.local else 32),
+        **model_checks(source, device, 1 if args.local else 32, args.output),
         "recipe": evidence,
         "local_only": args.local,
         "passed": True,

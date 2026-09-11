@@ -15,7 +15,15 @@ from tools.experiments import b19_common as common
 from tools.experiments.diagnose_b19_sicr_sppf import stage_statistics
 from tools.experiments.finish_b19_sicr_sppf import archive_package
 from tools.experiments.run_b19_sicr_sppf import AuditedTrainer, audit_arguments, audit_training_setup
-from tools.experiments.verify_b19_sicr_sppf import build_pair, module_checks, topology_checks
+from tools.experiments.verify_b19_sicr_sppf import (
+    build_pair,
+    model_checks,
+    module_checks,
+    module_identity,
+    reload_in_process,
+    save_reload_check,
+    topology_checks,
+)
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.nn.modules import SICRSPPF, SPPF
 from ultralytics.nn.tasks import load_checkpoint
@@ -65,6 +73,8 @@ def test_topology_rng_and_pretrained():
     topology_checks(baseline, candidate)
     report = common.audit_weights(baseline, candidate, source)
     assert report["matched_tensors"] == 606
+    assert len(report["shared_tensors"]) == 708 and len(report["expected_new_state"]) == 55
+    assert report["missing_shared_keys"] == report["unexpected_keys"] == []
     assert report["layer9_cv1_loaded"] and report["layer9_cv2_loaded"]
     candidate.model[10].cv1.conv.weight.data.add_(1)
     with pytest.raises(AssertionError, match="Common baseline initialization"):
@@ -104,20 +114,56 @@ def test_native_musgd_and_ema():
 
 
 def test_checkpoint_fresh_process(tmp_path):
-    """Load a native-style FP16 EMA snapshot in a new interpreter with registered SICR class paths."""
+    """Require exact nonzero snapshot restoration, and prove state/cache/raw corruption fails closed."""
     _, model = build_pair()
     model.model[9].theta.data.copy_(torch.tensor([0.1, -0.2, 0.3]))
     model.args = common.REFERENCE["args"].copy()
-    path = tmp_path / "lifecycle_only.pt"
-    torch.save({"model": None, "ema": model.half(), "train_args": model.args}, path)
-    script = (
-        "from ultralytics.nn.tasks import load_checkpoint; "
-        "from ultralytics.nn.modules import SICRSPPF; "
-        "import sys, torch; m,_=load_checkpoint(sys.argv[1]); "
-        "assert type(m.model[9]) is SICRSPPF; assert m.model[9].theta.count_nonzero()==3; "
-        "m.eval().fuse(verbose=False); y=m(torch.zeros(1,3,64,96))[0]; assert torch.isfinite(y).all()"
-    )
-    subprocess.run([sys.executable, "-c", script, str(path)], cwd=common.ROOT, check=True, timeout=90)
+    state = copy.deepcopy(model.state_dict())
+    report = save_reload_check(model, tmp_path, torch.randn(1, 3, 64, 96))
+    assert report["passed"] and report["state_exact"] and report["attributes_exact"]
+    assert all(row["max_abs"] == 0 for row in report["raw"])
+    common.assert_close_tree(state, model.state_dict(), 0, 0)
+    path = Path(report["checkpoint"])
+    reference_path = path.with_name("reload_reference.pt")
+    reference = torch.load(reference_path, weights_only=False)
+    for field, key in (("state", "model.10.cv1.conv.weight"), ("attributes_before", "model.23"), ("raw", None)):
+        corrupt = copy.deepcopy(reference)
+        if field == "state":
+            corrupt[field][key].add_(1)
+        elif field == "attributes_before":
+            corrupt[field][key]["stride"].add_(1)
+        else:
+            corrupt[field][1]["one2one"]["boxes"].add_(1)
+        torch.save(corrupt, reference_path)
+        with pytest.raises(AssertionError, match=f"reload.{field}"):
+            reload_in_process(path)
+
+
+def test_model_checks_640(tmp_path):
+    """Run the production preflight's complete model/lifecycle path, including native fusion control."""
+    source, _ = load_checkpoint(common.ROOT / "yolo26n.pt")
+    report = model_checks(source, directory=tmp_path)
+    assert report["module_at_layer9"]["first_difference"] is None
+    assert report["reload"]["passed"] and report["deployment"]["cpu_fusion"]
+    for name in ("native_fusion", "sicr_fusion"):
+        assert all(row["atol"] == row["rtol"] == 1e-4 for row in report["reload"][name]["raw_one2one_errors"])
+
+
+def test_module_audit_locates_first_difference():
+    """Catch altered shared state and a faulty pooling stage before downstream Detect can hide them."""
+    native, candidate = SPPF(32, 32).eval(), SICRSPPF(32, 32).eval()
+    candidate.load_state_dict(native.state_dict(), strict=False)
+    x = torch.randn(1, 32, 20, 20)
+    candidate.cv1.bn.running_mean.add_(1)
+    with pytest.raises(AssertionError, match="cv1.bn.running_mean"):
+        module_identity(native, candidate, x)
+    candidate.load_state_dict(native.state_dict(), strict=False)
+    handle = candidate.m.register_forward_hook(lambda m, ins, out: out + 1)
+    try:
+        with pytest.raises(AssertionError, match="Z1"):
+            module_identity(native, candidate, x)
+    finally:
+        handle.remove()
 
 
 def test_oom_refuses_batch_mutation():
@@ -133,6 +179,34 @@ def test_oom_refuses_batch_mutation():
             trainer._oom_retries += 1
             trainer.batch_size //= 2
     assert caught.value is error and trainer.batch_size == 32
+
+
+def test_failed_preflight_never_constructs_trainer(tmp_path, monkeypatch):
+    """A failed child audit must stop the actual train entry before any training model or run is claimed."""
+    from tools.experiments import run_b19_sicr_sppf as run
+
+    stages = []
+    monkeypatch.setattr(sys, "argv", ["run_b19_sicr_sppf.py", "--project", str(tmp_path)])
+    monkeypatch.setattr(common, "require_clean_source", lambda: None)
+    monkeypatch.setattr(run, "require_runtime", lambda: stages.append("runtime"))
+    recipe = common.REFERENCE["args"].copy()
+    monkeypatch.setattr(
+        common, "resolve_recipe", lambda args: (recipe, recipe, {"args_path": "b19.yaml", "initial_path": "yolo26n.pt"})
+    )
+    monkeypatch.setattr(common, "launcher_evidence", lambda *args: {})
+    monkeypatch.setattr(common, "source_hashes", lambda: {})
+
+    def fail_preflight(command, **kwargs):
+        stages.append("preflight")
+        assert kwargs["check"] is True and command[1].endswith("verify_b19_sicr_sppf.py")
+        raise subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(run.subprocess, "run", fail_preflight)
+    monkeypatch.setattr(run, "AuditedTrainer", lambda *args: pytest.fail("Training started after failed preflight"))
+    with pytest.raises(subprocess.CalledProcessError):
+        run.main()
+    assert stages == ["runtime", "preflight"]
+    assert not list(tmp_path.iterdir())
 
 
 def test_actual_trainer_reconstruction_and_setup_callback(tmp_path):

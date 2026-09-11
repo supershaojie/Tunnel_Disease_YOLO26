@@ -323,9 +323,11 @@ def audit_weights(baseline, candidate, weights, new_prefix=("model.9.refine.", "
             if not torch.equal(tensor, csd[key]):
                 raise AssertionError(f"Matching pretrained tensor was not loaded: {key}")
             loaded.append(key)
+    new_state = {k: list(v.shape) for k, v in csd.items() if k not in bsd}
     new = {k: list(v.shape) for k, v in candidate.named_parameters() if k not in bsd}
-    if not new or any(not k.startswith(new_prefix) for k in new):
-        raise AssertionError(f"Unexpected added parameter locations: {new}")
+    if not new or any(not k.startswith(new_prefix) for k in new_state):
+        raise AssertionError(f"Unexpected added state locations: {new_state}")
+    assert all(isinstance(reason, dict) for reason in unmatched.values()), f"Missing checkpoint keys: {unmatched}"
     groups = {}
     for group, indices in (("backbone", range(11)), ("neck", range(11, 23)), ("head", range(23, 24))):
         keys = [k for k in bsd if int(k.split(".")[1]) in indices]
@@ -347,6 +349,12 @@ def audit_weights(baseline, candidate, weights, new_prefix=("model.9.refine.", "
         "loaded_elements": sum(source[k].numel() for k in loaded),
         "groups": groups,
         "unmatched_source_keys": unmatched,
+        "missing_shared_keys": [],
+        "unexpected_keys": [],
+        "expected_new_state": new_state,
+        "shared_tensors": {
+            k: {"shape": list(v.shape), "equal": True, "pretrained": k in loaded} for k, v in bsd.items()
+        },
         "new_parameters": new,
         "all_common_tensors_equal": True,
         "rng_strategy": "native modules constructed once; new CPU convolutions use fork_rng(devices=[])",
@@ -417,6 +425,40 @@ def computation_conditions():
         "deterministic": torch.are_deterministic_algorithms_enabled(),
         "deterministic_warn_only": torch.is_deterministic_algorithms_warn_only_enabled(),
     }
+
+
+def inference_attributes(model):
+    """Reuse SIR's audit of inference state outside state_dict, including lazy Detect caches and BN settings."""
+    fields = (
+        "n",
+        "add",
+        "alpha_max",
+        "inplace",
+        "end2end",
+        "dynamic",
+        "export",
+        "format",
+        "max_det",
+        "agnostic_nms",
+        "xyxy",
+        "nc",
+        "reg_max",
+        "shape",
+        "stride",
+        "anchors",
+        "strides",
+        "eps",
+        "momentum",
+    )
+    result = {}
+    for name, module in model.named_modules():
+        attrs = {"type": f"{type(module).__module__}.{type(module).__name__}", "training": module.training}
+        for key in fields:
+            if hasattr(module, key):
+                value = getattr(module, key)
+                attrs[key] = value.detach().clone() if isinstance(value, torch.Tensor) else value
+        result[name] = attrs
+    return result
 
 
 def launcher_evidence(options, raw):

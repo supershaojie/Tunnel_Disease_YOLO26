@@ -32,6 +32,35 @@ export B19_PYTHON=/root/miniconda3/bin/python
 
 ## 预检与正式启动
 
+如果服务器已经部署旧提交但preflight失败，使用下面流程更新已有SICR独立worktree。原deploy脚本保护已存在的不同SHA目录，不负责覆盖更新；不要直接用它覆盖旧工作区。保留失败预检和日志，确认没有正式run和运行中的实验进程后才切换提交。
+
+```bash
+set -euo pipefail
+BASE=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26
+WORK=/root/autodl-tmp/projects/Tunnel_Disease_YOLO26_SICR_SPPF_v1
+BRANCH=codex/exp-yolo26n-b19-sicr-sppf-v1
+OLD=e3766a00f2d7b8f5d90872e3d9809661581a1c62
+SHA=REPLACE_WITH_DELIVERED_40_CHARACTER_COMMIT
+[[ "$SHA" =~ ^[0-9a-f]{40}$ ]]
+exec 9>"$BASE/.yolo26n_b19_sicr_sppf_v1.lock"
+flock -n 9
+test "$(git -C "$WORK" rev-parse HEAD)" = "$OLD"
+test -z "$(git -C "$WORK" status --porcelain --untracked-files=no)"
+test ! -e "$WORK/runs/detect/yolo26n_b19_sicr_sppf_v1"
+if pgrep -af '[p]ython.*(run_b19_sicr_sppf|verify_b19_sicr_sppf|finish_b19_sicr_sppf)'; then
+    echo 'An SICR process is still active; preserving the checkout.' >&2
+    exit 3
+fi
+git -C "$BASE" -c http.version=HTTP/1.1 fetch --no-tags origin "$BRANCH"
+test "$(git -C "$BASE" rev-parse FETCH_HEAD)" = "$SHA"
+git -C "$WORK" merge-base --is-ancestor "$OLD" "$SHA"
+git -C "$WORK" switch --detach "$SHA"
+test "$(git -C "$WORK" rev-parse HEAD)" = "$SHA"
+git -C "$WORK" status --short
+flock -u 9
+exec 9>&-
+```
+
 ```bash
 cd /root/autodl-tmp/projects/Tunnel_Disease_YOLO26_SICR_SPPF_v1
 export B19_PYTHON=/root/miniconda3/bin/python
@@ -40,6 +69,10 @@ bash tools/experiments/server_b19_sicr_sppf_v1.sh train
 ```
 
 `train`自动在新进程再执行当前代码/数据的synthetic B32/640预检，随后重新从原始预训练和seed初始化正式训练。没有batch16、低batch数据集小训练或复用预检权重。
+
+入口仍为 `bash tools/experiments/server_b19_sicr_sppf_v1.sh train`：runtime audit → 子进程preflight → PASS → 原b19配方200epochs。任何检查失败仍non-zero退出，不创建正式训练run。
+
+修复后的preflight增加逐tensor零初始化证据及新进程checkpoint恢复审计，输出在预检目录的 `reload/{preflight.pt,reload_reference.pt,reload.log,reload_check.json}`。snapshot只用于验证，绝不用于正式初始化。融合审计复用既往NDP的CPU快照路径；完整raw one2one仍使用原1e-4容差，同anchor解码仍使用原像素/概率容差；CUDA B32 FP32/AMP检查继续保留。`checks.json`包含共享权重覆盖、首差异定位、全量数据和配方凭据，只有全部成功才写PASS。具体根因和本地结果见[实验说明](b19_sicr_sppf_v1.md#正式服务器preflight故障修复)。
 
 需要长连接后台运行时，用现有tmux：
 

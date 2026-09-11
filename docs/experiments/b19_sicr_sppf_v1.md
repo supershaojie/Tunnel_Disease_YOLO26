@@ -138,16 +138,32 @@ HSV .024/.84/.535、degrees11、translate.17、scale.735、shear3.5、perspectiv
 
 ## 本地验证与限制
 
-- 原生等价性：theta=0，模块最大绝对误差0；整网640各输出误差0；容差仍为 rtol1e-5 / atol1e-6。
+- 原生等价性：theta=0，alpha=0.1\*tanh(theta)=0；逐 tensor 核对 cv1/cv2 权重、BN weight/bias/running_mean/running_var/num_batches_tracked，两个 Conv 的 bias 均不存在。实际 forward hooks 记录同一输入、Z0/Z1/Z2/Z3、cv2 输入和最终输出，在模块与实际 layer9 输入上均逐项严格相等（atol=rtol=0），没有首个差异点。整网640输出仍保留原 rtol1e-5 / atol1e-6。
 - CPU以及RTX2060 CUDA FP32/AMP的B1/640 synthetic detection loss 前向/反向有限；theta三项有梯度；theta更新后3个 refine 分支获得非零有限梯度；全局系数有界。
 - 3/5/7方向核、group、线性末层、矩形/1×1边界和 shortcut 关闭均覆盖。
 - YAML通过 `YOLO(path)` 构建；n/nc/end2end/reg_max、所有连线、共有参数、原始预训练加载和参数/GFLOPs审计通过。
 - 原生MuSGD成员、两步梯度、EMA非零、FP16 checkpoint跨解释器恢复、真实trainer重建与setup callback有专门回归测试。
-- 非零alpha融合后原始one-to-one输出在1e-4容差内。解码误差来自距离×stride及anchor减法，坐标绝对容差按最大stride32乘原始1e-4设置；本次最大0.001129151像素。核心零初始化等价性测试未放宽。
+- 非零alpha的完整checkpoint生命周期复用NDP：同一模型复制到CPU、保存原生FP16 EMA快照，再把该快照转回FP32作为独立参考；新进程经YOLO加载后，state、全部raw输出（含one2many/one2one和top-k结果）、Detect shape/stride/anchors/strides等属性逐项严格相等（atol=rtol=0）。这不是用两个独立随机模型做恢复比较。
+- 新进程在CPU上分别对原生b19 control与SICR做融合检查，完整保留one2one的boxes/scores/feats，atol=rtol=1e-4。按既往NDP方法比较top-k之前同anchor的全部解码坐标/概率，原坐标atol=32e-4、rtol=1e-4及概率atol=1e-6、rtol=1e-4均未改变。CPU开发快照SICR raw最大误差4.76837158203125e-5，同anchor坐标最大0.00152587890625像素；CUDA smoke生成的快照分别为4.291534423828125e-5和0.0013427734375像素。未把CPU融合结果宣称为CUDA直接融合前后等价。
+- 实际部署另走原生AutoBackend的CPU融合→目标设备FP32推理，640输入、完整one2one结构和所有输出均检查；非零alpha对boxes/scores仍有实际影响。CUDA FP32/AMP backward继续在原GPU路径执行；正式preflight仍B32/640。
 - 已在固定16张真实val图上用明确标识为 `lifecycle_only.pt` 的开发快照运行诊断，并验证权重/buffers不变；这不是正式best.pt或性能结果。
 - 打包测试覆盖真实hardlink、canonical best/last及MD、逐成员读取和缺失必要文件拒绝；Windows符号链接权限为WinError1314，真实symlink用例明确SKIP，独立故障注入用例验证不会对dangling路径做stat/open。Linux用相同测试会执行真实symlink用例。
 - `compileall`、Ruff、shell语法、四个入口 `--help` 均作为交付检查。API reference由项目脚本生成；Windows生成器产生的导航反斜杠已仅在本次生成结果中规范为原目录约定，未修改生成器。
 - 尚未执行AutoDL正式B32/640预检、200epoch训练或完整test；因此没有SICR正式涨点结论和正式结果包。
+
+## 正式服务器preflight故障修复
+
+旧提交 `e3766a00f2d7b8f5d90872e3d9809661581a1c62` 的失败断言位于融合阶段：`before`来自完成FP32/AMP synthetic backward后的同一个CUDA模型，`after`来自该模型的deepcopy直接在CUDA上融合。它不是零初始化native-equivalence比较，也不是save/reload比较。两次train-mode forward确实更新BN buffers，但deepcopy继承同一份state；没有证据表明两侧BN状态不同。
+
+可确认的实现问题是预检偏离既往SIR/NDP及本实验正式checkpoint评估生命周期：原生 `load_checkpoint` 和非Jetson的 `PyTorchBackend` 对CPU模型先fuse、再to(device)，旧verify却在训练smoke对象所在CUDA设备直接fuse。现在删除这一职责混用，把融合放回同一checkpoint的CPU恢复审计，并保留GPU训练smoke与实际部署检查。复用 `b19_common.audit_weights/assert_close_tree/computation_conditions`，在common中集中记录推理属性；没有复制SIR中调整backend策略的context，也没有新增CUDA_VISIBLE_DEVICES、TF32或CUBLAS设置。
+
+同时修正了另一个经原生b19 control实测复现的问题：融合前后top-k分数极微小变化可交换行序，按行直接比坐标会把不同anchor的框相减。本地原生control只有2行交换，post-top-k最大假差异231.471649像素，同anchor实际最大差仅0.001220703125像素、raw score最大差1.90735e-6。改用NDP已有的 `_inference` 比较全部anchor，修正的是对应关系，原断言容差没有放宽；save/reload自身仍严格检查包括top-k在内的全输出。
+
+服务器提供的0.0411229是旧CUDA融合路径的观测值。本地RTX2060/PyTorch2.7.1+cu118无法复现RTX4090/PyTorch2.8.0+cu128的同一个数值失配，因此不能将其具体算子根因归为TF32、cuDNN或BN；本次修复证实并纠正了验证生命周期和坐标对应关系。AutoDL重新运行通过之前，不声明正式服务器preflight已PASS。
+
+修复回归还覆盖：故意破坏共享BN应定位到cv1.bn.running_mean；故意破坏pool应定位到Z1；破坏恢复state、Detect stride或one2one raw均必须失败；子进程preflight失败不得构造trainer或建立训练run。模型实现、注册、YAML、run/finish/diagnose/deploy/server脚本及b19全部正式参数均未修改。
+
+Deleted (preflight fix): 删除训练smoke中的CUDA原位融合比较、post-top-k按行坐标比较，以及只验证load/fuse有限性的弱checkpoint测试；复用NDP快照生命周期与同anchor解码、SIR推理属性审计和已有common严格比较。新增行用于用户要求的逐tensor证据、跨进程恢复和失败回归，仅删除旧逻辑不能覆盖这些必要审计。
 
 Deleted: 用SICR替换实验YAML第9层原生SPPF条目；复用基础设施时删去NDP专属模块/身份、训练批次观察和不需要的生命周期函数，删除CCA归档对best-only的选择与transient目录依赖。基点没有实验基础设施，新增固定模块、审计和交付入口无法仅通过删除实现；复用原生SPPF/Conv/Trainer/MuSGD/Validator，并集中共用b19审计以避免重复。
 
