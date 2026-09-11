@@ -812,6 +812,7 @@ nav:
               - block: reference/nn/modules/block.md
               - conv: reference/nn/modules/conv.md
               - dcs_sppf: reference/nn/modules/dcs_sppf.md
+              - dcs_sppf_v2: reference/nn/modules/dcs_sppf_v2.md
               - head: reference/nn/modules/head.md
               - transformer: reference/nn/modules/transformer.md
               - utils: reference/nn/modules/utils.md

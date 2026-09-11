@@ -1,6 +1,7 @@
 """Archived b19 recipe, provenance and tensor audits reused from SICR d6e9009; no innovation code is imported."""
 
 import hashlib
+import inspect
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import torch
 import ultralytics
 from ultralytics.cfg import DEFAULT_CFG_DICT, get_cfg
 from ultralytics.data.utils import IMG_FORMATS, check_det_dataset
+from ultralytics.nn.modules import DCS_SPPF
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
 
@@ -87,14 +89,37 @@ def architecture_signature(cfg):
     return json.dumps(values, sort_keys=True).replace('"None"', "null")
 
 
-def resolve_recipe(options, model=MODEL):
+def model_binding(model=MODEL, block_type=DCS_SPPF, block=None):
+    """Bind explicit YAML, exact layer type, fixed constants and defining source to this worktree."""
+    module_path = Path(inspect.getfile(block_type)).resolve()
+    expected = ROOT / "ultralytics/nn/modules" / (block_type.__name__.lower() + ".py")
+    assert module_path == expected
+    cfg = YAML.load(model)
+    args = [1024, 5, 3, True]
+    constants = {}
+    if block_type.__name__ == "DCS_SPPF_V2":
+        args += [0.05, 1e-6]
+        constants = {"residual_budget": 0.05, "residual_eps": 1e-6}
+    assert cfg["backbone"][9] == [-1, 1, block_type.__name__, args]
+    if block is not None:
+        assert type(block) is block_type
+        assert all(getattr(block, k) == v for k, v in constants.items())
+    return {
+        "class": f"{block_type.__module__}.{block_type.__name__}",
+        "module_path": str(module_path),
+        "module_sha256": sha256(module_path),
+        "model_sha256": sha256(model),
+        **constants,
+    }
+
+
+def resolve_recipe(options, model=MODEL, block_type=DCS_SPPF):
     """Validate the archived b19 recipe and classify every allowed candidate difference."""
+    rng_before = torch.get_rng_state()
     root = options.baseline_root.resolve()
     if Path(ultralytics.__file__).resolve().parent != ROOT / "ultralytics":
         raise RuntimeError(f"Ultralytics import is outside the experiment worktree: {ultralytics.__file__}")
-    import ultralytics.nn.modules.dcs_sppf as module
-
-    assert Path(module.__file__).resolve() == ROOT / "ultralytics/nn/modules/dcs_sppf.py"
+    binding = model_binding(model, block_type)
     assert Path(git("rev-parse", "--show-toplevel")).resolve() == ROOT
     path, raw = find_baseline(root, options.baseline_args)
     assert sha256(path) == REFERENCE["args_sha256"], "Original b19 args hash mismatch"
@@ -148,7 +173,8 @@ def resolve_recipe(options, model=MODEL):
         shutil.copyfile(source, amp_weight)
     if sha256(amp_weight) != PRETRAINED_SHA256:
         raise ValueError("The worktree AMP-check checkpoint differs from the original b19 weight")
-    weights, checkpoint = load_checkpoint(source)
+    with torch.random.fork_rng(devices=[]):
+        weights, checkpoint = load_checkpoint(source)
     if len(weights.names) != 80 or architecture_signature(weights.yaml) != architecture_signature(
         baseline_architecture()
     ):
@@ -200,7 +226,8 @@ def resolve_recipe(options, model=MODEL):
         "source_commit": REFERENCE["source_commit"],
         "commit": git("rev-parse", "HEAD"),
         "import_path": ultralytics.__file__,
-        "module_path": str(ROOT / "ultralytics/nn/modules/dcs_sppf.py"),
+        "module_path": binding["module_path"],
+        "model_binding": binding,
         "python": sys.version,
         "executable": sys.executable,
         "numerical_backend": computation_conditions(),
@@ -225,6 +252,12 @@ def resolve_recipe(options, model=MODEL):
     expected_manifest = json.loads(Path(__file__).with_name("b19_dataset_manifest.json").read_text(encoding="utf-8"))
     if evidence["dataset_manifest"] != expected_manifest:
         raise ValueError("Dataset contents differ from the recorded b19 dataset manifest")
+    assert torch.equal(rng_before, torch.get_rng_state()), "Recipe audit consumed CPU initialization RNG"
+    evidence["recipe_rng"] = {
+        "before_sha256": hashlib.sha256(rng_before.numpy().tobytes()).hexdigest(),
+        "after_sha256": hashlib.sha256(torch.get_rng_state().numpy().tobytes()).hexdigest(),
+        "unchanged": True,
+    }
     return raw, effective, evidence
 
 
@@ -252,7 +285,7 @@ def dataset_manifest(data):
                     sha256(label),
                 ]
             )
-        if split in {"val", "test"} and targets != {"val": 2985, "test": 1477}[split]:
+        if targets != {"train": 10243, "val": 2985, "test": 1477}[split]:
             raise ValueError(f"{split} label count differs from b19: {targets}")
         manifest[split] = {
             "images": len(images),
@@ -462,7 +495,8 @@ def source_hashes(extra=()):
         sorted((ROOT / "ultralytics").rglob("*.py"))
         + sorted((ROOT / "ultralytics/cfg").rglob("*.yaml"))
         + sorted(p for p in (ROOT / "tools/experiments").iterdir() if p.is_file())
-        + sorted((ROOT / "tests").glob("test_dcs_sppf_v1*.py"))
+        + sorted((ROOT / "tests").glob("test_dcs_sppf*.py"))
+        + sorted((ROOT / "docs/experiments/evidence/dcs_sppf_v2").glob("*.json"))
         + list(map(Path, extra))
     )
     return {str(p.relative_to(ROOT)): sha256(p) for p in paths}

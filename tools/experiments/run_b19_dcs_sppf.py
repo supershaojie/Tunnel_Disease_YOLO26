@@ -4,6 +4,7 @@
 
 import argparse
 import copy
+import hashlib
 import json
 import shutil
 import subprocess
@@ -28,7 +29,7 @@ NAME = "yolo26n_b19_dcs_sppf_v1"
 BASE = Path("/root/autodl-tmp/projects/Tunnel_Disease_YOLO26")
 
 
-def options_parser():
+def options_parser(name=NAME):
     """Expose locations and audit stages, with no training hyperparameter override interface."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-root", type=Path, default=BASE)
@@ -37,7 +38,7 @@ def options_parser():
     parser.add_argument("--pretrained-sha256", default=common.PRETRAINED_SHA256)
     parser.add_argument("--baseline-launcher", type=Path, default=Path(__file__).with_name("b19_launcher_expanded.txt"))
     parser.add_argument("--project", type=Path, default=ROOT / "runs/detect")
-    parser.add_argument("--name", choices=[NAME], default=NAME)
+    parser.add_argument("--name", choices=[name], default=name)
     return parser
 
 
@@ -70,6 +71,9 @@ def require_runtime():
 class AuditedTrainer(DetectionTrainer):
     """Use the native trainer, auditing reconstruction and enforcing the fixed batch at the retry boundary."""
 
+    block_type = DCS_SPPF
+    model_yaml = common.MODEL
+
     def __init__(self, overrides, _callbacks=None):
         """Atomically claim the canonical output and prevent native automatic name incrementing."""
         self.expected_args = copy.deepcopy(overrides)
@@ -90,7 +94,7 @@ class AuditedTrainer(DetectionTrainer):
         if value:
             error = sys.exc_info()[1]
             if error is None:
-                raise RuntimeError("DCS v1 forbids automatic batch reduction")
+                raise RuntimeError("DCS fixed recipe forbids automatic batch reduction")
             raise error
 
     def get_dataset(self):
@@ -99,15 +103,25 @@ class AuditedTrainer(DetectionTrainer):
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Audit the actual native pretrained loading into the final training model."""
+        before = torch.get_rng_state()
         with torch.random.fork_rng(devices=[]):
             baseline = super().get_model(common.baseline_architecture(), weights, verbose=False)
+            baseline_after = torch.get_rng_state()
         candidate = super().get_model(cfg, weights, verbose)
+        assert torch.equal(baseline_after, torch.get_rng_state()), "Candidate changed shared initialization RNG"
         if weights is None:
             raise RuntimeError("Original pretrained checkpoint is required")
         self.weight_audit = common.audit_weights(baseline, candidate, weights)
+        self.weight_audit["rng_states"] = {
+            "before_build_sha256": hashlib.sha256(before.numpy().tobytes()).hexdigest(),
+            "after_build_sha256": hashlib.sha256(baseline_after.numpy().tobytes()).hexdigest(),
+            "native_candidate_equal": True,
+            "seed_owner": "BaseTrainer.__init__: init_seeds(args.seed + 1 + RANK); RANK=-1 gives 42",
+        }
         if self.weight_audit["matched_tensors"] != common.REFERENCE["transferred_items"]:
             raise RuntimeError("Pretrained coverage differs from native b19")
-        assert type(candidate.model[9]) is DCS_SPPF and candidate.model[9].theta.count_nonzero() == 0
+        self.model_binding = common.model_binding(self.model_yaml, self.block_type, candidate.model[9])
+        assert candidate.model[9].theta.count_nonzero() == 0
         return candidate
 
 
@@ -122,6 +136,7 @@ def audit_training_setup(trainer):
         k: p for k, p in model.named_parameters() if k.startswith(("model.9.theta", "model.9.refine.", "model.9.fuse."))
     }
     assert all(id(p) in parameter_ids and p.requires_grad for p in new.values())
+    assert len(new) == 13
     signature = [
         {k: v for k, v in group.items() if k not in {"params", "initial_lr"}}
         for group in trainer.optimizer.param_groups
@@ -154,23 +169,24 @@ def record_completion(trainer):
     )
 
 
-def main():
+def main(name=NAME, model=common.MODEL, trainer_type=AuditedTrainer, verifier="verify_b19_dcs_sppf.py"):
     """Run a fresh-process preflight, then train from the original seed and checkpoint."""
-    parser = options_parser()
+    parser = options_parser(name)
     parser.add_argument("--stage", choices=["train", "preflight"], default="train")
     args = parser.parse_args()
     init_seeds(42, deterministic=True)
     common.require_clean_source()
     require_runtime()
-    raw, config, evidence = common.resolve_recipe(args)
+    with torch.random.fork_rng(devices=[]):
+        raw, config, evidence = common.resolve_recipe(args, model=model, block_type=trainer_type.block_type)
     audit_arguments(raw, config)
     evidence["launcher"] = common.launcher_evidence(args, raw)
     evidence["source_sha256"] = common.source_hashes()
     args.project.resolve().mkdir(parents=True, exist_ok=True)
-    audit_dir = Path(tempfile.mkdtemp(prefix=f"{NAME}_preflight.attempt.", dir=args.project.resolve()))
+    audit_dir = Path(tempfile.mkdtemp(prefix=f"{name}_preflight.attempt.", dir=args.project.resolve()))
     command = [
         sys.executable,
-        str(Path(__file__).with_name("verify_b19_dcs_sppf.py")),
+        str(Path(__file__).with_name(verifier)),
         "--baseline-root",
         str(args.baseline_root),
         "--baseline-args",
@@ -184,13 +200,24 @@ def main():
         "--output",
         str(audit_dir),
     ]
-    subprocess.run(command, check=True, cwd=ROOT)
+    print(f"Starting independent preflight: {name}", flush=True)
+    with (audit_dir / "console.log").open("w", encoding="utf-8") as log:
+        with subprocess.Popen(
+            command, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding="utf-8", bufsize=1
+        ) as process:
+            for line in process.stdout:
+                print(line, end="", flush=True)
+                log.write(line)
+                log.flush()
+            if process.wait():
+                raise subprocess.CalledProcessError(process.returncode, command)
     receipt = json.loads((audit_dir / "checks.json").read_text(encoding="utf-8"))
     assert receipt["passed"] and not receipt["local_only"]
     assert receipt["commit"] == evidence["commit"] and receipt["recipe"] == evidence
+    print("Independent preflight receipt verified", flush=True)
     if args.stage == "preflight":
         return
-    trainer = AuditedTrainer(config)
+    trainer = trainer_type(config)
     provenance = trainer.save_dir / "provenance"
     common.write_json(provenance / "resolved.json", {"config": config, "evidence": evidence})
     shutil.copytree(audit_dir, provenance / "preflight")

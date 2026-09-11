@@ -77,6 +77,7 @@ from .conv import (
     SpatialAttention,
 )
 from .dcs_sppf import DCS_SPPF
+from .dcs_sppf_v2 import DCS_SPPF_V2
 from .head import (
     OBB,
     OBB26,
@@ -127,6 +128,7 @@ __all__ = (
     "SPPELAN",
     "SPPF",
     "DCS_SPPF",
+    "DCS_SPPF_V2",
     "A2C2f",
     "AConv",
     "ADown",

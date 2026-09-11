@@ -1,0 +1,32 @@
+{
+  "archive_id": "YOLO26缝合.zip",
+  "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "files": {
+    "YOLO26╖∞║╧/ultralytics/nn/modules/block.py": {
+      "sha256": "0086ef587d984f657f28adda99a6186f69bf27b77a05650fca3b99995ed78fc8",
+      "bytes_read": 74895,
+      "display_name": "YOLO26缝合/ultralytics/nn/modules/block.py"
+    },
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HLKConv_TGRS2025.py": {
+      "sha256": "ab4407a9cae37bf68b7409a18b85e652046c2aafd7d0f990d90c37b561216d06",
+      "bytes_read": 3468,
+      "display_name": "YOLO26缝合/ultralytics/nn/newsAddmodules/HLKConv_TGRS2025.py"
+    },
+    "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/DPCF_INFFUS2025.py": {
+      "sha256": "f4a0606dc51ecb6f80feb65febb68f70f9d097c449144664acc00f0d7da9dd10",
+      "bytes_read": 3307,
+      "display_name": "YOLO26缝合/ultralytics/nn/newsAddmodules/DPCF_INFFUS2025.py"
+    }
+  },
+  "reused": [
+    "Native SPPF cv1/cv2/m/n/add API and pooling order",
+    "Depthwise dilation reference",
+    "Distinguish scalar mixing from bounding the injected tensor norm"
+  ],
+  "not_adopted": [
+    "HLK large kernels/topology",
+    "DPCF sigmoid mixing/interpolation/topology",
+    "Publication claims inferred from filenames"
+  ],
+  "zip_name_encoding": "ZIP stores the Chinese directory name in legacy GBK without the UTF-8 flag; raw zipfile names and decoded display names are both recorded."
+}

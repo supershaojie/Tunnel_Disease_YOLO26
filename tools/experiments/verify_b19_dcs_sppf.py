@@ -26,6 +26,7 @@ from ultralytics.models.yolo.detect import DetectionTrainer
 from ultralytics.nn.modules import C2PSA, DCS_SPPF, SPPF
 from ultralytics.nn.tasks import DetectionModel, load_checkpoint
 from ultralytics.optim.muon import MuSGD
+from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import autocast, get_flops, init_seeds
 
 
@@ -71,11 +72,11 @@ def gradient_row(parameters, before):
     return result
 
 
-def module_checks(device="cpu", amp=False):
+def module_checks(device="cpu", amp=False, block_type=DCS_SPPF, residual_transform=None):
     """Check exact identity, an independent nonzero formula, and the necessary delayed branch learning."""
     init_seeds(42, deterministic=True)
     native = SPPF(256, 256, 5, 3, True).to(device).eval()
-    candidate = DCS_SPPF(256, 256, 5, 3, True).to(device).eval()
+    candidate = block_type(256, 256, 5, 3, True).to(device).eval()
     loaded = candidate.load_state_dict(native.state_dict(), strict=False)
     assert not loaded.unexpected_keys
     assert all(k.startswith(("refine.", "fuse.")) or k == "theta" for k in loaded.missing_keys)
@@ -111,7 +112,9 @@ def module_checks(device="cpu", amp=False):
         maxima = [torch.nn.functional.max_pool2d(z, k, 1, k // 2) for k in (5, 9, 13)]
         contrasts = [m - torch.nn.functional.avg_pool2d(z, k, 1, k // 2) for m, k in zip(maxima, (5, 9, 13))]
         refinements = [branch(c) for branch, c in zip(candidate.refine, contrasts)]
-        expected = native(x) + (0.10 * candidate.theta.tanh()) * candidate.fuse(torch.cat(refinements, 1))
+        y0 = native(x)
+        raw = (0.10 * candidate.theta.tanh()) * candidate.fuse(torch.cat(refinements, 1))
+        expected = y0 + (raw if residual_transform is None else residual_transform(raw, y0))
         formula = []
         common.assert_close_tree(expected, candidate(x), 0, 0, "independent_formula", formula)
         bounds = [float(0.10 * torch.tensor(t).tanh()) for t in (-100.0, 0.0, 100.0)]
@@ -119,13 +122,13 @@ def module_checks(device="cpu", amp=False):
     return {"identity": identity, "updates": updates, "formula": formula, "bounds": bounds, "amp": amp}
 
 
-def build_pair(source=None):
+def build_pair(source=None, model=common.MODEL):
     """Build native and DCS with aligned RNG, then apply the same native COCO-to-crack loading."""
     init_seeds(42, deterministic=True)
     with torch.random.fork_rng(devices=[]):
         baseline = DetectionModel(common.baseline_architecture(), verbose=False)
         baseline_rng = torch.get_rng_state()
-    candidate = DetectionModel(str(common.MODEL), nc=1, verbose=False)
+    candidate = DetectionModel(str(model), nc=1, verbose=False)
     assert torch.equal(baseline_rng, torch.get_rng_state()), "DCS consumed subsequent shared initialization RNG"
     for model in (baseline, candidate):
         model.names = {0: "crack"}
@@ -134,10 +137,11 @@ def build_pair(source=None):
     return baseline, candidate
 
 
-def topology_checks(baseline, candidate):
+def topology_checks(baseline, candidate, model=common.MODEL, block_type=DCS_SPPF):
     """Require the complete b19 graph with exactly one layer-9 substitution."""
     cfg = copy.deepcopy(candidate.yaml)
-    assert cfg["backbone"][9] == [-1, 1, "DCS_SPPF", [1024, 5, 3, True]]
+    binding = common.model_binding(model, block_type, candidate.model[9])
+    assert cfg["backbone"][9] == YAML.load(model)["backbone"][9]
     cfg["backbone"][9] = baseline.yaml["backbone"][9]
     assert common.architecture_signature(cfg) == common.architecture_signature(baseline.yaml)
     assert len(candidate.model) == len(baseline.model) == 24
@@ -146,7 +150,7 @@ def topology_checks(baseline, candidate):
         if i != 9:
             assert str(a) == str(b)
     block, head = candidate.model[9], candidate.model[-1]
-    assert type(block) is DCS_SPPF and type(candidate.model[10]) is C2PSA
+    assert type(block) is block_type and type(candidate.model[10]) is C2PSA
     assert block.theta.ndim == 0 and block.theta.item() == 0
     assert candidate.model[21].f == [-1, 10] and head.f == [16, 19, 22]
     assert head.nc == 1 and head.reg_max == 1 and candidate.end2end
@@ -156,10 +160,16 @@ def topology_checks(baseline, candidate):
     for d, branch in enumerate(block.refine, 1):
         assert branch.conv.groups == 128 and branch.conv.kernel_size == (3, 3)
         assert branch.conv.dilation == branch.conv.padding == (d, d) and branch.conv.stride == (1, 1)
-    return {"changed_layers": [9], "layer9": "DCS_SPPF", "layer10": "C2PSA", "detect_inputs": head.f}
+    return {
+        "changed_layers": [9],
+        "layer9": block_type.__name__,
+        "layer10": "C2PSA",
+        "detect_inputs": head.f,
+        "binding": binding,
+    }
 
 
-def save_reload_check(model, directory, x):
+def save_reload_check(model, directory, x, model_yaml=common.MODEL):
     """Save one FP32 model snapshot and require exact same-instance fixed-input outputs after a fresh-process reload."""
     directory.mkdir(parents=True, exist_ok=True)
     model = copy.deepcopy(model).eval()
@@ -168,16 +178,28 @@ def save_reload_check(model, directory, x):
     snapshot = directory / "reload.pt"
     torch.save({"model": model, "train_args": common.REFERENCE["args"]}, snapshot)
     loaded, _ = load_checkpoint(snapshot, device=x.device)
+    binding = common.model_binding(model_yaml, type(model.model[9]), model.model[9])
+    assert common.model_binding(model_yaml, type(model.model[9]), loaded.model[9]) == binding
     rows = []
     common.assert_close_tree(model.state_dict(), loaded.state_dict(), 0, 0, "state", rows)
     with torch.no_grad():
         common.assert_close_tree(expected, loaded(x), 0, 0, "reload_output", rows)
-    torch.save({"x": x, "expected": expected, "backend": common.computation_conditions()}, directory / "expected.pt")
+    torch.save(
+        {
+            "x": x,
+            "expected": expected,
+            "backend": common.computation_conditions(),
+            "model_yaml": str(model_yaml),
+            "binding": binding,
+        },
+        directory / "expected.pt",
+    )
     subprocess.run([sys.executable, str(Path(__file__).resolve()), "--reload", str(directory)], cwd=ROOT, check=True)
     return {
         "exact_state_tensors": len(model.state_dict()),
         "outputs": [r for r in rows if r["path"].startswith("reload")],
         "fresh_process": True,
+        "binding": binding,
     }
 
 
@@ -188,6 +210,7 @@ def reload_in_process(directory):
     init_seeds(42, deterministic=True)
     assert common.computation_conditions() == payload["backend"], "Fresh-process numerical backend differs"
     model, _ = load_checkpoint(directory / "reload.pt", device=payload["x"].device)
+    assert common.model_binding(payload["model_yaml"], type(model.model[9]), model.model[9]) == payload["binding"]
     errors = []
     with torch.no_grad():
         common.assert_close_tree(payload["expected"], model(payload["x"]), 0, 0, "fresh_reload", errors)
@@ -448,15 +471,54 @@ def synthetic_model_updates(model, device, amp, directory):
     }
 
 
-def model_checks(source, directory, device="cpu"):
+def full_identity_checks(baseline, candidate, device="cpu"):
+    """Compare every aligned layer and complete Detect tree in train/eval, including one2one and shared BN state."""
+    rows = []
+    modes = [("cpu", False)]
+    if str(device).startswith("cuda"):
+        modes += [(device, False), (device, True)]
+    for location, amp in modes:
+        for training in (False, True):
+            a, b = (copy.deepcopy(m).to(location).train(training) for m in (baseline, candidate))
+            x = torch.randn(2, 3, 128, 160, device=location)
+            stages = [{}, {}]
+            handles = []
+            for model, captured in zip((a, b), stages):
+                for layer in model.model:
+
+                    def capture(module, inputs, output, captured=captured):
+                        captured[module.i] = output
+
+                    handles.append(layer.register_forward_hook(capture))
+            errors = []
+            try:
+                with torch.no_grad(), autocast(amp, device=torch.device(location).type):
+                    expected, actual = a(x), b(x)
+                for i in stages[0]:
+                    common.assert_close_tree(stages[0][i], stages[1][i], 0, 0, f"layer.{i}", errors)
+                common.assert_close_tree(expected, actual, 0, 0, "complete_detect", errors)
+                shared = a.state_dict()
+                common.assert_close_tree(shared, {k: b.state_dict()[k] for k in shared}, 0, 0, "shared_state")
+                rows.append({"device": location, "amp": amp, "train": training, "errors": errors})
+            finally:
+                for handle in handles:
+                    handle.remove()
+    return rows
+
+
+def model_checks(source, directory, device="cpu", model=common.MODEL, block_type=DCS_SPPF):
     """Separate graph/weight audits from snapshot equality; never compare unrelated raw Detect outputs."""
-    baseline, candidate = build_pair(source)
+    baseline, candidate = build_pair(source, model)
     report = {
-        "topology": topology_checks(baseline, candidate),
+        "topology": topology_checks(baseline, candidate, model, block_type),
         "weights": common.audit_weights(baseline, candidate, source),
     }
     assert report["weights"]["matched_tensors"] == common.REFERENCE["transferred_items"]
-    assert len(YOLO(str(common.MODEL)).model.model) == 24
+    assert len(YOLO(str(model)).model.model) == 24
+    assert report["weights"]["common_keys"] == 708
+    assert report["weights"]["added_parameters"] == 103041
+    assert len(report["weights"]["new_parameters"]) == 13
+    report["zero_init_model"] = full_identity_checks(baseline, candidate, device)
     report["complexity"] = {
         "parameters": [sum(p.numel() for p in m.parameters()) for m in (baseline, candidate)],
         "gflops": [get_flops(m, 640) for m in (baseline, candidate)],
@@ -471,7 +533,7 @@ def model_checks(source, directory, device="cpu"):
     with torch.no_grad():
         candidate.model[9].theta.fill_(0.37)
     x = torch.randn(1, 3, 640, 640, device=device)
-    report["save_reload"] = save_reload_check(candidate, directory / "snapshot", x)
+    report["save_reload"] = save_reload_check(candidate, directory / "snapshot", x, model)
     with torch.no_grad():
         candidate.model[9].theta.zero_()
     report["fp32"] = synthetic_model_updates(candidate, device, False, directory)
@@ -480,9 +542,19 @@ def model_checks(source, directory, device="cpu"):
     return report
 
 
-def native_preflight(config, directory):
+def native_preflight(config, directory, trainer_type=AuditedTrainer, evidence=None):
     """Observe bounded native B32 AMP optimizer steps with the original b19 warmup and full dataset loader."""
-    trainer = AuditedTrainer({**config, "project": str(directory / "native"), "name": "check"})
+    trainer = trainer_type({**config, "project": str(directory / "native"), "name": "check"})
+    binding = {"commit": common.git("rev-parse", "HEAD"), "model": trainer_type.block_type.__name__}
+    if evidence is not None:
+        binding.update(
+            model_binding=evidence["model_binding"],
+            args_sha256=evidence["args_sha256"],
+            initial_sha256=evidence["initial_sha256"],
+            data_manifest=evidence["dataset_manifest"],
+            source_sha256=evidence["source_sha256"],
+        )
+    common.write_json(directory / "native_binding.json", binding)
     trainer._setup_train()
     audit_training_setup(trainer)
     trainer._model_train()
@@ -494,6 +566,8 @@ def native_preflight(config, directory):
     rows = []
     last_step = -1
     for i, batch in enumerate(trainer.train_loader):
+        if i % 16 == 0:
+            print(f"Native B32/640 preflight batch {i}/64", flush=True)
         trainer.accumulate = max(1, int(np.interp(i, [0, nw], [1, trainer.args.nbs / trainer.batch_size]).round()))
         for group in trainer.optimizer.param_groups:
             group["lr"] = float(
@@ -519,14 +593,16 @@ def native_preflight(config, directory):
             row = observe_step(trainer.model, parameters, trainer.optimizer, trainer.scaler, trainer.optimizer_step)
             rows.append({"batch": i, "loss": loss.item(), **row})
             last_step = i
-        common.write_json(directory / "native_steps.json", rows)
+        common.write_json(directory / "native_steps.json", {"binding": binding, "steps": rows})
         summary = staged_gradient_audit(rows, require_complete=False)
-        common.write_json(directory / "native_gradient_summary.json", summary)
+        common.write_json(directory / "native_gradient_summary.json", {"binding": binding, **summary})
         if i >= 63:
             break
     assert i == 63 and len(rows) == 64, "Expected exactly 64 original warmup B32 optimizer attempts"
     summary = staged_gradient_audit(rows)
+    print("Native B32/640 preflight batch 64/64 complete", flush=True)
     return {
+        "binding": binding,
         "batch": 32,
         "imgsz": 640,
         "amp": trainer.amp,
@@ -536,12 +612,12 @@ def native_preflight(config, directory):
     }
 
 
-def main():
+def main(name=None, model=common.MODEL, trainer_type=AuditedTrainer, module_check=module_checks, extra_checks=None):
     """Issue PASS only after all checks finish in the current independent process and evidence directory."""
     if len(sys.argv) == 3 and sys.argv[1] == "--reload":
         reload_in_process(Path(sys.argv[2]))
         return
-    parser = options_parser()
+    parser = options_parser() if name is None else options_parser(name)
     parser.add_argument("--local", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -554,20 +630,22 @@ def main():
         if not args.local:
             common.require_clean_source()
             require_runtime()
-        raw, effective, evidence = common.resolve_recipe(args)
+        raw, effective, evidence = common.resolve_recipe(args, model=model, block_type=trainer_type.block_type)
         audit_arguments(raw, effective)
         evidence["launcher"] = common.launcher_evidence(args, raw)
         evidence["source_sha256"] = common.source_hashes()
         report["recipe"] = evidence
         source, _ = load_checkpoint(evidence["initial_path"])
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        report["module_cpu"] = module_checks("cpu")
+        report["module_cpu"] = module_check("cpu")
         if device.startswith("cuda"):
-            report["module_cuda"] = module_checks(device)
-            report["module_amp"] = module_checks(device, True)
-        report.update(model_checks(source, args.output, device))
+            report["module_cuda"] = module_check(device)
+            report["module_amp"] = module_check(device, True)
+        report.update(model_checks(source, args.output, device, model, trainer_type.block_type))
+        if extra_checks is not None:
+            report["additional_checks"] = extra_checks(source, args.output, device)
         if not args.local:
-            report["native_preflight"] = native_preflight(effective, args.output)
+            report["native_preflight"] = native_preflight(effective, args.output, trainer_type, evidence)
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)
