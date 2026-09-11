@@ -1,0 +1,274 @@
+{
+  "base_sha": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "prior_metrics": [
+    {
+      "archive": "sir_b19_evalcheck_IFu9J7.tar.gz",
+      "member": "summary.json",
+      "name": "b19_val",
+      "split": "val",
+      "P": 0.863279630249087,
+      "R": 0.788609715242881,
+      "AP50": 0.8607987980098447,
+      "AP75": 0.524806488636925,
+      "AP50_95": 0.5026482799366365,
+      "reused": false
+    },
+    {
+      "archive": "sir_b19_evalcheck_IFu9J7.tar.gz",
+      "member": "summary.json",
+      "name": "sir_val",
+      "split": "val",
+      "P": 0.8812188125537223,
+      "R": 0.7953197040914641,
+      "AP50": 0.8765492250683231,
+      "AP75": 0.5387569826494368,
+      "AP50_95": 0.5080452017220474,
+      "reused": false
+    },
+    {
+      "archive": "sir_b19_evalcheck_IFu9J7.tar.gz",
+      "member": "summary.json",
+      "name": "sir_bypass_val",
+      "split": "val",
+      "P": 0.8420493358347305,
+      "R": 0.7447236180904523,
+      "AP50": 0.8369091072286984,
+      "AP75": 0.46772798506224217,
+      "AP50_95": 0.4667624171227637,
+      "reused": false
+    },
+    {
+      "archive": "sir_b19_evalcheck_IFu9J7.tar.gz",
+      "member": "summary.json",
+      "name": "b19_test",
+      "split": "test",
+      "P": 0.8745902315448085,
+      "R": 0.7837921554841997,
+      "AP50": 0.8700567437326795,
+      "AP75": 0.536747589145484,
+      "AP50_95": 0.5077699389020365,
+      "reused": false
+    },
+    {
+      "archive": "sir_b19_evalcheck_IFu9J7.tar.gz",
+      "member": "summary.json",
+      "name": "sir_test_recorded",
+      "split": "test",
+      "P": 0.8575084522186949,
+      "R": 0.8002708192281652,
+      "AP50": 0.876482624953524,
+      "AP75": 0.5118547851235644,
+      "AP50_95": 0.49971658366295796,
+      "reused": true
+    },
+    {
+      "archive": "yolo26n_b19_d1_sir_sppf_v2.tar.gz",
+      "member": "run/evaluation/val-4debf738301bc5959d20/metrics.json",
+      "R": 0.7807178617210738,
+      "mAP50-95": 0.5040295200117302,
+      "AP75": 0.5236721395785799
+    },
+    {
+      "archive": "yolo26n_b19_d1_sir_sppf_v2.tar.gz",
+      "member": "run/evaluation/test-254b696e6d32474f76b6/metrics.json",
+      "R": 0.7799593771157752,
+      "mAP50-95": 0.5069466845753872,
+      "AP75": 0.5317891819037819
+    },
+    {
+      "archive": "yolo26n_b19_ndp_sppf_v1_90e32dff4ac1.tar.gz",
+      "member": "yolo26n_b19_ndp_sppf_v1/run/test_1o43z45o/baseline_test_fp32/metrics.json",
+      "R": 0.7837921554841997,
+      "mAP50-95": 0.5077699389020365,
+      "AP75": 0.536747589145484
+    },
+    {
+      "archive": "yolo26n_b19_ndp_sppf_v1_90e32dff4ac1.tar.gz",
+      "member": "yolo26n_b19_ndp_sppf_v1/run/test_1o43z45o/baseline_val_fp32/metrics.json",
+      "R": 0.788609715242881,
+      "mAP50-95": 0.5026482799366365,
+      "AP75": 0.524806488636925
+    },
+    {
+      "archive": "yolo26n_b19_ndp_sppf_v1_90e32dff4ac1.tar.gz",
+      "member": "yolo26n_b19_ndp_sppf_v1/run/test_1o43z45o/test_fp32/metrics.json",
+      "R": 0.7623561272850372,
+      "mAP50-95": 0.49794437511016626,
+      "AP75": 0.5211343972221649
+    },
+    {
+      "archive": "yolo26n_b19_ndp_sppf_v1_90e32dff4ac1.tar.gz",
+      "member": "yolo26n_b19_ndp_sppf_v1/run/test_1o43z45o/val_fp32/metrics.json",
+      "R": 0.7818514597043378,
+      "mAP50-95": 0.4991875930730928,
+      "AP75": 0.518049613735023
+    }
+  ],
+  "prior_diagnostics": {
+    "yolo26n_b19_d1_sir_sppf_v1.tar.gz.json": {
+      "keys": [
+        "evidence",
+        "mode",
+        "saturation_definition",
+        "interpretation",
+        "images"
+      ],
+      "first_sample": {
+        "scales": [
+          {
+            "tanh_mean": 0.7414736747741699,
+            "tanh_std": 0.36950448155403137,
+            "coefficient_mean": 1.370736837387085,
+            "coefficient_std": 0.1847522258758545,
+            "saturation_ratio": 0.23490233719348907,
+            "correction_raw_norm_ratio": 0.39967676997184753
+          },
+          {
+            "tanh_mean": -0.17251338064670563,
+            "tanh_std": 0.6128407716751099,
+            "coefficient_mean": 0.913743257522583,
+            "coefficient_std": 0.30642038583755493,
+            "saturation_ratio": 0.019316405057907104,
+            "correction_raw_norm_ratio": 0.3088919520378113
+          },
+          {
+            "tanh_mean": -0.5550536513328552,
+            "tanh_std": 0.38942793011665344,
+            "coefficient_mean": 0.72247314453125,
+            "coefficient_std": 0.19471396505832672,
+            "saturation_ratio": 0.007050781045109034,
+            "correction_raw_norm_ratio": 0.268261194229126
+          }
+        ],
+        "module_change_norm_ratio": 0.2417203187942505,
+        "image": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/images/val/sample_001358410bb49e779de0__degrade.jpg",
+        "sha256": "af282e096bef0e967fb6d9a3deba6243935d6d9033f42ab589137c2a92beebc3"
+      }
+    },
+    "yolo26n_b19_d1_sir_sppf_v2.tar.gz.json": {
+      "keys": [
+        "evidence",
+        "images",
+        "formula",
+        "mode",
+        "interpretation"
+      ],
+      "first_sample": {
+        "scales": [
+          {
+            "tanh_mean": 0.7035695314407349,
+            "tanh_std": 0.42125216126441956,
+            "coefficient_mean": 1.3517848253250122,
+            "coefficient_std": 0.21062608063220978,
+            "saturation_ratio": 0.18335936963558197,
+            "correction_norm": 168.8267364501953,
+            "correction_raw_norm_ratio": 0.39549732208251953
+          },
+          {
+            "tanh_mean": -0.39336299896240234,
+            "tanh_std": 0.541422963142395,
+            "coefficient_mean": 0.803318440914154,
+            "coefficient_std": 0.2707114815711975,
+            "saturation_ratio": 0.0063671874813735485,
+            "correction_norm": 91.28923797607422,
+            "correction_raw_norm_ratio": 0.1609707772731781
+          },
+          {
+            "tanh_mean": -0.5278828740119934,
+            "tanh_std": 0.4090679883956909,
+            "coefficient_mean": 0.7360585331916809,
+            "coefficient_std": 0.20453399419784546,
+            "saturation_ratio": 0.005566406063735485,
+            "correction_norm": 68.44368743896484,
+            "correction_raw_norm_ratio": 0.10203669965267181
+          }
+        ],
+        "module_change_norm_ratio": 0.16559405624866486,
+        "image": "/root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/images/val/sample_001358410bb49e779de0__degrade.jpg",
+        "sha256": "af282e096bef0e967fb6d9a3deba6243935d6d9033f42ab589137c2a92beebc3"
+      }
+    }
+  },
+  "module_package": {
+    "path": "D:\\7.21yolo26改\\YOLO26缝合.zip",
+    "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+    "read_members": [
+      {
+        "member": "YOLO26╖∞║╧/ultralytics/nn/modules/block.py",
+        "sha256": "0086ef587d984f657f28adda99a6186f69bf27b77a05650fca3b99995ed78fc8"
+      },
+      {
+        "member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/HLKConv_TGRS2025.py",
+        "sha256": "ab4407a9cae37bf68b7409a18b85e652046c2aafd7d0f990d90c37b561216d06"
+      },
+      {
+        "member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/StripConv_AAAI2026.py",
+        "sha256": "a37cdb8da4c496b45da48240eaab37b235d59791e30bc0be3b7a2fa2626744b9"
+      },
+      {
+        "member": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/__init__.py",
+        "sha256": "6bdae0d69699488dfdf24cb03d84396cd42aed6e2de5980270050655b44e4a21"
+      },
+      {
+        "member": "YOLO26╖∞║╧/ultralytics/nn/tasks.py",
+        "sha256": "e06185e22e7b80e4a86091935c8e267b6840c78fc656bbfa82ff240c965ac3d1"
+      }
+    ]
+  },
+  "sicr_results": "No result archive present under the supplied SICR-SPPF directory; source/preflight lifecycle reviewed at d6e9009.",
+  "original_b19_evidence": {
+    "git_state.txt": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\git_state.txt",
+      "content": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6\nexp-dataset-augfirst-diverse5x-randomsplit\n",
+      "sha256": "5ecad24cb7a308e38d33d6c787d2a06370913d001e201e08c71e527dbdf5eabc"
+    },
+    "experiment_info.txt": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\config\\experiment_info.txt",
+      "content": "Experiment: b19\nPackage time: Sun Aug 23 22:41:53 CST 2026\nModel: YOLO26n\nEpochs: 200\nImage size: 640\nBatch size: 32\nWorkers: 8\nOptimizer: MuSGD\nSeed: 42\nTrain run: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42\nBest weight: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42/weights/best.pt\nTest run: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_best_test_20260823_223850\nDataset yaml: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml\nTest split: test\nTest augmentation: False\n",
+      "sha256": "4a14c0c507a02455683f362a0d285998c7e944705fef109f9684b8deb6411dd9"
+    },
+    "framework_versions.txt": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\framework_versions.txt",
+      "content": "\nlibgomp: Invalid value for environment variable OMP_NUM_THREADS\nUltralytics: 8.4.98\nPyTorch: 2.8.0+cu128\nCUDA runtime: 12.8\nCUDA available: True\nGPU: NVIDIA GeForce RTX 4090\n",
+      "sha256": "2c936e2b4ffb0ab07e09bdffac92c36fc3671a7b7967a0d6cd09fa99f9327766"
+    },
+    "python_version.txt": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\environment\\python_version.txt",
+      "content": "Python 3.12.3\n",
+      "sha256": "5b3e43dc38ca01e3f5a7854ba50d4330864b0c1e0f646650b2c78cf072acc366"
+    },
+    "args.yaml": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\args.yaml",
+      "sha256": "b08b915756bf85c91d3356586a651a37156d71867b84b6e8493d75c9568642b9"
+    },
+    "results.csv": {
+      "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\b19 200e\\b19_yolo26n_e200_train_val_test_20260823_224153\\train_run\\results.csv",
+      "sha256": "44795068d0ebc687c29ff7b7b8cbf337469546b2d4dd515cb0616c270bdf9507"
+    }
+  },
+  "ndp_diagnostic": {
+    "archive": "E:\\ditieyolo26跑结果\\8.12离线在线\\NDP-SPPF\\yolo26n_b19_ndp_sppf_v1_90e32dff4ac1.tar.gz",
+    "member": "yolo26n_b19_ndp_sppf_v1/run/diagnose_8h_7e91s/metrics.json",
+    "top_level_keys": [
+      "split",
+      "precision",
+      "device",
+      "samples",
+      "settings",
+      "selection",
+      "weights",
+      "weight_sha256",
+      "commit",
+      "source_sha256",
+      "data_sha256",
+      "backend",
+      "interpretation",
+      "artifacts"
+    ],
+    "summary": {}
+  },
+  "implementation_spec": {
+    "path": "E:\\ditieyolo26跑结果\\8.12离线在线\\DCS_SPPF\\DCS_SPPF_v1_Codex_Instructions.md",
+    "sha256": "301515be5b6759f753b8bf0e2c6b41306bab5e472666b5302c3c7fbd75965e21"
+  }
+}

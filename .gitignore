@@ -207,3 +207,6 @@ results.csv
 
 # CI test asset cache
 .ultralytics_cache/
+
+# Local experiment audit outputs and packaging dry-runs
+/artifacts/

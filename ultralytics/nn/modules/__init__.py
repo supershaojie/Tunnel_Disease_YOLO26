@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .dcs_sppf import DCS_SPPF
 from .head import (
     OBB,
     OBB26,
@@ -125,6 +126,7 @@ __all__ = (
     "SPP",
     "SPPELAN",
     "SPPF",
+    "DCS_SPPF",
     "A2C2f",
     "AConv",
     "ADown",
