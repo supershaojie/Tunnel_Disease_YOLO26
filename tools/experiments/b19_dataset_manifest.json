@@ -1,0 +1,17 @@
+{
+  "train": {
+    "images": 8414,
+    "targets": 10243,
+    "image_stat_label_content_sha256": "547efd9311a28af51b813b58d290e1051ffe4825bfc9db340a61cdaeca4bd08e"
+  },
+  "val": {
+    "images": 2404,
+    "targets": 2985,
+    "image_stat_label_content_sha256": "5267a157758e2ef8fbd112348eb28490a45c32e60dd69ded01f64dc7b1db2904"
+  },
+  "test": {
+    "images": 1202,
+    "targets": 1477,
+    "image_stat_label_content_sha256": "ccefa8e2b8e372425ea10c7a5d64f31414680415e9c81b79e65a15841d7065b3"
+  }
+}
