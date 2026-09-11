@@ -472,8 +472,6 @@ def archive_package(run, output, required):
             ):
                 skipped.append(path.relative_to(run).as_posix())
                 continue
-            if path.suffix == ".pt" and path.relative_to(run).as_posix() not in {"weights/best.pt", "weights/last.pt"}:
-                continue
             files["run/" + path.relative_to(run).as_posix()] = path
     common.write_json(
         run / "package_skipped.json",

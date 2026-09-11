@@ -4,7 +4,9 @@
 import copy
 import sys
 import time
+import traceback
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -13,10 +15,12 @@ import torch
 
 from tools.experiments import b19_common as common
 from tools.experiments import verify_b19_dcs_sppf as shared
+from tools.experiments.b19_detect_fuse_audit import fuse_audit
 from tools.experiments.run_b19_dcs_sppf_v2 import MODEL, NAME, AuditedTrainer
 from ultralytics.nn.modules import DCS_SPPF_V2, SPPF
 from ultralytics.nn.modules.dcs_sppf_v2 import relative_residual
 from ultralytics.utils.torch_utils import ModelEMA
+from ultralytics.models.yolo.detect import DetectionTrainer
 
 
 def module_checks(device="cpu", amp=False):
@@ -110,7 +114,55 @@ def controller_checks(device="cpu"):
 
 def state_checks(source, directory, device):
     """Check actual train BN updates, AMP dtypes, EMA, nonzero snapshot binding and Conv-BN fusion."""
-    rows = []
+    report = {"passed": False, "module_states": [], "fuse": {}}
+    try:
+        _state_checks(source, directory, device, report)
+        report["passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        raise
+    finally:
+        common.write_json(directory / "state_checks.json", report)
+    return report
+
+
+def updated_fixture(candidate, device):
+    """Produce nonzero theta by one real native-loss/MuSGD diagnostic update; never used to initialize training."""
+    model = copy.deepcopy(candidate).to(device).train()
+    model.args = SimpleNamespace(**common.REFERENCE["args"])
+    optimizer = DetectionTrainer.build_optimizer(None, model, "MuSGD", 0.01, 0.937, 0.0005)
+    batch = dict(
+        img=torch.rand(2, 3, 128, 160, device=device),
+        batch_idx=torch.arange(2, device=device),
+        cls=torch.zeros(2, 1, device=device),
+        bboxes=torch.tensor([[0.5, 0.5, 0.08, 0.6], [0.3, 0.6, 0.6, 0.08]], device=device),
+    )
+    theta_before = model.model[9].theta.item()
+    loss, _ = model(batch)
+    loss = loss.sum()
+    assert torch.isfinite(loss)
+    loss.backward()
+    gradient = model.model[9].theta.grad.item()
+    assert gradient != 0 and torch.isfinite(model.model[9].theta.grad)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 10.0)
+    optimizer.step()
+    optimizer.zero_grad(set_to_none=True)
+    assert model.model[9].theta.item() != theta_before
+    return model.eval(), dict(
+        loss=loss.item(),
+        theta_before=theta_before,
+        gradient=gradient,
+        theta_after=model.model[9].theta.item(),
+        optimizer="MuSGD",
+        batch=2,
+        shape=[128, 160],
+        scope="One diagnostic update, separate from native B32 and existing staged gamma audits",
+    )
+
+
+def _state_checks(source, directory, device, report):
+    """Accumulate lifecycle results in the receipt owner before any failing assertion can discard them."""
+    rows = report["module_states"]
     modes = [("cpu", False, torch.bfloat16), (device, False, torch.float16)]
     modes += [("cpu", True, torch.bfloat16)]
     if str(device).startswith("cuda"):
@@ -138,30 +190,43 @@ def state_checks(source, directory, device):
             if amp:
                 assert captured["features"] == str(dtype)
             rows.append({"device": location, "amp": amp, "training": training, "bn": bn, **captured, "errors": errors})
+    baseline, v1 = shared.build_pair(source)
     _, candidate = shared.build_pair(source, MODEL)
     candidate = candidate.to(device).eval()
+    updated, report["optimizer_fixture"] = updated_fixture(candidate, device)
+    x = torch.randn(1, 3, 128, 160, device=device)
+    failures = []
+    diagnostic = copy.deepcopy(candidate)
     with torch.no_grad():
-        candidate.model[9].theta.fill_(-0.7)
+        diagnostic.model[9].theta.fill_(-0.7)
+    for label, model in (
+        ("native", baseline),
+        ("v1", v1),
+        ("v2_zero", candidate),
+        ("v2_updated", updated),
+        ("v2_diagnostic", diagnostic),
+    ):
+        try:
+            report["fuse"][label] = fuse_audit(model, x, directory / label)
+        except Exception:
+            report["fuse"][label] = {
+                "passed": False,
+                "traceback": traceback.format_exc(),
+                "evidence_parent": str(directory / label),
+            }
+            failures.append(label)
+    assert not failures, f"Fuse audit failed; see per-attempt evidence: {failures}"
+    candidate = updated
     binding = common.model_binding(MODEL, DCS_SPPF_V2, candidate.model[9])
     ema = ModelEMA(candidate)
     ema.update(candidate)
     assert common.model_binding(MODEL, DCS_SPPF_V2, ema.ema.model[9]) == binding
     assert torch.equal(ema.ema.model[9].theta, candidate.model[9].theta)
-    x = torch.randn(1, 3, 128, 160, device=device)
-    with torch.no_grad():
-        before = candidate(x)
-        fused = copy.deepcopy(candidate).fuse(verbose=False)
-        after = fused(x)
-    fusion = []
-    # Native Detect.fuse deliberately deletes one2many; one2one and final predictions remain comparable.
-    assert after[1]["one2many"] == {} and before[1]["one2many"]
-    assert fused.model[-1].cv2 is fused.model[-1].cv3 is None
-    common.assert_close_tree(before[0], after[0], 1e-4, 1e-4, "fusion.predictions", fusion)
-    common.assert_close_tree(before[1]["one2one"], after[1]["one2one"], 1e-4, 1e-4, "fusion.one2one", fusion)
+    fused = copy.deepcopy(candidate).fuse(verbose=False)
     assert common.model_binding(MODEL, DCS_SPPF_V2, fused.model[9]) == binding
     assert torch.equal(candidate.model[9].theta, fused.model[9].theta)
     reload = shared.save_reload_check(fused, directory / "fused_snapshot", x, MODEL)
-    return {"module_states": rows, "binding": binding, "ema": True, "fuse": fusion, "fused_reload": reload}
+    report.update(binding=binding, ema=True, fused_reload=reload)
 
 
 def benchmark(source, device):
@@ -203,11 +268,19 @@ def benchmark(source, device):
 
 def extra_checks(source, directory, device):
     """Attach controller/state/latency evidence to the same preflight receipt without changing native stepping."""
-    report = {"controller_cpu": controller_checks("cpu")}
-    if str(device).startswith("cuda"):
-        report["controller_cuda"] = controller_checks(device)
-    report["states"] = state_checks(source, directory, device)
-    report["benchmark"] = benchmark(source, device)
+    report = {"passed": False}
+    try:
+        report["controller_cpu"] = controller_checks("cpu")
+        if str(device).startswith("cuda"):
+            report["controller_cuda"] = controller_checks(device)
+        report["states"] = state_checks(source, directory, device)
+        report["benchmark"] = benchmark(source, device)
+        report["passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        raise
+    finally:
+        common.write_json(directory / "extra_checks.json", report)
     return report
 
 
