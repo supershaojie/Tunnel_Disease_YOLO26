@@ -45,7 +45,7 @@ def write_json(path, data):
 def git(*args):
     """Run read-only Git queries in the imported worktree."""
     return subprocess.check_output(
-        ["git", "-c", f"safe.directory={ROOT.as_posix()}", *args], cwd=ROOT, text=True
+        ["git", "-c", f"safe.directory={ROOT.as_posix()}", *args], cwd=ROOT, encoding="utf-8"
     ).strip()
 
 

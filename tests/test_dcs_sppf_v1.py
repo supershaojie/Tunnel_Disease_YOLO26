@@ -2,6 +2,7 @@
 
 import copy
 import json
+import subprocess
 import tarfile
 from pathlib import Path
 
@@ -95,6 +96,18 @@ def test_archive_ignores_attempts_and_console_aliases(tmp_path, monkeypatch):
     output = tmp_path / "package.tar.gz"
     result = archive_package(run, output, ["weights/best.pt", "weights/last.pt", "args.yaml"])
     assert result["gzip_crc_verified"]
+    assert (run / "source.patch").read_bytes() == subprocess.check_output(
+        [
+            "git",
+            "-c",
+            f"safe.directory={common.ROOT.as_posix()}",
+            "diff",
+            "--binary",
+            common.REFERENCE["source_commit"],
+            "HEAD",
+        ],
+        cwd=common.ROOT,
+    )
     with tarfile.open(output) as archive:
         names = archive.getnames()
         assert "run/weights/best.pt" in names and "run/weights/last.pt" in names

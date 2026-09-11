@@ -308,8 +308,19 @@ def archive_package(run, output, required):
         cwd=ROOT,
         check=True,
     )
-    (run / "source.patch").write_text(
-        common.git("diff", "--binary", common.REFERENCE["source_commit"], "HEAD"), encoding="utf-8"
+    (run / "source.patch").write_bytes(
+        subprocess.check_output(
+            [
+                "git",
+                "-c",
+                f"safe.directory={ROOT.as_posix()}",
+                "diff",
+                "--binary",
+                common.REFERENCE["source_commit"],
+                "HEAD",
+            ],
+            cwd=ROOT,
+        )
     )
     common.write_json(
         run / "source_manifest.json",
