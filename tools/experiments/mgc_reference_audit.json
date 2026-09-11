@@ -1,0 +1,93 @@
+{
+  "sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "expected_sha256": "a0c197f38e1510291a9a762fc7dc0a8c13694742fff9e3132c50a3ee32ddadcf",
+  "files": [
+    {
+      "internal_path_raw": "YOLO26╖∞║╧/ultralytics/nn/modules/block.py",
+      "internal_path_display": "YOLO26缝合/ultralytics/nn/modules/block.py",
+      "sha256": "0086ef587d984f657f28adda99a6186f69bf27b77a05650fca3b99995ed78fc8",
+      "classes": [
+        "DFL",
+        "Proto",
+        "HGStem",
+        "HGBlock",
+        "SPP",
+        "SPPF",
+        "C1",
+        "C2",
+        "C2f",
+        "C3",
+        "C3x",
+        "RepC3",
+        "C3TR",
+        "C3Ghost",
+        "GhostBottleneck",
+        "Bottleneck",
+        "BottleneckCSP",
+        "ResNetBlock",
+        "ResNetLayer",
+        "MaxSigmoidAttnBlock",
+        "C2fAttn",
+        "ImagePoolingAttn",
+        "ContrastiveHead",
+        "BNContrastiveHead",
+        "RepBottleneck",
+        "RepCSP",
+        "RepNCSPELAN4",
+        "ELAN1",
+        "AConv",
+        "ADown",
+        "SPPELAN",
+        "CBLinear",
+        "CBFuse",
+        "C3f",
+        "C3k2",
+        "C3k",
+        "RepVGGDW",
+        "CIB",
+        "C2fCIB",
+        "Attention",
+        "PSABlock",
+        "PSA",
+        "C2PSA",
+        "C2fPSA",
+        "SCDown",
+        "TorchVision",
+        "AAttn",
+        "ABlock",
+        "A2C2f",
+        "SwiGLUFFN",
+        "Residual",
+        "SAVPE",
+        "Proto26",
+        "RealNVP"
+      ]
+    },
+    {
+      "internal_path_raw": "YOLO26╖∞║╧/ultralytics/nn/newsAddmodules/CGhalfConv_2025ESWA.py",
+      "internal_path_display": "YOLO26缝合/ultralytics/nn/newsAddmodules/CGhalfConv_2025ESWA.py",
+      "sha256": "2c50666ba610bbc23f567b3a80e0170dd813dd93e3c5711703852e6043f14ee6",
+      "classes": [
+        "HalfConv",
+        "CGHalfConv",
+        "Bottleneck_CGHalfConv",
+        "C3k_CGHalfConv",
+        "CGHC3k2"
+      ]
+    },
+    {
+      "internal_path_raw": "YOLO26╖∞║╧/ultralytics/cfg/models/26/yolo26.yaml",
+      "internal_path_display": "YOLO26缝合/ultralytics/cfg/models/26/yolo26.yaml",
+      "sha256": "b1d1fa0c69eced64f9939536038bd8d697c32e72200b34187a767de431af7ef0",
+      "classes": []
+    }
+  ],
+  "native_sppf_ast_equal": true,
+  "reused": [
+    "Native SPPF semantics; CGhalfConv partial processing cost idea only"
+  ],
+  "not_adopted": [
+    "CGHalfConv implementation, grouping, C3k2 replacement, package YAML"
+  ],
+  "license": "Native repository AGPL-3.0; CGhalfConv has no per-file license header and no source copied; bibliographic attribution unresolved beyond filename ESWA 2025."
+}

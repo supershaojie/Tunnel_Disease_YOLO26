@@ -1,0 +1,29 @@
+[
+  {
+    "commit": "d4a3b83940bdb306d008ede322b1e45bcd08cafb",
+    "files": [
+      "tools/experiments/b19_common.py",
+      "tools/experiments/run_b19_dcs_sppf.py",
+      "tools/experiments/verify_b19_dcs_sppf.py"
+    ],
+    "adaptation": "Identity/config dataset audits, native shared initialization and optimizer replay reused; DCS gates/BN/branches and duplicated warmup loop deleted; new MGC output-projection selection and bounded native trainer observer"
+  },
+  {
+    "commit": "d6e90097fd58e48f80e28503aab7d282ea58326f",
+    "files": [
+      "tools/experiments/finish_b19_sicr_sppf.py",
+      "tools/experiments/diagnose_b19_sicr_sppf.py",
+      "tools/experiments/b19_common.py",
+      "tools/experiments/verify_b19_sicr_sppf.py"
+    ],
+    "adaptation": "Reuse quantized checkpoint, Detect cache, fuse, evaluation and archive routines; delete SICR diagnostics/math/thresholds; add MGC feature statistics and explicit link exclusion manifest"
+  },
+  {
+    "commit": "05c79c6f2beb9a5e38d728838916f7729a0ab3b4",
+    "files": [
+      "source/tools/experiments/server_b19_cca_fusion_v2.sh"
+    ],
+    "source": "user result archive, verified against local Git object",
+    "adaptation": "Experiment identity renamed, two-pass CCA test wrapper removed, early banner and final log capture added; original attempt locks/tee/status/offline settings retained"
+  }
+]

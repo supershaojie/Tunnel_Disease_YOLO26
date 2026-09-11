@@ -107,7 +107,10 @@ from .transformer import (
     TransformerLayer,
 )
 
+from .mgc_sppf import MGC_SPPF
+
 __all__ = (
+    "MGC_SPPF",
     "AIFI",
     "C1",
     "C2",
