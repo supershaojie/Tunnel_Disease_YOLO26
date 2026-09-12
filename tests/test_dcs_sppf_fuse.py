@@ -71,6 +71,21 @@ def test_second_stage_actual_tied_permutation():
     assert report["batches"][0]["changed_rank_positions"] == 2
 
 
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_amp_gather_uses_native_class_dtype(dtype):
+    """Native FP32 class IDs promote low precision decoded boxes/scores without changing any gathered value."""
+    data = candidate_fixture([0.75, 0.5, 0.25, 0.125], [0, 1])
+    data["decoded"] = data["decoded"].to(dtype)
+    data["selected_scores"] = data["selected_scores"].to(dtype)
+    data["final"] = torch.cat((data["decoded"].gather(1, data["indices"].expand(-1, -1, 5)), data["classes"]), -1)
+    for stage in data["topk_stages"]:
+        for key in ("input", "values"):
+            stage[key] = stage[key].to(dtype)
+    report = {}
+    audit_candidates(data, data, 2, 1e-4, 1e-4, report)
+    assert data["final"].dtype == torch.float32 and report["stage"] == "complete"
+
+
 @pytest.mark.parametrize(
     "corruption",
     [
@@ -173,7 +188,7 @@ def test_failure_evidence_and_first_layer(tmp_path, monkeypatch):
         fuse_audit(model, torch.randn(1, 3, 128, 160), tmp_path)
     directory = next(tmp_path.glob("fuse-evidence-*"))
     report = json.loads((directory / "audit.json").read_text())
-    assert not report["passed"] and "AssertionError" in report["traceback"]
+    assert not report["passed"] and "FuseEquivalenceMismatch" in report["traceback"]
     assert report["candidate_rows"][-1]["outside_tolerance"] > 0
     assert report["first_layer_outside_tolerance"] == "model.23.one2one_cv3.0.2"
     for name in ("input_rng.pt", "source.pt", "fused_state.pt", "before.pt", "after.pt", "layer_outputs.pt"):
@@ -198,7 +213,7 @@ def test_strict_amp_fuse_rejects_raw_error(tmp_path, device, variant):
         model, _ = verifier.updated_fixture(model, device)
     x = torch.randn(1, 3, 128, 160, device=device)
     with pytest.raises(AssertionError, match="raw.one2one.boxes"):
-        fuse_audit(model, x, tmp_path, forward_amp=True)
+        fuse_audit(model, x, tmp_path, profile="amp_diagnostic")
     directory = next(tmp_path.glob("fuse-evidence-*"))
     report = json.loads((directory / "audit.json").read_text())
     assert not report["passed"] and report["stage"] == "raw_and_decode"

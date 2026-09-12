@@ -4,6 +4,7 @@
 import copy
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -28,6 +29,19 @@ from ultralytics.nn.tasks import DetectionModel, load_checkpoint
 from ultralytics.optim.muon import MuSGD
 from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import autocast, get_flops, init_seeds
+
+
+@contextmanager
+def check_phase(name):
+    """Print completion only after a phase actually succeeds; keep exceptions fatal to preflight."""
+    print(f"BEGIN preflight {name}", flush=True)
+    try:
+        yield
+    except BaseException:
+        print(f"END preflight {name}: FAIL", flush=True)
+        raise
+    else:
+        print(f"END preflight {name}: PASS", flush=True)
 
 
 def module_identity(native, candidate, x):
@@ -533,12 +547,15 @@ def model_checks(source, directory, device="cpu", model=common.MODEL, block_type
     with torch.no_grad():
         candidate.model[9].theta.fill_(0.37)
     x = torch.randn(1, 3, 640, 640, device=device)
-    report["save_reload"] = save_reload_check(candidate, directory / "snapshot", x, model)
+    with check_phase("unfused nonzero snapshot and fresh-process reload"):
+        report["save_reload"] = save_reload_check(candidate, directory / "snapshot", x, model)
     with torch.no_grad():
         candidate.model[9].theta.zero_()
-    report["fp32"] = synthetic_model_updates(candidate, device, False, directory)
+    with check_phase("B2/640 FP32 staged MuSGD updates"):
+        report["fp32"] = synthetic_model_updates(candidate, device, False, directory)
     if str(device).startswith("cuda"):
-        report["amp"] = synthetic_model_updates(candidate, device, True, directory)
+        with check_phase("B2/640 AMP GradScaler staged MuSGD updates"):
+            report["amp"] = synthetic_model_updates(candidate, device, True, directory)
     return report
 
 
@@ -630,22 +647,30 @@ def main(name=None, model=common.MODEL, trainer_type=AuditedTrainer, module_chec
         if not args.local:
             common.require_clean_source()
             require_runtime()
-        raw, effective, evidence = common.resolve_recipe(args, model=model, block_type=trainer_type.block_type)
-        audit_arguments(raw, effective)
-        evidence["launcher"] = common.launcher_evidence(args, raw)
-        evidence["source_sha256"] = common.source_hashes()
-        report["recipe"] = evidence
-        source, _ = load_checkpoint(evidence["initial_path"])
+        with check_phase("recipe, launcher, data and original weights"):
+            raw, effective, evidence = common.resolve_recipe(args, model=model, block_type=trainer_type.block_type)
+            audit_arguments(raw, effective)
+            evidence["launcher"] = common.launcher_evidence(args, raw)
+            evidence["source_sha256"] = common.source_hashes()
+            report["recipe"] = evidence
+            source, _ = load_checkpoint(evidence["initial_path"])
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        report["module_cpu"] = module_check("cpu")
+        with check_phase("module CPU"):
+            report["module_cpu"] = module_check("cpu")
         if device.startswith("cuda"):
-            report["module_cuda"] = module_check(device)
-            report["module_amp"] = module_check(device, True)
-        report.update(model_checks(source, args.output, device, model, trainer_type.block_type))
+            with check_phase("module CUDA FP32 and AMP"):
+                report["module_cuda"] = module_check(device)
+                report["module_amp"] = module_check(device, True)
+        with check_phase("model identity, MuSGD updates and reload"):
+            report.update(model_checks(source, args.output, device, model, trainer_type.block_type))
         if extra_checks is not None:
-            report["additional_checks"] = extra_checks(source, args.output, device)
+            with check_phase("controller, lifecycle, fuse profiles and benchmark"):
+                report["additional_checks"] = extra_checks(source, args.output, device)
         if not args.local:
-            report["native_preflight"] = native_preflight(effective, args.output, trainer_type, evidence)
+            with check_phase("real B32/640 native detection"):
+                report["native_preflight"] = native_preflight(effective, args.output, trainer_type, evidence)
+        else:
+            print("NOT RUN: real B32/640 native detection (--local)", flush=True)
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)

@@ -15,7 +15,7 @@ import torch
 
 from tools.experiments import b19_common as common
 from tools.experiments import verify_b19_dcs_sppf as shared
-from tools.experiments.b19_detect_fuse_audit import fuse_audit
+from tools.experiments.b19_detect_fuse_audit import fuse_precision_checks
 from tools.experiments.run_b19_dcs_sppf_v2 import MODEL, NAME, AuditedTrainer
 from ultralytics.nn.modules import DCS_SPPF_V2, SPPF
 from ultralytics.nn.modules.dcs_sppf_v2 import relative_residual
@@ -193,29 +193,18 @@ def _state_checks(source, directory, device, report):
     baseline, v1 = shared.build_pair(source)
     _, candidate = shared.build_pair(source, MODEL)
     candidate = candidate.to(device).eval()
-    updated, report["optimizer_fixture"] = updated_fixture(candidate, device)
+    with shared.check_phase("actual MuSGD state fixture B2/128x160"):
+        updated, report["optimizer_fixture"] = updated_fixture(candidate, device)
     x = torch.randn(1, 3, 128, 160, device=device)
-    failures = []
     diagnostic = copy.deepcopy(candidate)
     with torch.no_grad():
         diagnostic.model[9].theta.fill_(-0.7)
-    for label, model in (
-        ("native", baseline),
-        ("v1", v1),
-        ("v2_zero", candidate),
-        ("v2_updated", updated),
-        ("v2_diagnostic", diagnostic),
-    ):
-        try:
-            report["fuse"][label] = fuse_audit(model, x, directory / label)
-        except Exception:
-            report["fuse"][label] = {
-                "passed": False,
-                "traceback": traceback.format_exc(),
-                "evidence_parent": str(directory / label),
-            }
-            failures.append(label)
-    assert not failures, f"Fuse audit failed; see per-attempt evidence: {failures}"
+    fuse_precision_checks(
+        dict(native=baseline, v1=v1, v2_zero=candidate, v2_updated=updated, v2_diagnostic=diagnostic),
+        x,
+        directory / "fuse_precision",
+        report["fuse"],
+    )
     candidate = updated
     binding = common.model_binding(MODEL, DCS_SPPF_V2, candidate.model[9])
     ema = ModelEMA(candidate)
@@ -225,7 +214,8 @@ def _state_checks(source, directory, device, report):
     fused = copy.deepcopy(candidate).fuse(verbose=False)
     assert common.model_binding(MODEL, DCS_SPPF_V2, fused.model[9]) == binding
     assert torch.equal(candidate.model[9].theta, fused.model[9].theta)
-    reload = shared.save_reload_check(fused, directory / "fused_snapshot", x, MODEL)
+    with shared.check_phase("fused nonzero snapshot and fresh-process reload"):
+        reload = shared.save_reload_check(fused, directory / "fused_snapshot", x, MODEL)
     report.update(binding=binding, ema=True, fused_reload=reload)
 
 
@@ -270,11 +260,15 @@ def extra_checks(source, directory, device):
     """Attach controller/state/latency evidence to the same preflight receipt without changing native stepping."""
     report = {"passed": False}
     try:
-        report["controller_cpu"] = controller_checks("cpu")
+        with shared.check_phase("controller CPU"):
+            report["controller_cpu"] = controller_checks("cpu")
         if str(device).startswith("cuda"):
-            report["controller_cuda"] = controller_checks(device)
-        report["states"] = state_checks(source, directory, device)
-        report["benchmark"] = benchmark(source, device)
+            with shared.check_phase("controller CUDA"):
+                report["controller_cuda"] = controller_checks(device)
+        with shared.check_phase("module BN lifecycle, updated fixture, fuse, EMA and fused reload"):
+            report["states"] = state_checks(source, directory, device)
+        with shared.check_phase("sequential inference benchmark"):
+            report["benchmark"] = benchmark(source, device)
         report["passed"] = True
     except BaseException:
         report["traceback"] = traceback.format_exc()

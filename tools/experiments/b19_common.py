@@ -371,7 +371,7 @@ def audit_weights(baseline, candidate, weights, new_prefix=("model.9.refine.", "
     }
 
 
-def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None):
+def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None, *, mismatch_error=AssertionError):
     """Compare complete trees, reporting finite errors against the reference scale, never near-zero ratios."""
     if isinstance(a, torch.Tensor):
         assert isinstance(b, torch.Tensor), f"{path}: expected tensor, got {type(b)}"
@@ -401,15 +401,17 @@ def assert_close_tree(a, b, atol=1e-5, rtol=1e-5, path="raw", report=None):
         }
         if report is not None:
             report.append(row)
-        assert row["finite"] and row["outside_tolerance"] == 0, json.dumps(row)
+        assert row["finite"], json.dumps(row)
+        if row["outside_tolerance"]:
+            raise mismatch_error(json.dumps(row))
     elif isinstance(a, dict):
         assert isinstance(b, dict) and a.keys() == b.keys(), f"{path}: dictionary keys differ"
         for key in a:
-            assert_close_tree(a[key], b[key], atol, rtol, f"{path}.{key}", report)
+            assert_close_tree(a[key], b[key], atol, rtol, f"{path}.{key}", report, mismatch_error=mismatch_error)
     elif isinstance(a, (tuple, list)):
         assert type(a) is type(b) and len(a) == len(b), f"{path}: sequence type/length differs"
         for i, (x, y) in enumerate(zip(a, b)):
-            assert_close_tree(x, y, atol, rtol, f"{path}[{i}]", report)
+            assert_close_tree(x, y, atol, rtol, f"{path}[{i}]", report, mismatch_error=mismatch_error)
     else:
         assert a == b, f"{path}: reference={a!r}, actual={b!r}"
 

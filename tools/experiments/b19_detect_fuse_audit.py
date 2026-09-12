@@ -5,6 +5,7 @@ import random
 import sys
 import tempfile
 import traceback
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,65 @@ from torch.overrides import TorchFunctionMode
 import ultralytics
 from tools.experiments import b19_common as common
 from ultralytics.nn.modules import Conv, DCS_SPPF, DCS_SPPF_V2
+
+
+PROFILES = ("native_precision_diagnostic", "strict_fp32_equivalence", "amp_diagnostic")
+
+
+class FuseEquivalenceMismatch(AssertionError):
+    """A finite cross-path value exceeds the unchanged tolerance, after structural checks pass."""
+
+
+@contextmanager
+def fuse_precision(device, profile):
+    """Isolate independent audit copies; restore grouped backend settings, autocast and all RNG on either exit."""
+    assert profile in PROFILES, f"Unknown precision profile: {profile}"
+    device = torch.device(device)
+    before = common.computation_conditions()
+    autocast = {
+        d: dict(enabled=torch.is_autocast_enabled(d), dtype=str(torch.get_autocast_dtype(d))) for d in ("cpu", "cuda")
+    }
+    python_rng, numpy_rng = random.getstate(), np.random.get_state()
+    cpu_rng = torch.get_rng_state()
+    cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else []
+    receipt = dict(profile=profile, before=before, autocast_before=autocast, rng_restored=False)
+    try:
+        # fork_rng covers CPU and every available CUDA generator, including deliberate failed forwards.
+        with torch.random.fork_rng(), torch.autocast(device.type, enabled=False):
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+            if profile == "strict_fp32_equivalence":
+                torch.backends.cudnn.allow_tf32 = False
+                torch.set_float32_matmul_precision("highest")
+            receipt["during"] = common.computation_conditions()
+            receipt["autocast_during_fusion"] = torch.is_autocast_enabled(device.type)
+            yield receipt
+    finally:
+        try:
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+        finally:
+            torch.backends.cudnn.allow_tf32 = before["cudnn_allow_tf32"]
+            torch.backends.cuda.matmul.allow_tf32 = before["matmul_allow_tf32"]
+            torch.set_float32_matmul_precision(before["float32_matmul_precision"])
+            random.setstate(python_rng)
+            np.random.set_state(numpy_rng)
+            receipt["restored"] = common.computation_conditions()
+            receipt["autocast_restored"] = {
+                d: dict(enabled=torch.is_autocast_enabled(d), dtype=str(torch.get_autocast_dtype(d)))
+                for d in ("cpu", "cuda")
+            }
+            current_numpy = np.random.get_state()
+            receipt["rng_restored"] = (
+                random.getstate() == python_rng
+                and current_numpy[0] == numpy_rng[0]
+                and np.array_equal(current_numpy[1], numpy_rng[1])
+                and current_numpy[2:] == numpy_rng[2:]
+                and torch.equal(torch.get_rng_state(), cpu_rng)
+                and all(torch.equal(torch.cuda.get_rng_state(i), state) for i, state in enumerate(cuda_rng))
+            )
+            assert receipt["rng_restored"], "Audit RNG restoration failed"
+            assert receipt["restored"] == before and receipt["autocast_restored"] == autocast
 
 
 def snapshot(value):
@@ -230,15 +290,19 @@ def audit_residual(before, after, report):
             injected_ratio=ratio.tolist(),
             rounding_ratio=rounding.tolist(),
         )
-    common.assert_close_tree(before, after, 1e-4, 1e-4, "fusion.residual", rows)
+    common.assert_close_tree(before, after, 1e-4, 1e-4, "fusion.residual", rows, mismatch_error=FuseEquivalenceMismatch)
 
 
-def fuse_audit(model, x, directory, *, forward_amp=False):
+def fuse_audit(model, x, directory, *, profile="strict_fp32_equivalence", report=None):
     """Own unique failure receipts, same-source copies and fixed-tolerance gates; never modify the source model."""
     Path(directory).mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix="fuse-evidence-", dir=directory))
-    report = dict(
+    report = {} if report is None else report
+    report.update(
         passed=False,
+        status="FAIL",
+        profile=profile,
+        required=profile == "strict_fp32_equivalence",
         stage="capture",
         directory=str(directory),
         commit=common.git("rev-parse", "HEAD"),
@@ -254,16 +318,33 @@ def fuse_audit(model, x, directory, *, forward_amp=False):
         cudnn=torch.backends.cudnn.version(),
         ultralytics=ultralytics.__version__,
         gpu=torch.cuda.get_device_name(x.device) if x.is_cuda else None,
+        capability=torch.cuda.get_device_capability(x.device) if x.is_cuda else None,
         backend=common.computation_conditions(),
         atol=1e-4,
         rtol=1e-4,
-        forward_amp=forward_amp,
+        forward_amp=profile == "amp_diagnostic",
         autocast={
             d: dict(enabled=torch.is_autocast_enabled(d), dtype=str(torch.get_autocast_dtype(d)))
             for d in ("cpu", "cuda")
         },
         artifact_trust="Locally generated trusted diagnostic state/tensors; never a training checkpoint",
     )
+    try:
+        with fuse_precision(x.device, profile) as conditions:
+            report["precision"] = conditions
+            _fuse_audit(model, x.float(), directory, report)
+        report["status"] = "PASS"
+    except BaseException:
+        report.update(passed=False, status="FAIL", traceback=traceback.format_exc())
+        raise
+    finally:
+        common.write_json(directory / "audit.json", report)
+    return report
+
+
+def _fuse_audit(model, x, directory, report):
+    """Fuse and observe only independent FP32 copies inside the caller's declared precision scope."""
+    forward_amp = report["forward_amp"]
     before, after = {}, {}
     before_model = after_model = None
     common.write_json(directory / "audit.json", report)
@@ -278,7 +359,7 @@ def fuse_audit(model, x, directory, *, forward_amp=False):
             ),
             directory / "input_rng.pt",
         )
-        before_model = copy.deepcopy(model).to(x.device).eval()
+        before_model = copy.deepcopy(model).to(x.device).float().eval()
         state = snapshot(before_model.state_dict())
         torch.save(
             dict(state=state, yaml=before_model.yaml, names=before_model.names, attributes=attributes(before_model)),
@@ -311,6 +392,14 @@ def fuse_audit(model, x, directory, *, forward_amp=False):
         assert after_model.model[-1].cv2 is after_model.model[-1].cv3 is None
         head = before_model.model[-1]
         assert head.end2end and not head.export and not head.agnostic_nms and head.nc == 1
+        report["stage"] = "single_model_invariants"
+        report["single_model_invariants"] = {}
+        for label, data in (("before", before), ("after", after)):
+            invariant = report["single_model_invariants"][label] = {}
+            audit_candidates(data, data, head.max_det, 1e-4, 1e-4, invariant)
+            if "residual" in data:
+                audit_residual(data["residual"], data["residual"], invariant)
+            invariant["passed"] = True
         audit_candidates(before, after, head.max_det, 1e-4, 1e-4, report)
         if isinstance(before_model.model[9], DCS_SPPF_V2):
             report["stage"] = "residual"
@@ -345,6 +434,53 @@ def fuse_audit(model, x, directory, *, forward_amp=False):
     return report
 
 
+def fuse_precision_checks(models, x, directory, report=None):
+    """Require strict full-network equivalence; retain finite native/AMP numerical FAIL as named diagnostics."""
+    directory = Path(directory)
+    report = {} if report is None else report
+    report.update(
+        strict_gate_passed=False,
+        profiles={},
+        gate_definition="Strict FP32 plus all single-model invariants are mandatory; finite cross-path native/AMP "
+        "tolerance failures are diagnostic FAIL, never training safety or B32 certification.",
+    )
+    failures = []
+    try:
+        for profile in PROFILES:
+            cases = report["profiles"][profile] = {}
+            for label, model in models.items():
+                result = cases[label] = {}
+                print(f"BEGIN fuse {profile}/{label}", flush=True)
+                try:
+                    fuse_audit(model, x, directory / profile / label, profile=profile, report=result)
+                except FuseEquivalenceMismatch:
+                    if profile == "strict_fp32_equivalence":
+                        failures.append(f"{profile}/{label}")
+                except Exception:
+                    failures.append(f"{profile}/{label}")
+                finally:
+                    print(f"END fuse {profile}/{label}: {result.get('status', 'FAIL')}", flush=True)
+            common.write_json(directory / "precision_checks.json", report)
+        report["blocking_failures"] = failures
+        assert not failures, f"Required fuse checks failed; see per-profile evidence: {failures}"
+        # Same input/state/attributes and folding for each variant across profiles, including whole-model updated state.
+        for label in models:
+            baseline = Path(report["profiles"][PROFILES[0]][label]["directory"])
+            for profile in PROFILES[1:]:
+                target = Path(report["profiles"][profile][label]["directory"])
+                for filename in ("source.pt", "fused_state.pt"):
+                    a, b = [torch.load(p / filename, map_location="cpu", weights_only=True) for p in (baseline, target)]
+                    common.assert_close_tree(a, b, 0, 0, f"same_profile_{filename}.{label}")
+        report["same_source_and_fold_across_profiles"] = True
+        report["strict_gate_passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        raise
+    finally:
+        common.write_json(directory / "precision_checks.json", report)
+    return report
+
+
 def diagnostic(a, b, atol, rtol, path):
     """Retain an unsuccessful positional comparison as evidence, separate from the identity-based gate."""
     result = dict(rows=[], passed=False)
@@ -366,10 +502,24 @@ def audit_candidates(before, after, max_det, atol, rtol, report):
     rows = report["candidate_rows"] = []
     report["stage"] = "raw_and_decode"
     for key in ("boxes", "scores", "feats"):
-        common.assert_close_tree(before["raw"][key], after["raw"][key], atol, rtol, f"raw.one2one.{key}", rows)
+        common.assert_close_tree(
+            before["raw"][key],
+            after["raw"][key],
+            atol,
+            rtol,
+            f"raw.one2one.{key}",
+            rows,
+            mismatch_error=FuseEquivalenceMismatch,
+        )
     for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, None))):
         common.assert_close_tree(
-            before["decoded"][..., s], after["decoded"][..., s], atol, rtol, f"decoded.{key}", rows
+            before["decoded"][..., s],
+            after["decoded"][..., s],
+            atol,
+            rtol,
+            f"decoded.{key}",
+            rows,
+            mismatch_error=FuseEquivalenceMismatch,
         )
     report["stage"] = "postprocess"
     a, b = before["decoded"], after["decoded"]
@@ -385,7 +535,7 @@ def audit_candidates(before, after, max_det, atol, rtol, report):
         assert indices.dtype == torch.int64 and bool(((indices >= 0) & (indices < a.shape[1])).all())
         assert bool((classes == 0).all()), "Unexpected class ID in single-class b19"
         gathered = values.gather(1, indices.expand(-1, -1, 5))
-        expected = torch.cat((gathered, classes.to(values.dtype)), -1)
+        expected = torch.cat((gathered, classes), -1)
         common.assert_close_tree(expected, data["final"], 0, 0, f"{label}.actual_gather", rows)
         common.assert_close_tree(gathered[..., 4:5], data["selected_scores"], 0, 0, f"{label}.selected_scores", rows)
         # Both stages already proved all top scores, unique IDs, ranking and the original-ID composition.
@@ -436,5 +586,13 @@ def audit_candidates(before, after, max_det, atol, rtol, report):
             assert bool((gap >= 0).all() and (gap <= budget).all()), "UNRESOLVED: unexplained top-k boundary change"
         # Includes dropped AND added identities, with their counterpart before selection, not just the intersection.
         for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, 5))):
-            common.assert_close_tree(a[batch, union, s], b[batch, union, s], atol, rtol, f"union.{batch}.{key}", rows)
+            common.assert_close_tree(
+                a[batch, union, s],
+                b[batch, union, s],
+                atol,
+                rtol,
+                f"union.{batch}.{key}",
+                rows,
+                mismatch_error=FuseEquivalenceMismatch,
+            )
     report["stage"] = "complete"
