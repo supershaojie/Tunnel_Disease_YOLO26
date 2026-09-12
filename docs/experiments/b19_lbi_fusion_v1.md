@@ -107,7 +107,9 @@ parser and topology, exact whole-model train/eval state/output, both Detect bran
 local synthetic batches, staged native MuSGD updates, FP32 state_dict/checkpoint reload in a fresh process, native
 FP16 save/load controls, EMA and fused inference. A separate local runtime is not AutoDL evidence.
 Exact zero-init tolerance is `(0,0)`; independent division-vs-rsqrt formula tests use `(1e-5,1e-5)` FP32 and
-`(1e-3,1e-3)` AMP. Fuse uses fixed `(atol=1e-4, rtol=1e-4)` for every retained one2one raw and decoded candidate.
+`(1e-3,1e-3)` AMP. Fuse uses fixed `(atol=1e-4, rtol=1e-4)` for every retained one2one raw and decoded candidate in an
+explicit FP32 diagnostic context, while preserving separate native-precision diagnostics and restoring original backend
+conditions before native B32. See the [precision protocol and server evidence](b19_lbi_fusion_v1_precision.md).
 Final detections are checked by actual candidate identity, exact gather and top-k correctness, including boundary
 changes; positional differences remain diagnostic evidence. See the [fuse audit](b19_lbi_fusion_v1_fuse_audit.md).
 FP16 quantization error is reported independently, with equal-quantization round trips checked exactly.

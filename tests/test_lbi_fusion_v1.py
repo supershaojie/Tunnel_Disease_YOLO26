@@ -201,6 +201,7 @@ def test_archive_dry_run(tmp_path):
                 "tools/experiments/run_b19_lbi_fusion.py",
                 "tools/experiments/verify_b19_lbi_fusion.py",
                 "tools/experiments/lbi_fuse_audit.py",
+                "tools/experiments/replay_lbi_fuse_precision.py",
                 "tools/experiments/diagnose_b19_lbi_fusion.py",
                 "tools/experiments/finish_b19_lbi_fusion.py",
             ]

@@ -1,8 +1,10 @@
 """Candidate-identity fuse audit for the fixed single-class b19 Detect head; no inference overrides."""
 
 import copy
+import json
 import sys
 import traceback
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import torch
@@ -10,6 +12,35 @@ import torch
 import ultralytics
 from tools.experiments import b19_common as common
 from ultralytics.nn.modules import Conv, Concat_LBI_Fusion
+
+
+@contextmanager
+def fuse_precision(device, allow_tf32):
+    """Scope legacy PyTorch 2.8 convolution precision to diagnostics and restore grouped matmul settings."""
+    device = torch.device(device)
+    before = common.computation_conditions()
+    ambient_amp = torch.is_autocast_enabled(device.type)
+    receipt = dict(before=before, autocast_before=ambient_amp)
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    try:
+        torch.backends.cudnn.allow_tf32 = allow_tf32
+        torch.backends.cuda.matmul.allow_tf32 = False
+        with torch.autocast(device.type, enabled=False):
+            receipt["during"] = common.computation_conditions()
+            receipt["autocast_during"] = torch.is_autocast_enabled(device.type)
+            yield receipt
+    finally:
+        try:
+            if device.type == "cuda":
+                torch.cuda.synchronize(device)
+        finally:
+            torch.backends.cudnn.allow_tf32 = before["cudnn_allow_tf32"]
+            torch.backends.cuda.matmul.allow_tf32 = before["matmul_allow_tf32"]
+            torch.set_float32_matmul_precision(before["float32_matmul_precision"])
+            receipt["restored"] = common.computation_conditions()
+            receipt["autocast_restored"] = torch.is_autocast_enabled(device.type)
+            assert receipt["restored"] == before and receipt["autocast_restored"] == ambient_amp
 
 
 def snapshot(value):
@@ -87,13 +118,20 @@ def audit_candidates(before, after, max_det, atol, rtol, report):
         for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, 5)), ("classes", slice(5, 6)))
     }
     rows = report["candidate_rows"] = []
+    numeric = report["numeric_checks"] = {}
     report["stage"] = "raw_and_decode"
     for key in ("boxes", "scores"):
-        common.assert_close_tree(before["raw"][key], after["raw"][key], atol, rtol, f"raw.one2one.{key}", rows)
-    for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, None))):
-        common.assert_close_tree(
-            before["decoded"][..., s], after["decoded"][..., s], atol, rtol, f"decoded.{key}", rows
+        numeric[f"raw.one2one.{key}"] = diagnostic(
+            before["raw"][key], after["raw"][key], atol, rtol, f"raw.one2one.{key}"
         )
+    for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, None))):
+        numeric[f"decoded.{key}"] = diagnostic(
+            before["decoded"][..., s], after["decoded"][..., s], atol, rtol, f"decoded.{key}"
+        )
+    for result in numeric.values():
+        rows.extend(result["rows"])
+    report["raw_close"] = all(numeric[f"raw.one2one.{key}"]["passed"] for key in ("boxes", "scores"))
+    report["decoded_close"] = all(numeric[f"decoded.{key}"]["passed"] for key in ("boxes", "scores"))
     report["stage"] = "postprocess"
     a, b = before["decoded"], after["decoded"]
     assert a.ndim == 3 and a.shape[-1] == 5, "Audit requires fixed b19 nc=1"
@@ -160,11 +198,17 @@ def audit_candidates(before, after, max_det, atol, rtol, report):
             assert bool((gap >= 0).all() and (gap <= budget).all()), "Unexplained top-k boundary change"
         # Includes dropped AND added identities, with their counterpart before selection, not just the intersection.
         for key, s in (("boxes", slice(0, 4)), ("scores", slice(4, 5))):
-            common.assert_close_tree(a[batch, union, s], b[batch, union, s], atol, rtol, f"union.{batch}.{key}", rows)
+            name = f"union.{batch}.{key}"
+            numeric[name] = diagnostic(a[batch, union, s], b[batch, union, s], atol, rtol, name)
+            rows.extend(numeric[name]["rows"])
+    report["postprocess_valid"] = True
+    report["stage"] = "raw_and_decode"
+    for result in numeric.values():
+        assert result["passed"], result.get("traceback", result)
     report["stage"] = "complete"
 
 
-def fuse_audit(model, x, directory, atol, rtol):
+def fuse_audit(model, x, directory, atol, rtol, *, include_layers=False):
     """Persist same-source states/input/outputs before assertions; fail closed with reconstructable receipts."""
     directory.mkdir(parents=True, exist_ok=False)
     report = dict(
@@ -201,6 +245,7 @@ def fuse_audit(model, x, directory, atol, rtol):
     before_model = copy.deepcopy(model).to(x.device).eval()
     state = snapshot(before_model.state_dict())
     original_input = snapshot(x)
+    layers = [{}, {}]
     torch.save(
         dict(
             input=original_input,
@@ -221,10 +266,12 @@ def fuse_audit(model, x, directory, atol, rtol):
             ),
             directory / "fused_state.pt",
         )
-        before = capture(before_model, x.clone())
+        before = capture(before_model, x.clone(), layers[0] if include_layers else None)
         torch.save(before, directory / "before.pt")
-        after = capture(after_model, x.clone())
+        after = capture(after_model, x.clone(), layers[1] if include_layers else None)
         torch.save(after, directory / "after.pt")
+        if include_layers:
+            torch.save(layers, directory / "layer_outputs.pt")
         report["stage"] = "state_and_attributes"
         common.assert_close_tree(state, copy_state, 0, 0, "same_source_copy")
         common.assert_close_tree(state, snapshot(before_model.state_dict()), 0, 0, "unfused_state_unchanged")
@@ -250,11 +297,11 @@ def fuse_audit(model, x, directory, atol, rtol):
     except BaseException:
         report["traceback"] = traceback.format_exc()
         if report["stage"] == "raw_and_decode":
-            layers = [{}, {}]
             try:
-                for m, outputs in zip((before_model, after_model), layers):
-                    capture(m, x.clone(), outputs)
-                torch.save(layers, directory / "layer_outputs.pt")
+                if not include_layers:
+                    for m, outputs in zip((before_model, after_model), layers):
+                        capture(m, x.clone(), outputs)
+                    torch.save(layers, directory / "layer_outputs.pt")
                 report["layers"] = {
                     name: diagnostic(value, layers[1][name], atol, rtol, name)
                     for name, value in layers[0].items()
@@ -268,4 +315,112 @@ def fuse_audit(model, x, directory, atol, rtol):
         raise
     finally:
         common.write_json(directory / "audit.json", report)
+    return report
+
+
+def fuse_precision_checks(models, x, directory, atol, rtol):
+    """Require strict FP32 equivalence plus same-source native-precision controls, preserving both verdicts."""
+    directory.mkdir(parents=True, exist_ok=False)
+    original = common.computation_conditions()
+    report = dict(passed=False, original=original, arms={}, native_precision_raw_close={})
+
+    def run_arm(label, allow_tf32):
+        arm = report["arms"][label] = dict(models={})
+        print(f"LBI fuse precision: {x.device}, {label}, cudnn.allow_tf32={allow_tf32}", flush=True)
+        with fuse_precision(x.device, allow_tf32) as conditions:
+            arm["conditions"] = conditions
+            for variant, model in models.items():
+                path = directory / label / variant
+                try:
+                    arm["models"][variant] = fuse_audit(model, x, path, atol, rtol, include_layers=True)
+                except Exception:
+                    # Preserve a failing arm; the protocol below still rejects state, postprocess and strict errors.
+                    arm["models"][variant] = json.loads((path / "audit.json").read_text(encoding="utf-8"))
+                    arm["models"][variant]["exception"] = traceback.format_exc()
+        common.write_json(directory / "precision_checks.json", report)
+        return arm["models"]
+
+    def load(arm, variant, filename):
+        return torch.load(directory / arm / variant / filename, weights_only=True, map_location="cpu")
+
+    try:
+        assert list(models) == ["native", "lbi_zero", "lbi_nonzero"]
+        assert x.dtype == torch.float32 and not original["matmul_allow_tf32"], "Expected native b19 FP32 lifecycle"
+        native = run_arm("native", original["cudnn_allow_tf32"])
+        strict = run_arm("explicit_fp32", False)
+        report["native_precision_raw_close"] = {k: v.get("raw_close", False) for k, v in native.items()}
+        assert all(v["passed"] for v in strict.values()), "Explicit FP32 fuse failed; no precision waiver"
+        assert all(v.get("postprocess_valid", False) for v in native.values()), "Native source/postprocess error"
+        assert all(v["passed"] or v["stage"] == "raw_and_decode" for v in native.values()), "Unexpected native failure"
+        assert all(
+            check["rows"] and all(row["finite"] for row in check["rows"])
+            for v in native.values()
+            for check in v["numeric_checks"].values()
+        ), "Non-finite or malformed native candidate tensors"
+        for variant in models:
+            a, b = [load(arm, variant, "source.pt") for arm in ("native", "explicit_fp32")]
+            common.assert_close_tree(a, b, 0, 0, f"{variant}.immutable_source")
+            common.assert_close_tree(snapshot(x), a["input"], 0, 0, f"{variant}.fixed_input")
+            common.assert_close_tree(
+                load("native", variant, "fused_state.pt"),
+                load("explicit_fp32", variant, "fused_state.pt"),
+                0,
+                0,
+                f"{variant}.same_fold",
+            )
+        baseline = load("native", "native", "source.pt")["state"]
+        for variant in ("lbi_zero", "lbi_nonzero"):
+            state = load("native", variant, "source.pt")["state"]
+            common.assert_close_tree(baseline, {k: state[k] for k in baseline}, 0, 0, f"{variant}.shared_state")
+            assert bool(state["model.15.out.weight"].count_nonzero()) == (variant == "lbi_nonzero")
+        report["precision_effects"] = {}
+        for variant in models:
+            effects = report["precision_effects"][variant] = {}
+            for side in ("before", "after"):
+                a, b = [load(arm, variant, f"{side}.pt") for arm in ("native", "explicit_fp32")]
+                effects[side] = {
+                    key: diagnostic(a["raw"][key], b["raw"][key], atol, rtol, key) for key in ("boxes", "scores")
+                }
+        for arm in ("native", "explicit_fp32"):
+            for side in ("before", "after"):
+                a, b = [load(arm, variant, f"{side}.pt") for variant in ("native", "lbi_zero")]
+                for key in ("raw", "decoded"):
+                    common.assert_close_tree(a[key], b[key], 0, 0, f"{arm}.{side}.zero_identity.{key}")
+        if all(v["passed"] for v in native.values()):
+            report["classification"] = "native_and_explicit_fp32_close"
+        else:
+            assert not native["native"]["passed"] and not native["lbi_zero"]["passed"], "LBI-only native anomaly"
+            assert x.is_cuda and torch.cuda.get_device_capability(x.device)[0] >= 8
+            assert original["cudnn_allow_tf32"] and original["cudnn_deterministic"] and original["deterministic"]
+            first = native["native"].get("first_layer_outside_tolerance")
+            assert first and int(first.split(".")[1]) < 15, "Native error lacks shared pre-LBI localization"
+            assert all(v["passed"] or v.get("first_layer_outside_tolerance") == first for v in native.values()), (
+                "Unexplained nonzero-LBI native anomaly"
+            )
+            baseline_layers = load("native", "native", "layer_outputs.pt")
+            for variant in ("lbi_zero", "lbi_nonzero"):
+                layers = load("native", variant, "layer_outputs.pt")
+                for side in range(2):
+                    prefix = {k: v for k, v in baseline_layers[side].items() if int(k.split(".")[1]) < 15}
+                    common.assert_close_tree(
+                        prefix, {k: layers[side][k] for k in prefix}, 0, 0, f"{variant}.shared_prefix.{side}"
+                    )
+            repeated = run_arm("native_repeat", original["cudnn_allow_tf32"])
+            for variant in models:
+                assert repeated[variant]["passed"] == native[variant]["passed"]
+                for side in ("before", "after"):
+                    a, b = [load(arm, variant, f"{side}.pt") for arm in ("native", "native_repeat")]
+                    for key in ("raw", "decoded"):
+                        common.assert_close_tree(a[key], b[key], 0, 0, f"{variant}.{side}.repeat.{key}")
+            report["classification"] = "convolution_precision_conditioned; native_strict_close_remains_false"
+            report["shared_first_native_error"] = first
+        report["restored"] = common.computation_conditions()
+        assert report["restored"] == original, "Fuse precision leaked into subsequent native execution"
+        report["passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        raise
+    finally:
+        report["restored"] = common.computation_conditions()
+        common.write_json(directory / "precision_checks.json", report)
     return report

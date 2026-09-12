@@ -15,7 +15,7 @@ sys.path.insert(0, str(ROOT))
 import torch
 
 from tools.experiments import b19_common as common
-from tools.experiments.lbi_fuse_audit import fuse_audit, snapshot
+from tools.experiments.lbi_fuse_audit import fuse_precision_checks, snapshot
 from tools.experiments.run_b19_lbi_fusion import (
     AuditedTrainer,
     audit_arguments,
@@ -311,16 +311,13 @@ def _lifecycle_checks(baseline, candidate, directory, device, report):
                 aligned_raw_heads=raw,
             )
         )
-    errors = []
-    for label, fixture in (("native", baseline), ("lbi_zero", candidate), ("lbi_nonzero", model)):
-        try:
-            report["fuse"][label] = fuse_audit(fixture, x, directory / f"fuse_{label}", FUSE_ATOL, FUSE_RTOL)
-        except Exception:
-            # Run the same-input native control and both LBI states even if one fails, then fail the lifecycle.
-            report["fuse"][label] = dict(passed=False, traceback=traceback.format_exc())
-            errors.append(label)
-    if errors:
-        raise AssertionError(f"Fuse audit failed: {errors}; see fuse_*/audit.json and original CPU tensors")
+    report["fuse"] = fuse_precision_checks(
+        dict(native=baseline, lbi_zero=candidate, lbi_nonzero=model),
+        x,
+        directory / "fuse_precision",
+        FUSE_ATOL,
+        FUSE_RTOL,
+    )
 
 
 def optimizer_replay(optimizer, group, parameter, zero_task=False):
@@ -626,6 +623,7 @@ def main():
             report["module_cuda"] = module_checks("cuda:0")
             report["module_amp"] = module_checks("cuda:0", True)
         report.update(model_checks(source, args.output))
+        assert common.computation_conditions() == report["runtime"], "Lifecycle backend leaked before native B32"
         if not args.local:
             report["module_B32_P3"] = module_checks("cuda:0", True, spatial=(80, 80), batch=32)
             report["native_server_b32"] = "RUNNING"

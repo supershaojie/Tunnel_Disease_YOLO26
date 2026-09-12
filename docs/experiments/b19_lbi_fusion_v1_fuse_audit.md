@@ -1,5 +1,9 @@
 # LBI-Fusion v1 fuse preflight audit
 
+This records the first repair and its historical local evidence. Subsequent original server evidence confirms a raw
+candidate failure before top-k; see [the explicit precision protocol](b19_lbi_fusion_v1_precision.md) for the current
+lifecycle, actual server readback and pending RTX 4090 A/B status.
+
 The former lifecycle gate compared `expected[0]` and `fused(x)[0]` by row. In this pinned Detect implementation,
 `[B,300,6]` is the postprocessed table: `get_topk_index()` chooses original grid IDs, then `postprocess()` gathers
 their boxes. A row number is a score rank, not a stable candidate identity. The defective predicate has been replaced
