@@ -87,7 +87,7 @@ def topology_checks(baseline, candidate):
     return dict(changed_layers=[15], layers=table, fusion_input_channels=[128, 128], fusion_output_channels=256)
 
 
-def module_checks(device="cpu", amp=False, spatial=(13, 17), batch=2):
+def module_checks(device="cpu", amp=False, spatial=(13, 17), batch=2, directory=None):
     """Check ordered identity, hand-derived FP32 RMS, finite limits and sequential data-driven learning."""
     init_seeds(42, deterministic=True)
     module = Concat_LBI_Fusion([128, 128]).to(device)
@@ -128,31 +128,11 @@ def module_checks(device="cpu", amp=False, spatial=(13, 17), batch=2):
         )
     with torch.no_grad():
         module.out.weight.zero_()  # fresh module test fixture, never a production lifecycle action
-    optimizer = torch.optim.SGD(params.values(), lr=0.01, weight_decay=0)
     target = torch.randn(batch, 256, h, w, device=device)
-    updates = []
-    for step in range(3):
-        optimizer.zero_grad(set_to_none=True)
-        before = {k: p.detach().clone() for k, p in params.items()}
-        with autocast(amp, device=torch.device(device).type):
-            loss = (module([semantic, detail]).float() * target).mean() * 100
-        loss.backward()
-        assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in params.values())
-        if step == 0:
-            assert params["out.weight"].grad.count_nonzero() > 0
-            assert all(p.grad.count_nonzero() == 0 for k, p in params.items() if k != "out.weight")
-        optimizer.step()
-        updates.append(
-            {
-                k: dict(gradient=tensor_stats(p.grad), delta=(p - before[k]).abs().max().item())
-                for k, p in params.items()
-            }
-        )
-    assert all(any(row[k]["gradient"]["max_abs"] > 0 and row[k]["delta"] > 0 for row in updates) for k in params)
-    return dict(
+    report = module_updates(module, semantic, detail, target, amp, directory)
+    report.update(
         identity=identities,
         rms_reference=formulas,
-        updates=updates,
         batch=batch,
         spatial=spatial,
         amp=amp,
@@ -161,6 +141,184 @@ def module_checks(device="cpu", amp=False, spatial=(13, 17), batch=2):
         parameters=6288,
         initialization="Conv2d default reset_parameters; out.weight alone zero; isolated CPU RNG",
     )
+    return report
+
+
+def module_updates(module, semantic, detail, target, amp, directory=None):
+    """Own the fixed three-step SGD fixture, standard CUDA AMP scaling and persist-before-assert evidence."""
+    device = semantic.device
+    params = dict(module.named_parameters())
+    optimizer = torch.optim.SGD(params.values(), lr=0.01, weight_decay=0)
+    scaler = torch.amp.GradScaler("cuda", enabled=amp and device.type == "cuda")
+    initial = snapshot(module.state_dict())
+    rng = dict(cpu=torch.get_rng_state(), cuda=torch.cuda.get_rng_state(device) if device.type == "cuda" else None)
+    report = dict(
+        passed=False,
+        commit=common.git("rev-parse", "HEAD"),
+        source_sha256={
+            name: common.sha256(ROOT / name)
+            for name in (
+                "tools/experiments/verify_b19_lbi_fusion.py",
+                "ultralytics/nn/modules/lbi_fusion.py",
+                "tools/experiments/lbi_fuse_audit.py",
+            )
+        },
+        seed=torch.initial_seed(),
+        python=sys.version,
+        torch=torch.__version__,
+        cuda=torch.version.cuda,
+        cudnn=torch.backends.cudnn.version(),
+        gpu=torch.cuda.get_device_name(device) if device.type == "cuda" else None,
+        device=str(device),
+        amp=amp,
+        autocast_dtype=str(torch.get_autocast_dtype(device.type)) if amp else None,
+        autocast_before=torch.is_autocast_enabled(device.type),
+        backend_before=common.computation_conditions(),
+        inputs={
+            k: dict(shape=list(v.shape), dtype=str(v.dtype), stride=list(v.stride()))
+            for k, v in dict(semantic=semantic, detail=detail, target=target).items()
+        },
+        loss_definition="(module([semantic, detail]).float() * target).mean() * 100",
+        optimizer="ordinary SGD module fixture; lr=0.01, weight_decay=0; no clipping",
+        max_attempts=3,
+        scaler_enabled=scaler.is_enabled(),
+        updates=[],
+        parameters={
+            k: dict(
+                dtype=str(p.dtype),
+                requires_grad=p.requires_grad,
+                optimizer_memberships=sum(v is p for g in optimizer.param_groups for v in g["params"]),
+            )
+            for k, p in params.items()
+        },
+        summary=staged_gradient_audit([], False),
+    )
+    if directory is not None:
+        directory.mkdir(parents=True, exist_ok=False)
+    calls = []
+    handle = optimizer.register_step_post_hook(lambda *args: calls.append(True))
+
+    def persist():
+        if directory is not None:
+            common.write_json(directory / "updates.json", report["updates"])
+            common.write_json(directory / "summary.json", report)
+
+    try:
+        persist()
+        invalid = [
+            k
+            for k, p in report["parameters"].items()
+            if p["optimizer_memberships"] != 1 or not p["requires_grad"] or p["dtype"] != "torch.float32"
+        ]
+        assert not invalid, f"Invalid module optimizer membership/parameter metadata: {invalid}"
+        assert not params["out.weight"].count_nonzero(), "out.weight: module fixture must start at zero"
+        for step in range(3):
+            print(f"LBI module SGD: {device}, AMP={amp}, attempt {step + 1}/3, scale={scaler.get_scale()}", flush=True)
+            optimizer.zero_grad(set_to_none=True)
+            before = {k: p.detach().clone() for k, p in params.items()}
+            row = dict(
+                batch=step,
+                attempted_step=step,
+                scaler_before=scaler.get_scale(),
+                out_zero_before=not bool(params["out.weight"].count_nonzero()),
+                parameters={},
+                successful_optimizer_step=False,
+                phase="forward",
+            )
+            report["updates"].append(row)
+            with autocast(amp, device=device.type):
+                loss = (module([semantic, detail]).float() * target).mean() * 100
+            row.update(loss=loss.item() if torch.isfinite(loss) else str(loss.item()), phase="backward")
+            scaler.scale(loss).backward()
+            if scaler.is_enabled():
+                scaler.unscale_(optimizer)
+            row["phase"] = "unscaled"
+            for k, p in params.items():
+                row["parameters"][k] = dict(
+                    **report["parameters"][k],
+                    unscaled_before_clip=tensor_stats(p.grad),
+                    gradient_nonzero=int(p.grad.count_nonzero()) if p.grad is not None else None,
+                )
+            persist()
+            previous_calls = len(calls)
+            scaler.step(optimizer)
+            scaler.update()
+            row.update(
+                successful_optimizer_step=len(calls) == previous_calls + 1,
+                successful_step_count=len(calls),
+                skipped=len(calls) == previous_calls,
+                scaler_after=scaler.get_scale(),
+                out_zero_after=not bool(params["out.weight"].count_nonzero()),
+                phase="updated",
+            )
+            nonfinite = [k for k, p in row["parameters"].items() if p["unscaled_before_clip"]["finite"] is False]
+            row["nonfinite_gradient_parameters"] = nonfinite
+            for k, p in params.items():
+                info = row["parameters"][k]
+                delta = (p.detach().double() - before[k].double()).abs().max().item()
+                grad = info["unscaled_before_clip"]
+                info.update(
+                    delta=delta,
+                    changed_elements=int((p.detach() != before[k]).sum()),
+                    effective_update=bool(
+                        row["successful_optimizer_step"] and grad["finite"] and grad["max_abs"] > 0 and delta > 0
+                    ),
+                )
+            persist()  # No numerical or staged assertion may discard the attempted step.
+            report["summary"] = staged_gradient_audit(report["updates"], False)
+            persist()
+            assert torch.isfinite(loss), f"Nonfinite module loss at attempt {step}"
+            if row["skipped"]:
+                assert nonfinite and scaler.is_enabled() and row["scaler_after"] < row["scaler_before"], (
+                    f"Unexplained skipped module step {step}: {nonfinite}"
+                )
+                assert all(info["changed_elements"] == 0 for info in row["parameters"].values()), (
+                    "Skipped step changed parameters"
+                )
+            else:
+                assert row["successful_optimizer_step"] and not nonfinite, f"Invalid module step {step}: {nonfinite}"
+                if row["out_zero_before"]:
+                    assert row["parameters"]["out.weight"]["unscaled_before_clip"]["max_abs"] > 0, (
+                        f"out.weight: no unlocking gradient at attempt {step}"
+                    )
+        staged_gradient_audit(report["updates"])
+        assert common.computation_conditions() == report["backend_before"], "Module fixture changed backend precision"
+        assert torch.is_autocast_enabled(device.type) == report["autocast_before"], "Module fixture leaked autocast"
+        report["passed"] = True
+    except BaseException:
+        report["traceback"] = traceback.format_exc()
+        if directory is not None:
+            torch.save(
+                snapshot(
+                    dict(
+                        initial_state=initial,
+                        state=module.state_dict(),
+                        semantic=semantic,
+                        detail=detail,
+                        target=target,
+                        gradients={k: p.grad for k, p in params.items()},
+                        optimizer=optimizer.state_dict(),
+                        scaler=scaler.state_dict(),
+                        rng_before=rng,
+                        rng_after=dict(
+                            cpu=torch.get_rng_state(),
+                            cuda=torch.cuda.get_rng_state(device) if device.type == "cuda" else None,
+                        ),
+                    )
+                ),
+                directory / "failure.pt",
+            )
+        raise
+    finally:
+        handle.remove()
+        report["missing_gradient"] = [
+            k for k, p in report["summary"]["parameters"].items() if p["first_gradient_batch"] is None
+        ]
+        report["missing_update"] = report["summary"]["missing"]
+        report["backend_after"] = common.computation_conditions()
+        report["autocast_after"] = torch.is_autocast_enabled(device.type)
+        persist()
+    return report
 
 
 def whole_identity(baseline, candidate, device, amp=False, size=160):
@@ -618,14 +776,17 @@ def main():
         report["recipe"] = evidence
         source, _ = load_checkpoint(evidence["initial_path"])
         print("LBI module checks: CPU/CUDA/AMP", flush=True)
-        report["module_cpu"] = module_checks()
+        report["module_cpu"] = module_checks(directory=args.output / "module_cpu")
         if torch.cuda.is_available():
-            report["module_cuda"] = module_checks("cuda:0")
-            report["module_amp"] = module_checks("cuda:0", True)
+            report["module_cuda"] = module_checks("cuda:0", directory=args.output / "module_cuda")
+            report["module_amp"] = module_checks("cuda:0", True, directory=args.output / "module_amp")
         report.update(model_checks(source, args.output))
         assert common.computation_conditions() == report["runtime"], "Lifecycle backend leaked before native B32"
         if not args.local:
-            report["module_B32_P3"] = module_checks("cuda:0", True, spatial=(80, 80), batch=32)
+            report["module_B32_P3"] = module_checks(
+                "cuda:0", True, spatial=(80, 80), batch=32, directory=args.output / "module_B32_P3"
+            )
+            assert common.computation_conditions() == report["runtime"], "Module backend leaked before native B32"
             report["native_server_b32"] = "RUNNING"
             report["native_preflight"] = native_preflight(effective, args.output)
             report["native_server_b32"] = "PASSED"

@@ -113,6 +113,8 @@ conditions before native B32. See the [precision protocol and server evidence](b
 Final detections are checked by actual candidate identity, exact gather and top-k correctness, including boundary
 changes; positional differences remain diagnostic evidence. See the [fuse audit](b19_lbi_fusion_v1_fuse_audit.md).
 FP16 quantization error is reported independently, with equal-quantization round trips checked exactly.
+The isolated module SGD test uses standard CUDA AMP scaling within its original three-attempt budget; see the
+[B32/P3 module update evidence and failure receipts](b19_lbi_fusion_v1_module_amp.md).
 
 Length, channels, batch/spatial dimensions, devices and non-floating inputs give explicit errors. When Cs=Cl,
 tensor metadata cannot identify a semantic reversal; the complete ordered graph and distinguishable-input tests
