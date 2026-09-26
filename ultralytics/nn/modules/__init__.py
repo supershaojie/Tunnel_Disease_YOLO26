@@ -94,6 +94,7 @@ from .head import (
     YOLOESegment26,
     v10Detect,
 )
+from .qca import C2PSA_QCA, QCAAttention, QCAPSABlock
 from .transformer import (
     AIFI,
     MLP,
@@ -112,6 +113,7 @@ __all__ = (
     "C1",
     "C2",
     "C2PSA",
+    "C2PSA_QCA",
     "C3",
     "C3TR",
     "CBAM",
@@ -169,6 +171,8 @@ __all__ = (
     "Pose",
     "Pose26",
     "Proto",
+    "QCAAttention",
+    "QCAPSABlock",
     "RTDETRDecoder",
     "RepC3",
     "RepConv",
