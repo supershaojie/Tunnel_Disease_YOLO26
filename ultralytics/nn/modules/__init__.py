@@ -17,6 +17,7 @@ Examples:
     >>> subprocess.run(f"onnxslim {f} {f} && open {f}", shell=True, check=True)  # pip install onnxslim
 """
 
+from .apa import DetectAPA
 from .block import (
     C1,
     C2,
@@ -117,6 +118,7 @@ __all__ = (
     "CBAM",
     "CIB",
     "DFL",
+    "DetectAPA",
     "ELAN1",
     "MLP",
     "OBB",
