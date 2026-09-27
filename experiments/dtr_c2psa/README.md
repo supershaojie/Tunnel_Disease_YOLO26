@@ -37,7 +37,8 @@ LayerNorm 使用内含 `nn.LayerNorm` 的 NCHW 包装，使原生优化器正确
 `--dry-run` 在临时目录实际调用 Trainer 构造和 setup_model/get_model，不训练、不建立正式输出目录。
 审计报告必须置于正式输出目录之外。正式入口 `resume=False`，已存在的输出目录报错，并原子创建唯一输出目录以防并发覆盖。
 正式运行前核对服务器 Python/Torch/TorchVision/CUDA/GPU/Albumentations 环境，差异时报错，不安装或调整环境。
-`YOLO_AUTOINSTALL=false`；原生 AMP 检查复用 worktree 内核验过的同名原始权重。
+`YOLO_AUTOINSTALL=false`；正式训练的原生 AMP 检查复用 worktree 内核验过的同名原始权重。
+有限验证把核验过的副本放入临时目录供 AMP 检查读取；检查点重载及子进程也从该目录读取，退出后恢复调用目录。
 
 原生训练循环的 OOM 重试上限改为由 Trainer 类持有：其他实验默认仍为 3，本实验为 0，在降低 batch 之前直接抛出 OOM。
 训练开始前再次核对实际 batch=32、imgsz=640、AMP 和 MuSGD。没有 GPU 排队或停止其他进程的逻辑。

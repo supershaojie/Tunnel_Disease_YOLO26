@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -35,6 +36,7 @@ from experiments.dtr_c2psa.train import (
     rng_state,
     setup_dry_run,
     sha256,
+    verify_weights,
     write_report,
 )
 from ultralytics import YOLO
@@ -43,6 +45,7 @@ from ultralytics.nn.modules.dtr import C2PSA_DTR, DTRBlock, DualRegionTokenizer
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import LOGGER
 from ultralytics.utils.checks import check_amp
+from ultralytics.utils.files import WorkingDirectory
 from ultralytics.utils.torch_utils import ModelEMA, autocast
 from ultralytics.utils.torch_utils import get_num_params as count
 
@@ -392,20 +395,20 @@ def check_lifecycle(model, ema, scratch):
     reload_reference = deepcopy(serialized).float().eval()
     serialized_prediction = raw_one2one(reload_reference, x)
     result["checkpoint_fp16_quantization"] = compare(ema_prediction, serialized_prediction, atol=0.05, rtol=0.05)
-    # Relative paths avoid the locked upstream downloader stripping apostrophes from Windows home directories.
-    loaded, _ = load_checkpoint(os.path.relpath(checkpoint, Path.cwd()))
+    # The caller owns scratch as cwd; local names also avoid upstream stripping Windows home apostrophes.
+    loaded, _ = load_checkpoint(checkpoint.name)
     actual, result["reload_calls"] = called_forward(loaded, x)
     result["reload"] = compare(serialized_prediction, actual, atol=0, rtol=0)
     assert all(torch.equal(v, loaded.state_dict()[k]) for k, v in reload_reference.state_dict().items())
     resume = object.__new__(DTRTrainer)
     resume.args, resume.data = model.args, {"nc": 1, "names": {0: "crack"}, "channels": 3}
-    resume.model = os.path.relpath(checkpoint, Path.cwd())
+    resume.model = checkpoint.name
     resume.setup_model()  # args.pretrained still points to the original .pt; it must not override this checkpoint.
     result["checkpoint_setup_model"] = compare(actual, raw_one2one(resume.model.eval(), x), atol=0, rtol=0)
     torch.save(x, Path(scratch) / "input.pt")
     child = subprocess.run(
-        [sys.executable, str(Path(__file__).resolve()), "reload", "--directory", str(scratch)],
-        cwd=ROOT,
+        [sys.executable, str(Path(__file__).resolve()), "reload"],
+        cwd=scratch,
         capture_output=True,
         text=True,
         check=True,
@@ -427,7 +430,7 @@ def check_lifecycle(model, ema, scratch):
         ):
             assert torch.equal(value, fused.state_dict()[key]), key
     result["fused_rectangular"] = called_forward(fused, torch.rand(1, 3, 96, 160))[1]
-    wrapper = YOLO(os.path.relpath(checkpoint, Path.cwd()))
+    wrapper = YOLO(checkpoint.name)
     calls = []
     hooks = [b.register_forward_hook(lambda *args: calls.append(1)) for b in wrapper.model.model[10].dtr_blocks]
     wrapper.predict(x, imgsz=(192, 288), device="cpu", verbose=False, save=False)
@@ -561,11 +564,16 @@ def run_checks(args):
         print("Checking real 640/rectangular wiring and finite optimizer updates", flush=True)
         report["wiring"] = check_wiring(trainer.model, device)
         trained, ema, report["smoke_fp32"] = smoke_updates(trainer.model, device, amp=False)
-        report["lifecycle"] = check_lifecycle(trained, ema, scratch)
+        with WorkingDirectory(scratch):
+            report["lifecycle"] = check_lifecycle(trained, ema, scratch)
         del trained, ema
         if device.type == "cuda":
             print("Checking native AMP preflight, actual CUDA AMP updates, and pure-half execution", flush=True)
-            report["native_amp_check"] = check_amp(deepcopy(trainer.model).to(device))
+            amp_weights = Path(scratch) / "yolo26n.pt"
+            shutil.copyfile(resolved["pretrained"], amp_weights)
+            verify_weights(amp_weights)
+            with WorkingDirectory(scratch):
+                report["native_amp_check"] = check_amp(deepcopy(trainer.model).to(device))
             assert report["native_amp_check"]
             trained, ema, report["smoke_cuda_amp"] = smoke_updates(
                 trainer.model, device, amp=True, budget=24 - report["smoke_fp32"]["microbatches"]
@@ -695,8 +703,7 @@ def main():
     evaluation.add_argument("--name", required=True)
     evaluation.add_argument("--device", default="0")
     evaluation.add_argument("--split", choices=("val", "test"), default="val")
-    child = commands.add_parser("reload", help=argparse.SUPPRESS)
-    child.add_argument("--directory", required=True)
+    commands.add_parser("reload", help=argparse.SUPPRESS)
     args = parser.parse_args()
     if args.command == "check":
         run_checks(args)
@@ -704,11 +711,10 @@ def main():
         evaluate(args)
     else:
         torch.set_num_threads(4)
-        directory = Path(args.directory)
-        model, _ = load_checkpoint(os.path.relpath(directory / "learned.pt", Path.cwd()))
-        image = torch.load(directory / "input.pt", weights_only=True)
+        model, _ = load_checkpoint("learned.pt")
+        image = torch.load("input.pt", weights_only=True)
         prediction, calls = called_forward(model, image)
-        torch.save(prediction, directory / "output.pt")
+        torch.save(prediction, "output.pt")
         print(json.dumps(calls))
 
 
