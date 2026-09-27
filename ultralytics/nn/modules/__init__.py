@@ -94,6 +94,7 @@ from .head import (
     YOLOESegment26,
     v10Detect,
 )
+from .swr import SWRFusion, SWRGatedBlock
 from .transformer import (
     AIFI,
     MLP,
@@ -180,6 +181,8 @@ __all__ = (
     "Segment26",
     "SemanticSegment",
     "SpatialAttention",
+    "SWRFusion",
+    "SWRGatedBlock",
     "TorchVision",
     "TransformerBlock",
     "TransformerEncoderLayer",
