@@ -811,6 +811,7 @@ nav:
               - activation: reference/nn/modules/activation.md
               - block: reference/nn/modules/block.md
               - conv: reference/nn/modules/conv.md
+              - dtr: reference/nn/modules/dtr.md
               - head: reference/nn/modules/head.md
               - transformer: reference/nn/modules/transformer.md
               - utils: reference/nn/modules/utils.md

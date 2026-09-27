@@ -116,6 +116,8 @@ class BaseTrainer:
         >>> trainer.train()
     """
 
+    max_oom_retries = 3
+
     def __init__(self, cfg=DEFAULT_CFG, overrides=None, _callbacks: dict | None = None):
         """Initialize the BaseTrainer class.
 
@@ -475,14 +477,14 @@ class BaseTrainer:
                         s in str(e) for s in ("CUDNN_STATUS_INTERNAL_ERROR", "unable to find an engine")
                     ):
                         raise
-                    if epoch > self.start_epoch or self._oom_retries >= 3 or RANK != -1:
+                    if epoch > self.start_epoch or self._oom_retries >= self.max_oom_retries or RANK != -1:
                         raise  # only auto-reduce during first epoch on single GPU, max 3 retries
                     self._oom_retries += 1
                     old_batch = self.batch_size
                     self.args.batch = self.batch_size = max(self.batch_size // 2, 1)
                     LOGGER.warning(
                         f"{'CUDA out of memory' if is_oom else 'CUDA backend memory error'} with batch={old_batch}. "
-                        f"Reducing to batch={self.batch_size} and retrying ({self._oom_retries}/3)."
+                        f"Reducing to batch={self.batch_size} and retrying ({self._oom_retries}/{self.max_oom_retries})."
                     )
                     batch = loss = preds = None
                     self.loss = self.loss_items = self.tloss = None
