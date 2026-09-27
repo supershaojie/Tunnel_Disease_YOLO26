@@ -61,10 +61,10 @@ images directly and applies no Albumentations transforms. Shared packages were n
 - Dry-run passed with historical b19 args and created no formal output directory. Ruff and diff whitespace checks passed.
   Reference docs were regenerated; unrelated generated navigation reordering was excluded.
 
-| nc=1 parameters | Native b19 | BDF |
-| --- | ---: | ---: |
-| Before fuse | 2,504,190 | 2,525,974 |
-| After native fuse | 2,375,031 | 2,396,815 |
+| nc=1 parameters   | Native b19 |       BDF |
+| ----------------- | ---------: | --------: |
+| Before fuse       |  2,504,190 | 2,525,974 |
+| After native fuse |  2,375,031 | 2,396,815 |
 
 The increment is **21,784** in both cases. Native fuse folds BN and removes the O2M inference branch, explaining the lower
 totals. Added convolution work at 640 is **34,841,600 MACs**, or **0.0696832 GFLOPs** at two FLOPs/MAC; this excludes
