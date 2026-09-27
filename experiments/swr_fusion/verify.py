@@ -340,6 +340,20 @@ def entry_contracts(data_path: str, weights_path: str, temp: Path) -> dict:
     from ultralytics.data.utils import check_det_dataset
     from ultralytics.utils import YAML
 
+    numpy_state = np.random.get_state()
+    try:
+        fingerprint = rng_digest()["numpy"]
+        with np.printoptions(threshold=5, linewidth=20):
+            assert rng_digest()["numpy"] == fingerprint
+            changed = deepcopy(numpy_state)
+            changed[1][100] ^= np.uint32(1)
+            np.random.set_state(changed)
+            assert rng_digest()["numpy"] != fingerprint
+    finally:
+        np.random.set_state(numpy_state)
+    with np.printoptions(linewidth=123):
+        assert rng_digest()["numpy"] == fingerprint
+
     options = SimpleNamespace(
         data=data_path,
         weights=weights_path,
@@ -417,6 +431,7 @@ def entry_contracts(data_path: str, weights_path: str, temp: Path) -> dict:
     else:
         raise AssertionError("Native trainer swallowed the synthetic OOM")
     return {
+        "numpy_rng_full_state_and_print_options": True,
         "configuration_rejection_and_metric_checks": True,
         "native_oom_propagates_with_batch32": True,
         "dataset": dataset_inventory(check_det_dataset(data_path, autodownload=False)),
@@ -455,6 +470,110 @@ def predict_contract(model: torch.nn.Module, temp: Path) -> dict:
     assert len(result) == 1 and all(counts[k] > 0 for k in names)
     assert predictor.model.is_fused()
     return {"calls": dict(counts), "native_fused": True, "result_count": len(result)}
+
+
+def validation_contract(model: torch.nn.Module, data_path: str, temp: Path) -> dict:
+    """Exercise one synthetic batch through standalone and training-EMA native validators without updates."""
+    from ultralytics.models.yolo.detect import DetectionValidator
+
+    batch = {
+        "img": torch.randint(0, 256, (1, 3, 160, 192), dtype=torch.uint8),
+        "batch_idx": torch.zeros(1),
+        "cls": torch.zeros(1, 1),
+        "bboxes": torch.tensor([[0.5, 0.5, 0.3, 0.4]]),
+        "ori_shape": [(160, 192)],
+        "ratio_pad": [((1.0, 1.0), (0.0, 0.0))],
+        "im_file": ["synthetic-only.jpg"],
+    }
+
+    class SyntheticLoader:
+        dataset = [0]
+
+        def __len__(self):
+            return 1
+
+        def __iter__(self):
+            yield deepcopy(batch)
+
+    report = {}
+    for mode in ("standalone_fused", "training_ema_unfused"):
+        working = deepcopy(model).cpu().float().eval()
+        working.criterion = None
+        trainer = None
+        if mode == "training_ema_unfused":
+            trainer = SWRTrainer.__new__(SWRTrainer)
+            trainer.model, trainer.ema = working, ModelEMA(working)
+            trainer.device, trainer.amp, trainer.world_size = torch.device("cpu"), False, 0
+            trainer.data = {"nc": 1, "names": {0: "crack"}}
+            trainer.args = working.args
+            trainer.loss_items = torch.zeros(3)
+            trainer.loss_names = ("box_loss", "cls_loss", "dfl_loss")
+            trainer.stopper = SimpleNamespace(possible_stop=False)
+            trainer.epoch, trainer.epochs = 0, 200
+            working = trainer.ema.ema
+        original = {}
+        gates_before = {
+            k: v.clone()
+            for k, v in working.model[16].state_dict().items()
+            if k.startswith(("low_delta.", "band_gates."))
+        }
+        counts, dtypes, handles = Counter(), {}, []
+        names = ("low_delta", "band_gates.0", "band_gates.1", "band_gates.2", "blocks.0", "blocks.1", "fuse")
+
+        def attach(_validator):
+            original.update({k: v.clone() for k, v in working.state_dict().items()})
+            assert working.is_fused() == (mode == "standalone_fused")
+
+            def precision(_module, inputs):
+                dtypes.update(model=str(next(_module.parameters()).dtype), input=str(inputs[0].dtype))
+
+            handles.append(working.register_forward_pre_hook(precision))
+            for name in names:
+
+                def count(_module, _inputs, _output, name=name):
+                    counts[name] += 1
+
+                handles.append(working.model[16].get_submodule(name).register_forward_hook(count))
+
+        validator = DetectionValidator(
+            dataloader=SyntheticLoader(),
+            args=dict(
+                task="detect",
+                mode="val",
+                data=data_path,
+                device="cpu",
+                imgsz=640,
+                batch=32,
+                conf=0.001,
+                iou=0.7,
+                max_det=300,
+                rect=True,
+                augment=False,
+                quantize=None,
+                end2end=True,
+                plots=False,
+                save_dir=str(temp / mode),
+            ),
+        )
+        validator.callbacks["on_val_start"].append(attach)
+        try:
+            validator(trainer=trainer, model=working)
+        finally:
+            for handle in handles:
+                handle.remove()
+        assert validator.seen == 1 and all(counts[k] == 1 for k in names)
+        assert dtypes == {"model": "torch.float32", "input": "torch.float32"}
+        assert all(torch.equal(v, working.state_dict()[k]) for k, v in original.items())
+        assert all(torch.equal(v, working.model[16].state_dict()[k]) for k, v in gates_before.items())
+        report[mode] = {
+            "calls": dict(counts),
+            "dtypes": dtypes,
+            "state_unchanged": True,
+            "seen": validator.seen,
+            "synthetic_only": True,
+            "optimizer_updates": 0,
+        }
+    return report
 
 
 def main():
@@ -507,6 +626,11 @@ def main():
         trainer.setup_model()
         trainer.set_model_attributes()
         fresh_model = trainer.model
+        assert torch.count_nonzero(fresh_model.model[16].low_delta.weight) == 0
+        assert all(
+            torch.count_nonzero(g[-1].weight) == torch.count_nonzero(g[-1].bias) == 0
+            for g in fresh_model.model[16].band_gates
+        )
         report["initialization"] = trainer.initialization_report
         torch.set_rng_state(before_setup[0])
         random.setstate(before_setup[1])
@@ -552,6 +676,7 @@ def main():
         }
         learned, ema, report["cpu_smoke"] = smoke(fresh_model, "cpu", False)
         report["cpu_lifecycle"] = lifecycle(learned, ema, temp)
+        report["native_validation"] = validation_contract(learned, args.data, temp)
         if torch.cuda.is_available() and args.device != "cpu":
             learned, ema, report["cuda_amp_smoke"] = smoke(fresh_model, f"cuda:{args.device}", True)
             report["cuda_learned_lifecycle_cpu_fp32"] = lifecycle(learned, ema, temp)

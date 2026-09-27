@@ -10,7 +10,7 @@ imgsz: 640
 save: true
 save_period: 20
 cache: false
-device: '0'
+device: "0"
 workers: 8
 project: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect
 name: b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42

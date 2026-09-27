@@ -10,6 +10,7 @@ import importlib.metadata
 import importlib.util
 import json
 import os
+import pickle
 import platform
 import random
 import shutil
@@ -55,7 +56,7 @@ def rng_digest() -> dict:
     return {
         "cpu": hashlib.sha256(torch.get_rng_state().numpy().tobytes()).hexdigest(),
         "python": hashlib.sha256(repr(random.getstate()).encode()).hexdigest(),
-        "numpy": hashlib.sha256(repr(np.random.get_state()).encode()).hexdigest(),
+        "numpy": hashlib.sha256(pickle.dumps(np.random.get_state(), protocol=4)).hexdigest(),
         "cuda": [hashlib.sha256(s.cpu().numpy().tobytes()).hexdigest() for s in torch.cuda.get_rng_state_all()]
         if torch.cuda.is_initialized()
         else [],
