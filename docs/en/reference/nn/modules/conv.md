@@ -60,6 +60,10 @@ keywords: Ultralytics, convolution modules, Conv, LightConv, GhostConv, YOLO, de
 
 <br><br><hr><br>
 
+## ::: ultralytics.nn.modules.conv.BDF_Fusion
+
+<br><br><hr><br>
+
 ## ::: ultralytics.nn.modules.conv.Concat
 
 <br><br><hr><br>

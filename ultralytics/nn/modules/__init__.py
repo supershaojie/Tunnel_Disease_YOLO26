@@ -61,6 +61,7 @@ from .block import (
     TorchVision,
 )
 from .conv import (
+    BDF_Fusion,
     CBAM,
     ChannelAttention,
     Concat,
@@ -108,6 +109,7 @@ from .transformer import (
 )
 
 __all__ = (
+    "BDF_Fusion",
     "AIFI",
     "C1",
     "C2",

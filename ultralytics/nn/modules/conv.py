@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 
 __all__ = (
+    "BDF_Fusion",
     "CBAM",
     "ChannelAttention",
     "Concat",
@@ -611,6 +612,49 @@ class CBAM(nn.Module):
             (torch.Tensor): Attended output tensor.
         """
         return self.spatial_attention(self.channel_attention(x))
+
+
+class BDF_Fusion(nn.Module):
+    """Apply eight signed group corrections from backbone P4 before concatenating the two neck inputs."""
+
+    def __init__(self, channels):
+        """Construct the fixed b19 fusion without consuming the surrounding model's random state.
+
+        Args:
+            channels (list[int]): Channels of A (bottom-up P3), B (top-down P4), and C (backbone P4).
+        """
+        super().__init__()
+        c_a, c_b, c_c = channels
+        if c_b != c_c or c_b % 8:
+            raise ValueError("BDF_Fusion requires cB == cC and cB divisible by 8")
+        self.channels_per_group = c_b // 8
+        device = torch.empty(0).device
+        rng = {"devices": []} if device.type == "cpu" else {"devices": [device.index or 0], "device_type": device.type}
+        with torch.random.fork_rng(**rng):
+            self.proj = nn.Conv2d(c_c, c_b, 1, bias=False)
+            self.reduce = nn.Conv2d(c_a + c_b + c_c, 16, 1, bias=False)
+            self.dw = nn.Conv2d(16, 16, 3, padding=1, groups=16, bias=False)
+            self.gate = nn.Conv2d(16, 8, 1, bias=True)
+            nn.init.dirac_(self.proj.weight)
+            nn.init.zeros_(self.gate.weight)
+            nn.init.zeros_(self.gate.bias)
+        self.act = nn.SiLU()
+
+    def forward(self, x):
+        """Return Concat(A, B + 0.5*tanh(Gate(T))*(P(C)-B)) with contiguous channel groups.
+
+        Args:
+            x (list[torch.Tensor]): Three NCHW inputs with identical batch and spatial dimensions.
+
+        Returns:
+            (torch.Tensor): Fused feature with cA + cB channels.
+        """
+        a, b, c = x
+        if a.shape[2:] != b.shape[2:] or b.shape[2:] != c.shape[2:]:
+            raise ValueError("BDF_Fusion inputs must have identical spatial sizes; check layer wiring")
+        t = self.act(self.dw(self.reduce(torch.cat((a, b, c), dim=1))))
+        g = (0.5 * self.gate(t).tanh()).repeat_interleave(self.channels_per_group, dim=1)
+        return torch.cat((a, b + g * (self.proj(c) - b)), dim=1)
 
 
 class Concat(nn.Module):

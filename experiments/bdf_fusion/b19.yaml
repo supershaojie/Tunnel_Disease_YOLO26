@@ -1,0 +1,19 @@
+# Verified b19 args differences from 4a1b167 default.yaml; remaining fields use that locked source.
+epochs: 200
+patience: 60
+batch: 32
+save_period: 20
+optimizer: MuSGD
+seed: 42
+cos_lr: true
+lrf: 0.003
+hsv_h: 0.024
+hsv_s: 0.84
+hsv_v: 0.535
+degrees: 11.0
+translate: 0.17
+scale: 0.735
+shear: 3.5
+perspective: 0.00055
+mixup: 0.135
+cutmix: 0.03
