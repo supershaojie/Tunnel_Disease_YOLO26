@@ -28,6 +28,7 @@ from ultralytics.nn.modules import (
     A2C2f,
     AConv,
     ADown,
+    BDF_Fusion,
     Bottleneck,
     BottleneckCSP,
     C2f,
@@ -1984,6 +1985,9 @@ def parse_model(d, ch, verbose=True):
             args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
+        elif m is BDF_Fusion:
+            args = [[ch[x] for x in f], *args]
+            c2 = ch[f[0]] + ch[f[1]]
         elif m in frozenset(
             {
                 Detect,
