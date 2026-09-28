@@ -28,6 +28,7 @@ from experiments.csa_c3k2.common import (
     audit_data,
     differences,
     environment,
+    fusion_audit,
     isolated_rng,
     parameter_count,
     recipe,
@@ -243,14 +244,7 @@ def parameter_audit(pristine, reference):
     assert expected == measured and sum(expected.values()) == parameter_count(pristine.model[4]) == 105624
     result = {"status": "PASS", "static_by_module": expected, "measured_by_module": measured}
     for label, model in (("b19", reference), ("csa", pristine)):
-        fused = deepcopy(model).eval().fuse(verbose=False)
-        result[label] = {
-            "unfused": parameter_count(model),
-            "fused": parameter_count(fused),
-            "layer4_unfused": parameter_count(model.model[4]),
-            "layer4_fused": parameter_count(fused.model[4]),
-            "O2M_removed_by_native_fuse": fused.model[-1].cv2 is None and fused.model[-1].cv3 is None,
-        }
+        result[label], _ = fusion_audit(model)
     assert result["b19"]["unfused"] == 2504190 and result["b19"]["fused"] == 2375031
     result["net_delta"] = {
         k: result["csa"][k] - result["b19"][k] for k in ("unfused", "fused", "layer4_unfused", "layer4_fused")
@@ -399,7 +393,7 @@ from pathlib import Path
 from unittest.mock import patch
 from torchvision.ops import deform_conv2d
 from experiments.csa_c3k2.validate import load_for_evaluation
-from experiments.csa_c3k2.common import Diagnostics,write_report
+from experiments.csa_c3k2.common import Diagnostics,fusion_audit,write_report
 from experiments.csa_c3k2.verify import close
 from ultralytics import YOLO
 from ultralytics.nn.modules import CurveSampler
@@ -428,6 +422,9 @@ with torch.no_grad():
     model.fuse(verbose=False)
     again=model(x)[1]['one2one']
     errors['repeated_fuse']={k:close(again[k],after[k],atol=0,rtol=0) for k in ('boxes','scores')}
+    fused_counts,_=fusion_audit(model)
+    assert fused_counts['unfused'] is None and fused_counts['layer4_unfused'] is None
+    assert fused_counts['unfused_status']=='UNVERIFIED' and fused_counts['fused']==2454175
     torch.save({'model':model,'train_args':{}},str(Path(output).with_suffix('.pt')))
     fused_reload=YOLO(str(Path(output).with_suffix('.pt'))).model.eval()
     errors['fused_reload']={k:close(fused_reload(x)[1]['one2one'][k],after[k]) for k in ('boxes','scores')}
@@ -442,7 +439,7 @@ with torch.no_grad():
         half_status='PASS'
     results=wrapper.predict(source=x,device='cpu',imgsz=96,half=False,quantize=None,verbose=False,save=False)
     assert len(results)==1
-write_report(output,{'status':'PASS','errors':errors,'EMA_and_public_save_state_equal':True,'restricted_load':True,'fused_deform_calls':4,'half_model_forward_and_fuse':half_status,'predict':'PASS','diagnostics':diagnostics.records})
+write_report(output,{'status':'PASS','errors':errors,'EMA_and_public_save_state_equal':True,'restricted_load':True,'fused_deform_calls':4,'fused_checkpoint_counts':fused_counts,'half_model_forward_and_fuse':half_status,'predict':'PASS','diagnostics':diagnostics.records})
 """
     child_env = dict(os.environ, ULTRALYTICS_SAFE_LOAD="true", YOLO_AUTOINSTALL="false", PYTHONPATH=str(ROOT))
     completed = subprocess.run(

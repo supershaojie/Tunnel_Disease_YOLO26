@@ -3,7 +3,6 @@
 import argparse
 import os
 import sys
-from copy import deepcopy
 from pathlib import Path
 
 os.environ["YOLO_AUTOINSTALL"] = "false"
@@ -12,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import numpy as np
 import torch
 
-from experiments.csa_c3k2.common import ROOT, Diagnostics, environment, parameter_count, sha256, write_report
+from experiments.csa_c3k2.common import ROOT, Diagnostics, environment, fusion_audit, sha256, write_report
 from ultralytics import YOLO
 from ultralytics.models.yolo.detect.val import DetectionValidator
 from ultralytics.nn.modules import CSAC3k2
@@ -94,9 +93,7 @@ def main():
     try:
         wrapper = load_for_evaluation(weights)
         model = wrapper.model.float().eval()
-        report["parameters"] = {"unfused": parameter_count(model), "layer4_unfused": parameter_count(model.model[4])}
-        fused = deepcopy(model).fuse(verbose=False)
-        report["parameters"].update(fused=parameter_count(fused), layer4_fused=parameter_count(fused.model[4]))
+        report["parameters"], fused = fusion_audit(model)
         report["parameters"]["note"] = (
             "Native end-to-end fusion also removes O2M; functional deform_conv2d and aggregation are not fully covered by THOP"
         )

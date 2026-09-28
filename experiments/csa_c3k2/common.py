@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 from contextlib import contextmanager
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
@@ -221,6 +222,24 @@ def isolated_rng():
 def parameter_count(model):
     """Count parameters only, excluding buffers."""
     return sum(p.numel() for p in model.parameters())
+
+
+def fusion_audit(model):
+    """Measure a native fused copy and distinguish unavailable unfused state in already-fused checkpoints."""
+    was_fused = model.is_fused()
+    fused = deepcopy(model).eval().fuse(verbose=False)
+    counts = {
+        "checkpoint": parameter_count(model),
+        "checkpoint_already_fused": was_fused,
+        "unfused": None if was_fused else parameter_count(model),
+        "layer4_unfused": None if was_fused else parameter_count(model.model[4]),
+        "unfused_status": "UNVERIFIED" if was_fused else "PASS",
+        "unfused_note": "Use the original unfused checkpoint to measure BN/O2M state" if was_fused else None,
+        "fused": parameter_count(fused),
+        "layer4_fused": parameter_count(fused.model[4]),
+        "O2M_removed_by_native_fuse": fused.model[-1].cv2 is None and fused.model[-1].cv3 is None,
+    }
+    return counts, fused
 
 
 class Diagnostics:
