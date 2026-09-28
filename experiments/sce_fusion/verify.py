@@ -34,6 +34,7 @@ import numpy as np
 import torch
 
 from ultralytics.models.yolo.detect import DetectionTrainer
+from ultralytics.data.utils import img2label_paths
 from ultralytics.nn.modules import Detect, Index, SCEContextBlock, SCEFusion, SCERouter
 from ultralytics.nn.tasks import DetectionModel, load_checkpoint
 from ultralytics.utils import YAML
@@ -240,9 +241,9 @@ def axis_checks():
     }
 
 
-def native_checks(trainer, weights):
+def native_checks(trainer):
     """Compare production construction against a separately seeded native nc=1 reference."""
-    source, _ = load_checkpoint(weights)
+    source, _ = load_checkpoint(trainer.args.pretrained)
     python_rng, numpy_rng, cpu_rng, cuda_rng = trainer.reference_rng
     random.setstate(python_rng)
     np.random.set_state(numpy_rng)
@@ -425,7 +426,7 @@ def smoke(trainer, device, amp):
                 "changed_with_task_gradient": changed_with_gradient,
             }
         )
-        if updates >= 3 and all(gradient_hits.values()) and bool(lambda_hits.all()):
+        if updates >= 3:
             break
     missing = [k for k, active in gradient_hits.items() if not active]
     changed = {k: float((p.detach() - initial[k]).abs().max()) for k, p in names.items()}
@@ -470,7 +471,7 @@ def bounded_evaluation(trainer, model, directory):
     (subset / "labels").mkdir()
     selected = []
     for source in sorted(Path(trainer.data["val"]).iterdir()):
-        label = Path(str(source).replace(f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}")).with_suffix(".txt")
+        label = Path(img2label_paths([str(source)])[0])
         if source.is_file() and label.is_file() and label.read_text().strip():
             shutil.copyfile(source, subset / "images" / source.name)
             shutil.copyfile(label, subset / "labels" / label.name)
@@ -643,7 +644,7 @@ def main():
             trainer, construction = construct(options, directory)
             report.update(construction)
             pristine = {k: v.clone() for k, v in trainer.model.state_dict().items()}
-            check("production_reference_rng_optimizer", lambda: native_checks(trainer, options.weights))
+            check("production_reference_rng_optimizer", lambda: native_checks(trainer))
             check("module_contracts", module_checks)
             check("routing_math", router_checks)
             check("axial_context", axis_checks)
@@ -667,8 +668,8 @@ def main():
                 return details
 
             check("cpu_fp32_task_updates", cpu_smoke)
-            if torch.cuda.is_available() and options.device != "cpu":
-                device = torch.device("cuda:" + (options.device or "0"))
+            if trainer.device.type == "cuda":
+                device = trainer.device
 
                 def cuda_smoke():
                     amp_model = deepcopy(trainer.model).to(device)

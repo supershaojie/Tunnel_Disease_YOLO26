@@ -22,7 +22,7 @@ import torch
 
 import ultralytics
 from ultralytics.cfg import get_cfg
-from ultralytics.data.utils import IMG_FORMATS
+from ultralytics.data.utils import IMG_FORMATS, check_det_dataset, img2label_paths
 from ultralytics.models.yolo.detect import DetectionTrainer
 from ultralytics.nn.modules import Detect, SCEFusion
 from ultralytics.nn.tasks import DetectionModel
@@ -114,18 +114,16 @@ def audit_data(path):
     differences = {k: {"historical": expected.get(k), "actual": v} for k, v in data.items() if expected.get(k) != v}
     if set(differences) - {"path", "train", "val", "test"}:
         raise ValueError(f"Non-path dataset YAML changes: {differences}")
-    root = Path(data.get("path", path.parent))
-    if not root.is_absolute():
-        root = (path.parent / root).resolve()
+    resolved = check_det_dataset(str(path), autodownload=False)
     splits = {}
     for split, count in (("train", 8414), ("val", 2404), ("test", 1202)):
-        directory = root / data[split]
+        directory = Path(resolved[split])
         images = sorted(p for p in directory.rglob("*") if p.suffix[1:].lower() in IMG_FORMATS)
         if len(images) != count:
             raise ValueError(f"{split} has {len(images)} images, expected {count}: {directory}")
         boxes, digest = 0, hashlib.sha256()
         for image in images:
-            label = Path(str(image).replace(f"{os.sep}images{os.sep}", f"{os.sep}labels{os.sep}")).with_suffix(".txt")
+            label = Path(img2label_paths([str(image)])[0])
             content = label.read_bytes()
             for line in content.decode("utf-8").splitlines():
                 fields = line.split()
@@ -341,7 +339,12 @@ def parser(verify=False):
     result.add_argument("--weights", required=True)
     result.add_argument("--baseline-args", required=True)
     result.add_argument("--device", default=None)
-    result.add_argument("--report", required=verify, help="Explicit JSON report file; parent directories are created")
+    result.add_argument(
+        "--report",
+        required=verify,
+        type=lambda p: str(Path(p).expanduser().resolve()),
+        help="Explicit JSON report file; parent directories are created",
+    )
     if not verify:
         result.add_argument("--project", default=str(ROOT / "runs/detect/sce_fusion"))
         result.add_argument("--name", default=RUN_NAME)
@@ -354,9 +357,9 @@ def parser(verify=False):
 def construct(options, temporary_project=None):
     """Exercise the real native setup_model -> SCETrainer.get_model production path."""
     final, config_report = configuration(options)
-    data_report = audit_data(options.data)
-    prepare_amp_weights(options.weights)
+    prepare_amp_weights(config_report["weights"])
     os.chdir(ROOT)
+    data_report = audit_data(final["data"])
     if temporary_project:
         final.update(project=str(temporary_project), name="construction")
     target = Path(final["project"]) / final["name"]
