@@ -39,11 +39,13 @@ from ultralytics.nn.modules import (
     C3x,
     CBFuse,
     CBLinear,
+    CSAC3k2,
     Classify,
     Concat,
     Conv,
     Conv2,
     ConvTranspose,
+    CurveSampler,
     Detect,
     DWConv,
     DWConvTranspose2d,
@@ -260,6 +262,8 @@ class BaseModel(torch.nn.Module):
                 if isinstance(m, RepVGGDW):
                     m.fuse()
                     m.forward = m.forward_fuse
+                if isinstance(m, CurveSampler):
+                    m.fuse()
                 if isinstance(m, Detect) and getattr(m, "end2end", False):
                     m.fuse()  # remove one2many head
             self.info(verbose=verbose)
@@ -1648,7 +1652,11 @@ class _SafeLoad:
         def _getattr(obj, name):  # ckpts pickle `Detect.forward` and `InterpolationMode.BILINEAR` via getattr
             if isinstance(obj, type) and not name.startswith("__") and issubclass(obj, (nn.Module, enum.Enum)):
                 return getattr(obj, name)
-            raise pickle.UnpicklingError(f"unsafe getattr({obj!r}, {name!r}) blocked during restricted model load")
+            if name == "forward_fuse" and type(obj) in (Conv, Conv2, DWConv, ConvTranspose, RepConv, RepVGGDW):
+                return type(obj).forward_fuse.__get__(obj, type(obj))  # native fused checkpoints store bound methods
+            raise pickle.UnpicklingError(
+                f"unsafe getattr on {type(obj).__name__} attribute {name!r} blocked during restricted model load"
+            )
 
         allow += [
             (nn.Identity, "ultralytics.nn.modules.block.Silence"),  # YOLOv9e
@@ -1895,6 +1903,7 @@ def parse_model(d, ch, verbose=True):
             C2f,
             C3k2,
             RepNCSPELAN4,
+            CSAC3k2,
             ELAN1,
             ADown,
             AConv,
