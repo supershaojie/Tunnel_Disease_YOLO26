@@ -94,6 +94,7 @@ from .head import (
     YOLOESegment26,
     v10Detect,
 )
+from .sce import SCEContextBlock, SCEFusion, SCERouter
 from .transformer import (
     AIFI,
     MLP,
@@ -176,6 +177,9 @@ __all__ = (
     "RepVGGDW",
     "ResNetLayer",
     "SCDown",
+    "SCEContextBlock",
+    "SCEFusion",
+    "SCERouter",
     "Segment",
     "Segment26",
     "SemanticSegment",

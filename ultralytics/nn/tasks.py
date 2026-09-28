@@ -54,6 +54,7 @@ from ultralytics.nn.modules import (
     HGStem,
     ImagePoolingAttn,
     Index,
+    SCEFusion,
     LRPCHead,
     Pose,
     Pose26,
@@ -1947,6 +1948,8 @@ def parse_model(d, ch, verbose=True):
             if isinstance(a, str):
                 with contextlib.suppress(ValueError):
                     args[j] = locals()[a] if a in locals() else ast.literal_eval(a)
+        if m is SCEFusion and (scale != "n" or n != 1):
+            raise ValueError("SCE-Fusion supports only scale=n and outer repeat=1")
         n = n_ = max(round(n * depth), 1) if n > 1 else n  # depth gain
         if m in base_modules:
             c1, c2 = ch[f], args[0]
@@ -1970,6 +1973,9 @@ def parse_model(d, ch, verbose=True):
                     args.extend((True, 1.2))
             if m is C2fCIB:
                 legacy = False
+        elif m is SCEFusion:
+            c2 = [ch[x] for x in f]
+            args = [c2, *args]
         elif m is AIFI:
             args = [ch[f], *args]
         elif m in frozenset({HGStem, HGBlock}):
@@ -2021,6 +2027,9 @@ def parse_model(d, ch, verbose=True):
         elif m in frozenset({TorchVision, Index}):
             c2 = args[0]
             c1 = ch[f]
+            if m is Index and isinstance(c1, list):
+                if not 0 <= args[1] < len(c1) or c2 != c1[args[1]]:
+                    raise ValueError(f"Index {i} declares channels/index {args}, but source {f} provides {c1}")
             args = [*args[1:]]
         else:
             c2 = ch[f]
