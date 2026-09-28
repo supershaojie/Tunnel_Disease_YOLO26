@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .csa import CSAC3k2, CSAUnit, CurveSampler
 from .head import (
     OBB,
     OBB26,
@@ -141,6 +142,8 @@ __all__ = (
     "C3x",
     "CBFuse",
     "CBLinear",
+    "CSAC3k2",
+    "CSAUnit",
     "ChannelAttention",
     "Classify",
     "Concat",
@@ -148,6 +151,7 @@ __all__ = (
     "Conv",
     "Conv2",
     "ConvTranspose",
+    "CurveSampler",
     "DWConv",
     "DWConvTranspose2d",
     "DeformableTransformerDecoder",

@@ -310,7 +310,7 @@ class AutoBackend(nn.Module):
         if self.format in {"pt", "torchscript", "onnx", "engine", "saved_model", "pb", "triton"} and (
             self.device.type != "cpu" or self.format == "triton"
         ):
-            im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
+            im = torch.zeros(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # finite input
             for _ in range(2 if self.format == "torchscript" else 1):
                 self.forward(im)  # warmup model
                 warmup_boxes = torch.rand(1, 84, 16, device=self.device)  # 16 boxes works best empirically

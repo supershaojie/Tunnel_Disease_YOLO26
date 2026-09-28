@@ -492,7 +492,7 @@ def attempt_download_asset(
     # YOLOv3/5u updates
     file = str(file)
     file = checks.check_yolov5u_filename(file)
-    file = Path(file.strip().replace("'", ""))
+    file = Path(file.strip().strip("'"))
     if file.exists():
         return str(file)
     elif (SETTINGS["weights_dir"] / file).exists():
