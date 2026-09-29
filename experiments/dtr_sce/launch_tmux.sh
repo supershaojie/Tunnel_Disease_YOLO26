@@ -43,6 +43,7 @@ fi
 umask 077
 log_root=${DTR_SCE_LOG_DIR:-$root/artifacts/dtr_sce/tmux}
 mkdir -p -- "$log_root"
+log_root=$(cd -- "$log_root" && pwd -P)
 job_dir=$(mktemp -d -- "$log_root/$session.XXXXXX")
 job=$job_dir/task.sh
 {

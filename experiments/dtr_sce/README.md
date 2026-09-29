@@ -79,6 +79,7 @@ report 是 JSON 文件路径。默认 project 为当前 worktree 的 `runs/detec
 
 launcher 使用 Bash 数组和 `%q` 引用，先建立交互 shell，再送入独立任务脚本；额外开启 remain-on-exit。
 管道结束紧接复制完整 PIPESTATUS，分别保留 Python/tee 退出码；打印结果、摘要与日志位置，任务结束后返回 shell。
+正式运行成功或异常结束都在已拥有的输出目录保存最终审计及可用的末行 results.csv；训练开始后的异常状态写为 FAILED。
 默认会话为 `dtr-sce-b19` / `dtr-sce-eval`；同名会话拒绝覆盖并给查看命令。
 重跑用明确的新 `DTR_SCE_SESSION` 和输出名。可用 `DTR_SCE_PYTHON` 指定已有绝对解释器路径、`DTR_SCE_LOG_DIR` 指定日志目录。
 允许 GPU0 并发，不等待空卡、不停止其他实验。Linux/tmux 实际会话保留行为 **UNVERIFIED**，本地仅检查 Bash 语法。

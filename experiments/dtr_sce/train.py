@@ -146,7 +146,7 @@ def environment(device="0"):
     report = sce_environment()
     actual = {
         "python": platform.python_version(),
-        "executable": str(Path(sys.executable).resolve()),
+        "executable": sys.executable,
         "torch": torch.__version__,
         "torchvision": report["dependencies"]["torchvision"],
         "cuda_runtime": torch.version.cuda,
@@ -289,6 +289,8 @@ def main():
     # Validate the report destination before writing even an error report.
     resolved, _ = configuration(options)
     report = {"formal_training": "NOT_STARTED"}
+    report_files = [options.report] if options.report else []
+    results_csv = None
     try:
         if options.dry_run:
             torch.set_num_threads(min(4, torch.get_num_threads()))
@@ -303,6 +305,9 @@ def main():
             prepare_amp_weights(resolved["pretrained"])
             with WorkingDirectory(ROOT):
                 trainer, report = construct(options)
+                report_files.append(trainer.save_dir / "dtr_sce_audit.json")
+                results_csv = trainer.csv
+                report.update(result_directory=str(trainer.save_dir), summary=str(report_files[-1]))
 
                 def record_start(active):
                     if (
@@ -319,45 +324,42 @@ def main():
 
                 trainer.add_callback("on_pretrain_routine_end", record_start)
                 trainer.train()
-                with trainer.csv.open(encoding="utf-8", newline="") as stream:
-                    last = list(csv.DictReader(stream))[-1]
-                report.update(
-                    status="PASS",
-                    formal_training="COMPLETED",
-                    last_epoch=last,
-                    final_metrics=trainer.metrics,
-                    result_directory=str(trainer.save_dir),
-                    summary=str(trainer.save_dir / "dtr_sce_audit.json"),
-                )
-                write_report(trainer.save_dir / "dtr_sce_audit.json", report)
+                report.update(formal_training="COMPLETED", final_metrics=trainer.metrics)
         report["status"] = "PASS"
-        print(
-            json.dumps(
-                {
-                    k: v
-                    for k, v in report.items()
-                    if k
-                    in {
-                        "status",
-                        "formal_training",
-                        "parameters_unfused",
-                        "last_epoch",
-                        "final_metrics",
-                        "result_directory",
-                        "summary",
-                    }
-                },
-                ensure_ascii=False,
-                indent=2,
-                default=str,
-            )
-        )
     except Exception as error:
-        report.update(status="FAIL", error=f"{type(error).__name__}: {error}")
+        report.update(
+            status="FAIL",
+            formal_training="FAILED" if report["formal_training"] == "STARTED" else report["formal_training"],
+            error=f"{type(error).__name__}: {error}",
+        )
         raise
     finally:
-        if options.report:
-            write_report(options.report, report)
+        if results_csv is not None and results_csv.is_file():
+            with results_csv.open(encoding="utf-8", newline="") as stream:
+                report["last_epoch"] = next(reversed(list(csv.DictReader(stream))), None)
+        for path in report_files:
+            write_report(path, report)
+    print(
+        json.dumps(
+            {
+                k: v
+                for k, v in report.items()
+                if k
+                in {
+                    "status",
+                    "formal_training",
+                    "parameters_unfused",
+                    "last_epoch",
+                    "final_metrics",
+                    "result_directory",
+                    "summary",
+                }
+            },
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+    )
 
 
 if __name__ == "__main__":
