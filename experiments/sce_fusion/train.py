@@ -228,8 +228,12 @@ def remap_key(key):
 def state_inventory(model, keys):
     """Separate state tensor count from parameter elements, excluding buffers from the latter."""
     parameters = dict(model.named_parameters())
+    state = model.state_dict()
     return {
         "tensor_count": len(keys),
+        "parameter_tensor_count": sum(k in parameters for k in keys),
+        "buffer_tensor_count": sum(k not in parameters for k in keys),
+        "buffer_elements": sum(state[k].numel() for k in keys if k not in parameters),
         "parameter_elements": sum(parameters[k].numel() for k in keys if k in parameters),
         "keys": sorted(keys),
     }
@@ -237,6 +241,10 @@ def state_inventory(model, keys):
 
 class SCETrainer(DetectionTrainer):
     """Own reference construction, graph-state migration and the fixed-batch experiment policy."""
+
+    model_yaml = MODEL_YAML
+    removed_prefixes = ()
+    new_prefixes = ("model.23.",)
 
     def get_model(self, cfg=None, weights=None, verbose=True):
         """Use native nc adaptation first; isolate all extra construction RNG consumption."""
@@ -263,33 +271,39 @@ class SCETrainer(DetectionTrainer):
             with torch.random.fork_rng(
                 devices=list(range(torch.cuda.device_count())) if torch.cuda.is_initialized() else []
             ):
-                model = self.set_model_names_for_load(DetectionModel(str(MODEL_YAML), nc=1, ch=3, verbose=verbose))
+                model = self.set_model_names_for_load(DetectionModel(str(self.model_yaml), nc=1, ch=3, verbose=verbose))
         finally:
             random.setstate(python_rng)
             np.random.set_state(numpy_rng)
         source, destination = reference.state_dict(), model.state_dict()
-        mapping = {key: remap_key(key) for key in source}
-        if len(set(mapping.values())) != len(source):
+        removed = {key for key in source if key.startswith(self.removed_prefixes)}
+        mapping = {key: remap_key(key) for key in source if key not in removed}
+        if len(set(mapping.values())) != len(mapping):
             raise RuntimeError("Native state mapping is not one-to-one")
+        old_modules, new_modules = dict(reference.named_modules()), dict(model.named_modules())
         for key, target in mapping.items():
-            if target not in destination or source[key].shape != destination[target].shape:
+            if (
+                target not in destination
+                or source[key].shape != destination[target].shape
+                or type(old_modules[key.rsplit(".", 1)[0]]) is not type(new_modules[target.rsplit(".", 1)[0]])
+            ):
                 raise RuntimeError(f"Native state mismatch: {key} -> {target}")
-        model.load_state_dict({target: source[key] for key, target in mapping.items()}, strict=False)
+        model.load_state_dict({**destination, **{target: source[key] for key, target in mapping.items()}}, strict=True)
         if any(
             not torch.equal(source[k], destination[v]) or source[k].data_ptr() == destination[v].data_ptr()
             for k, v in mapping.items()
         ):
             raise RuntimeError("Native state must be equal without shared mutable storage")
         added = set(destination) - set(mapping.values())
-        if any(not key.startswith("model.23.") for key in added):
-            raise RuntimeError("Unexpected non-SCE state in the new graph")
+        if added != {key for key in destination if key.startswith(self.new_prefixes)}:
+            raise RuntimeError("Unexpected state outside the declared new module prefixes")
         pretrained = weights.state_dict()
         retained = {
             k
-            for k in source
+            for k in mapping
             if k in pretrained and source[k].shape == pretrained[k].shape and torch.equal(source[k], pretrained[k])
         }
-        adapted = set(source) - retained
+        adapted = set(mapping) - retained
         if any(not k.startswith("model.23.") or "cv3" not in k for k in adapted):
             raise RuntimeError("Unexpected pretrained gap outside class-adapted detection branches")
         after = rng_fingerprint()
@@ -301,8 +315,14 @@ class SCETrainer(DetectionTrainer):
             "native_class_adaptation": state_inventory(reference, adapted),
             "detect_renamed": state_inventory(reference, {k for k in source if k.startswith("model.23.")}),
             "native_total": state_inventory(reference, source),
-            "new_sce": state_inventory(model, added),
-            "intentional_removals": [],
+            "retained_total": state_inventory(reference, mapping),
+            "new_sce": state_inventory(model, {k for k in added if k.startswith("model.23.")}),
+            "new_dtr": state_inventory(model, {k for k in added if k.startswith("model.10.dtr_blocks.")}),
+            "removed_native": state_inventory(reference, removed),
+            "retained_cv1_cv2": state_inventory(
+                reference, {k for k in mapping if k.startswith(("model.10.cv1.", "model.10.cv2."))}
+            ),
+            "intentional_removals": sorted(removed),
             "unexpected_omissions": [],
             "mapping": mapping,
             "all_native_values_equal": True,

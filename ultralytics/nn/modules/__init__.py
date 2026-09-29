@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .dtr import C2PSA_DTR
 from .head import (
     OBB,
     OBB26,
@@ -113,6 +114,7 @@ __all__ = (
     "C1",
     "C2",
     "C2PSA",
+    "C2PSA_DTR",
     "C3",
     "C3TR",
     "CBAM",
