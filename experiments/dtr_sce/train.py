@@ -303,28 +303,28 @@ def main():
                 report["environment"] = runtime
                 raise RuntimeError(f"Formal server contract mismatch: {runtime['server_differences']}")
             prepare_amp_weights(resolved["pretrained"])
+            trainer, report = construct(options)
+            report_files.append(trainer.save_dir / "dtr_sce_audit.json")
+            results_csv = trainer.csv
+            report.update(result_directory=str(trainer.save_dir), summary=str(report_files[-1]))
+
+            def record_start(active):
+                if (
+                    not active.amp
+                    or active.batch_size != 32
+                    or active.args.imgsz != 640
+                    or type(active.optimizer).__name__ != "MuSGD"
+                ):
+                    raise RuntimeError("Formal b19 requires AMP, batch32, imgsz640 and MuSGD; native setup failed")
+                report.update(
+                    formal_training="STARTED", actual_amp=active.amp, actual_configuration=vars(active.args).copy()
+                )
+                write_report(active.save_dir / "dtr_sce_audit.json", report)
+
+            trainer.add_callback("on_pretrain_routine_end", record_start)
             with WorkingDirectory(ROOT):
-                trainer, report = construct(options)
-                report_files.append(trainer.save_dir / "dtr_sce_audit.json")
-                results_csv = trainer.csv
-                report.update(result_directory=str(trainer.save_dir), summary=str(report_files[-1]))
-
-                def record_start(active):
-                    if (
-                        not active.amp
-                        or active.batch_size != 32
-                        or active.args.imgsz != 640
-                        or type(active.optimizer).__name__ != "MuSGD"
-                    ):
-                        raise RuntimeError("Formal b19 requires AMP, batch32, imgsz640 and MuSGD; native setup failed")
-                    report.update(
-                        formal_training="STARTED", actual_amp=active.amp, actual_configuration=vars(active.args).copy()
-                    )
-                    write_report(active.save_dir / "dtr_sce_audit.json", report)
-
-                trainer.add_callback("on_pretrain_routine_end", record_start)
                 trainer.train()
-                report.update(formal_training="COMPLETED", final_metrics=trainer.metrics)
+            report.update(formal_training="COMPLETED", final_metrics=trainer.metrics)
         report["status"] = "PASS"
     except Exception as error:
         report.update(
