@@ -76,6 +76,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .dga import C2PSA_DGA, DGAAttention, PSABlock_DGA
 from .head import (
     OBB,
     OBB26,
@@ -112,6 +113,9 @@ __all__ = (
     "C1",
     "C2",
     "C2PSA",
+    "C2PSA_DGA",
+    "DGAAttention",
+    "PSABlock_DGA",
     "C3",
     "C3TR",
     "CBAM",
