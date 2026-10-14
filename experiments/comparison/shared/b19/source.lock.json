@@ -1,0 +1,44 @@
+{
+  "source_sha": "4a1b167dee2b0c7353d9d7ead2911383d1ebf1d6",
+  "version": "b19-comparison-provider-v1",
+  "upstream_version": "8.4.98",
+  "extracted_classes": [
+    "BaseTransform",
+    "Compose",
+    "BaseMixTransform",
+    "Mosaic",
+    "MixUp",
+    "CutMix",
+    "RandomPerspective",
+    "RandomHSV",
+    "RandomFlip",
+    "CopyPaste"
+  ],
+  "source_files": {
+    "ultralytics/data/augment.py": "eddb75a3b0a803f2cb6ef6e740e1bb117d99d841d89e0954a53aa9ec6df7cfbf",
+    "ultralytics/data/dataset.py": "6da06c274091a27a6dff9a71f928d8e765549591a85c399c5226ac917eb6f9fd",
+    "ultralytics/data/base.py": "6915996cdf1a029126c9c61171d65ba60cf863a20557bed2e2af3c34ce9cb029",
+    "ultralytics/engine/validator.py": "b8ce30b2cd9e070c8cb8beec24128db94943362b24d3b099cac51a59e7876e0a",
+    "ultralytics/utils/instance.py": "d49f7a39c7a468703353a326ce1b254382c83ac9f67e3aef378035bac7f456c1",
+    "ultralytics/utils/ops.py": "3138933eda1076ad91d680e57b08c881f937fd9bd07e8f6daf85efa6545239c5",
+    "ultralytics/utils/metrics.py": "0d0754ad72a1a80654a6a40e179f02c37a20c9bd7ff1fc6fbd4d497944a6a38c"
+  },
+  "adaptations": [
+    "Isolated namespace imports; detection-only subset.",
+    "Albumentations extra random transforms omitted explicitly; not part of frozen B19 operator chain.",
+    "compute_ap NumPy-version check isolated in checks.py.",
+    "AP exposes numerical arguments only; removed unused upstream plotting API and branches. Numeric matching/AP/curve computation preserved, independently compared with original reference."
+  ],
+  "source_files_hash_rule": "exact Git blob bytes at source_sha, independent of Windows newline checkout",
+  "extracted_ops": [
+    "empty_like",
+    "ltwh2xywh",
+    "ltwh2xyxy",
+    "resample_segments",
+    "xywh2ltwh",
+    "xywh2xyxy",
+    "xyxy2ltwh",
+    "xyxy2xywh",
+    "segment2box"
+  ]
+}

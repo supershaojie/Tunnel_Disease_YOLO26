@@ -1,0 +1,8 @@
+{
+  "state": "EXACT_EQUAL",
+  "peer_commit": "cd9e69720b5c0d6b3fa297ec588431099ded9e58",
+  "shared_source_commit": "482e555248c0ba52b4bea2b474498cab61fd6f37",
+  "augment_core_sha256": "0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b",
+  "protocol_sha256": "5f96fc2c421ae52ac17edd4ace3ea266a1b9bead64b07426eb883f0299d04fc4",
+  "data_sha256": "d8c1be51b8f0e7a04c34c82e42e055fd45fcec558a3099967dddef41328f0604"
+}

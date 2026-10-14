@@ -1,0 +1,14 @@
+{
+  "model": "yolov5n",
+  "kind": "official_pretrained",
+  "source_url": "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt",
+  "release_api": "https://api.github.com/repos/ultralytics/yolov5/releases/tags/v7.0",
+  "release_page": "https://github.com/ultralytics/yolov5/releases/tag/v7.0",
+  "tag": "v7.0",
+  "asset_id": 85490179,
+  "asset_name": "yolov5n.pt",
+  "bytes": 4062133,
+  "sha256": "4f180cf23ba0717ada0badd6c685026d73d48f184d00fc159c2641284b2ac0a3",
+  "published_digest": null,
+  "checksum_origin": "computed locally from downloaded official bytes; not an official checksum claim"
+}
