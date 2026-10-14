@@ -166,6 +166,8 @@ def resolve(args):
     schemas["augment"] = {"profile", "overrides"}
 
     def assign(key, value, source):
+        if isinstance(value, dict):
+            raise ValueError(f"Expected leaf config key: {key}; use individual --set key=value fields")
         parts = key.split(".")
         if parts[0] not in schemas:
             raise ValueError(f"Unknown config key: {key}")

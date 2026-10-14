@@ -18,10 +18,11 @@
   与 YOLOv5n 使用独立进程。禁止在已导入其他 Ultralytics 的 Python 会话内调用。
 
 私有补丁仅涉及可信旧 checkpoint 的明确 `weights_only=False` 加载点、AMP 探针本地权重路径、
-NumPy AP 积分 API 兼容、缓存路径、只读 JPEG 验证和增强关闭后的加载进程刷新。删除了原包全局 `torch.load` 替换、
+NumPy AP 积分 API 兼容、缓存路径、只读 JPEG 验证、增强关闭后的加载进程刷新及预算/来源记录。删除了原包全局 `torch.load` 替换、
 外部集成注册、导入时遥测和训练时 pip 更新探测。没有修改 C2f、SPPF、Detect、DFL/TAL、
 box/cls/dfl 损失、EMA、原生优化器选择或调度器。AMP 保留原生 FP32/AMP 相等性检查，
 不下载其他模型，不伪造通过状态。
+原生绘图只查找本地字体，缺失时沿用 PIL 的默认字体；删除了隐式字体下载。
 
 权重发布文件保留早期 YOLOv8 的 depth/width nano 配置。按 v8.3.0 原生 Trainer 重建 nc1 时，
 该 tag 的 Detect 分类支路使用 DWConv；没有额外改写检测头。有限验证继承 313/391 个状态键，
@@ -34,6 +35,7 @@ box/cls/dfl 损失、EMA、原生优化器选择或调度器。AMP 保留原生 
 优先级：锁定官方默认 → 公共预设 → 配置文件 → 显式 CLI / `--set`。YAML 使用安全解析，
 重复键、矛盾重复覆盖、未知键和不合法概率会报错。`--dry-run` 不导入模型、不下载权重、
 不创建正式输出目录。开发机缺失服务器文件时只展示明确标记的归档增强预览，正式训练必须读取真实 args。
+`--set` 接受逐叶字段，例如 `augment.overrides.mixup=0.05`；整体 mapping 的 CLI 赋值明确拒绝。
 
 ```bash
 python experiments/comparison/yolov8n/train.py --help
@@ -111,6 +113,7 @@ native 的协议散列锁定原生操作源码，并实录可选 Albumentations 
 新训练目录已存在时报错。恢复必须用 `--resume /absolute/run/weights/last.pt`，核验源码、模型、
 checkpoint 哈希、数据和原配方，保存恢复请求。旧后端会忽略的配方变更在恢复前拒绝；
 batch/device 等原生允许变更会在有效配置中记录。没有自动最新运行查找、自动降 batch、切 CPU 或等待 GPU 空闲。
+恢复入口要求存在剩余 epoch 预算；已完成预算的 checkpoint 会拒绝恢复，不隐式追加训练轮次。
 模型初始化、参数来源、官方默认、请求/有效差异、实际优化器组、累积与有效 batch、环境、数据协议、
 逐轮损失/参数组、权重来源和训练/评测/打包状态各自保存。
 
@@ -156,6 +159,11 @@ package 默认严格小于 12,000,000 bytes，保留完整 float32 预测/GT、�
 总包另按严格小于 100,000,000 bytes 检查。
 打包包含全部已有恢复请求/有效配置/差异/环境/初始化记录。测速完成后在训练目录记录其实际位置，
 自定义测速目录也可打包；其权重及实际评测协议不匹配时单列为 unmatched，不作为本次评测的测速。
+每次保存直接复用原生序列化事件的 epoch/train_args/train_results，在 manifest 中保存各权重的因果来源。
+独立评测/测速先捕获经 SHA 核验的稳定权重副本，结果目录保留 `weight_snapshot.pt`，核心包不包含它。
+评测冻结 `training_provenance.json`（含请求/有效配置、差异、初始化、环境、源码锁及恢复祖先）和所选
+checkpoint 已保存的曲线数值，绘图/打包只读这份记录。曲线截至所选 checkpoint 的 epoch。
+后续 live run 的状态、完整 CSV、日志及恢复记录单列为 `training_history/`，不替代评测拥有的来源。
 
 ## 有限验证
 

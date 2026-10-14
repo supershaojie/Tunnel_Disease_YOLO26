@@ -344,7 +344,7 @@ class BaseTrainer:
             self.plot_idx.extend([base_idx, base_idx + 1, base_idx + 2])
         epoch = self.start_epoch
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
-        while True:
+        while epoch < self.epochs:
             self.epoch = epoch
             self.run_callbacks("on_train_epoch_start")
             with warnings.catch_warnings():
@@ -511,21 +511,24 @@ class BaseTrainer:
 
         # Serialize ckpt to a byte buffer once (faster than repeated torch.save() calls)
         buffer = io.BytesIO()
+        metadata = {
+            "epoch": self.epoch,
+            "best_fitness": self.best_fitness,
+            "updates": self.ema.updates,
+            "train_args": vars(self.args),  # save as dict
+            "train_metrics": {**self.metrics, **{"fitness": self.fitness}},
+            "train_results": self.read_results_csv(),
+            "date": datetime.now().isoformat(),
+            "version": __version__,
+            "license": "AGPL-3.0 (https://ultralytics.com/license)",
+            "docs": "https://docs.ultralytics.com",
+        }
         torch.save(
             {
-                "epoch": self.epoch,
-                "best_fitness": self.best_fitness,
+                **metadata,
                 "model": None,  # resume and final checkpoints derive from EMA
                 "ema": deepcopy(self.ema.ema).half(),
-                "updates": self.ema.updates,
                 "optimizer": convert_optimizer_state_dict_to_fp16(deepcopy(self.optimizer.state_dict())),
-                "train_args": vars(self.args),  # save as dict
-                "train_metrics": {**self.metrics, **{"fitness": self.fitness}},
-                "train_results": self.read_results_csv(),
-                "date": datetime.now().isoformat(),
-                "version": __version__,
-                "license": "AGPL-3.0 (https://ultralytics.com/license)",
-                "docs": "https://docs.ultralytics.com",
             },
             buffer,
         )
@@ -539,6 +542,7 @@ class BaseTrainer:
             (self.wdir / f"epoch{self.epoch}.pt").write_bytes(serialized_ckpt)  # save epoch, i.e. 'epoch3.pt'
         # if self.args.close_mosaic and self.epoch == (self.epochs - self.args.close_mosaic - 1):
         #    (self.wdir / "last_mosaic.pt").write_bytes(serialized_ckpt)  # save mosaic checkpoint
+        return metadata
 
     def get_dataset(self):
         """
@@ -727,16 +731,11 @@ class BaseTrainer:
         if self.ema and ckpt.get("ema"):
             self.ema.ema.load_state_dict(ckpt["ema"].float().state_dict())  # EMA
             self.ema.updates = ckpt["updates"]
-        assert start_epoch > 0, (
-            f"{self.args.model} training to {self.epochs} epochs is finished, nothing to resume.\n"
-            f"Start a new training without resuming, i.e. 'yolo train model={self.args.model}'"
+        assert 0 < start_epoch < self.epochs, (
+            f"{self.args.model} has no remaining epoch budget: checkpoint completed {start_epoch}, "
+            f"requested total {self.epochs}. Start a new training explicitly."
         )
         LOGGER.info(f"Resuming training {self.args.model} from epoch {start_epoch + 1} to {self.epochs} total epochs")
-        if self.epochs < start_epoch:
-            LOGGER.info(
-                f"{self.model} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {self.epochs} more epochs."
-            )
-            self.epochs += ckpt["epoch"]  # finetune additional epochs
         self.best_fitness = best_fitness
         self.start_epoch = start_epoch
         if start_epoch > (self.epochs - self.args.close_mosaic):

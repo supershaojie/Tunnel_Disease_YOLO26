@@ -300,6 +300,18 @@
     {
       "file": "text files",
       "reason": "Normalize line endings and upstream trailing whitespace for reproducible Git checkouts; no train/inference semantic changes."
+    },
+    {
+      "file": "ultralytics/utils/checks.py",
+      "reason": "Delete implicit font downloading; retain local/system lookup and the existing native PIL default-font fallback."
+    },
+    {
+      "file": "ultralytics/engine/trainer.py",
+      "reason": "The epoch-budget owner bounds iteration and resume eligibility; delete automatic epoch extension."
+    },
+    {
+      "file": "ultralytics/engine/trainer.py",
+      "reason": "Return the already-serialized lightweight checkpoint metadata to the comparison save owner; no second checkpoint/CSV read and no loss/optimizer/EMA changes."
     }
   ],
   "omitted_nonruntime_files": [
@@ -412,7 +424,7 @@
     "ultralytics/engine/model.py": "b20da1d3d9a9cfd564e5c7a8db837d379ff4c69eec0d8105b6ea495a89ff1cae",
     "ultralytics/engine/predictor.py": "3203161d425d45c54269598ecaf772d868e4fc4c911eff9aaf44921b141ef05e",
     "ultralytics/engine/results.py": "f1126537c27effdc3e9ab0d99bdc02f836494cf052eefd5cfebfd1d7bdd0c913",
-    "ultralytics/engine/trainer.py": "5242dfc6128e48889444f9072e2f55ea45a8b39c63b52a12871b1b1116846928",
+    "ultralytics/engine/trainer.py": "dc92c89fdd0541024f38a222419589d3eea1323ebd10a6cac5a248dbeb7ac19f",
     "ultralytics/engine/tuner.py": "80fa834c71fbbd10763b76321f6ea6d418d529b5f1b80d970253d1cd328566c7",
     "ultralytics/engine/validator.py": "e3cdc077cec8ae4ec806524d2eed9240026c6fb62b8802d35fd18882b8829918",
     "ultralytics/engine/__init__.py": "987b49b8ae21c05f1cb95f951c373bb69eaee83d601f3d99ec923c82b9900d3b",
@@ -509,7 +521,7 @@
     "ultralytics/trackers/utils/__init__.py": "987b49b8ae21c05f1cb95f951c373bb69eaee83d601f3d99ec923c82b9900d3b",
     "ultralytics/utils/autobatch.py": "0176e861f3529d31ac623e459a01983d077472b7e47a57b29ace905d07d9190e",
     "ultralytics/utils/benchmarks.py": "20de99a94fb50d51e7c11b1d812fef70186783c0d43112048c412076b97599d6",
-    "ultralytics/utils/checks.py": "e1d3ba8246959339d917b7e4bd4e5cee5d0feed3d6b413441cad6061b7a8a22c",
+    "ultralytics/utils/checks.py": "67306619b816b146ebe5b9d025943b76363521e9912e4c07d01a450691ad0b26",
     "ultralytics/utils/dist.py": "3431606beb8ac64057db32f114749e9defdc0a2190268c8e7825dc37d2483889",
     "ultralytics/utils/downloads.py": "f7b262b62859aaf20c4bafd35f9ac9006ec123c7981e5bb983c617948d11911e",
     "ultralytics/utils/errors.py": "1aa3ff2608ff9f4a5ac67f0e3219f70d30a0a0d901d968d47146aab3e33a4909",

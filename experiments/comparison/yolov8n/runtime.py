@@ -1,5 +1,6 @@
 """Preparation, preflight, formal training and independently reloaded evaluation."""
 
+import hashlib
 import json
 import os
 import shutil
@@ -163,7 +164,7 @@ def preflight(cfg, args):
     return report
 
 
-def checkpoint_info(path):
+def checkpoint_info(path, snapshot=None):
     """Verify the experiment-side checkpoint hash before native trusted deserialization."""
     path = Path(path).resolve()
     run = path.parent.parent
@@ -173,8 +174,12 @@ def checkpoint_info(path):
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("backend_sha") != verify_backend()["commit"] or manifest.get("model") != "yolov8n":
         raise ValueError("Checkpoint belongs to another model/backend")
-    if manifest["weights"].get(path.name) != file_hash(path):
+    content = path.read_bytes()
+    if manifest["weights"].get(path.name) != hashlib.sha256(content).hexdigest():
         raise ValueError(f"Experiment checkpoint hash mismatch: {path}")
+    if snapshot is not None:
+        with Path(snapshot).open("xb") as f:
+            f.write(content)
     return run, manifest
 
 
@@ -231,6 +236,7 @@ def train(cfg, args):
             "pretrained_provenance": provenance,
             "protocol": public,
             "resume_augmentation": checkpoint["training_augmentation"][Path(resumed).name] if resumed else None,
+            "resume_provenance": checkpoint["training_provenance"][Path(resumed).name] if resumed else None,
             "backend_sha": verify_backend()["commit"],
             "smoke": cfg["_execution_kind"] == "SMOKE",
         }
@@ -291,6 +297,9 @@ def evaluate(cfg, args):
     directory.mkdir(parents=True)
     status(directory, "evaluate", "RUNNING")
     try:
+        captured_weight = directory / "weight_snapshot.pt"
+        run, checkpoint = checkpoint_info(cfg["weights"], captured_weight)
+        weight_sha = checkpoint["weights"][Path(cfg["weights"]).name]
         backend = bootstrap(cfg, data_identity=data_report["data_sha256"])
         public = protocol(
             cfg, data_report["data_sha256"], checkpoint["training_augmentation"][Path(cfg["weights"]).name]
@@ -305,7 +314,7 @@ def evaluate(cfg, args):
         device = select_device(cfg["train"]["device"], cfg["eval"]["batch"])
         if cfg["eval"]["half"] and device.type == "cpu":
             raise ValueError("FP16 evaluation on CPU is unsupported; choose half=false explicitly")
-        yolo = backend.YOLO(str(Path(cfg["weights"]).resolve()), task="detect")
+        yolo = backend.YOLO(str(captured_weight), task="detect")
         model = yolo.model
         verify_model(model)
         training_params = sum(p.numel() for p in model.parameters())
@@ -355,7 +364,7 @@ def evaluate(cfg, args):
             val = json.loads(Path(args.val_metrics).read_text(encoding="utf-8"))
             if (
                 val["split"] != "val"
-                or val["weight_sha256"] != file_hash(cfg["weights"])
+                or val["weight_sha256"] != weight_sha
                 or val["protocol_sha256"] != public["protocol_sha256"]
             ):
                 raise ValueError("Frozen threshold source is not val of the same weight and protocol")
@@ -364,7 +373,7 @@ def evaluate(cfg, args):
         metrics.update(
             model="yolov8n",
             weight=str(Path(cfg["weights"]).resolve()),
-            weight_sha256=file_hash(cfg["weights"]),
+            weight_sha256=weight_sha,
             **{k: public[k] for k in ["protocol_sha256", "run_config_sha256"]},
             augment_core_sha256=public["augment_core_sha256"],
             adapter_sha256=public["adapter_sha256"],
@@ -403,9 +412,10 @@ def evaluate(cfg, args):
         import numpy as np
 
         np.savez_compressed(directory / "curves.npz", **curves)
-        from artifacts import figures, comparisons
+        from artifacts import figures, comparisons, freeze_training
 
-        figures(directory, metrics, curves, run)
+        freeze_training(directory, checkpoint, Path(cfg["weights"]).name)
+        figures(directory, metrics, curves)
         comparisons(directory, validator.records, cfg, data_report)
         status(
             directory,

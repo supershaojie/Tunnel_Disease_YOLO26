@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
-from common import AUG_KEYS, environment, file_hash, protocol, write_json
+from common import AUG_KEYS, HERE, environment, file_hash, protocol, write_json
 from shared import evaluation, provider
 from shared.b19.instance import Instances as B19Instances
 from ultralytics.data.augment import Albumentations, Compose, Format, LetterBox
@@ -303,21 +303,43 @@ class ComparisonTrainer(DetectionTrainer):
         write_json(self.save_dir / (prefix + "environment.json"), environment())
 
     def save_model(self):
-        super().save_model()
+        native_metadata = super().save_model()
         manifest_path = self.save_dir / "checkpoint_manifest.json"
         previous = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
         weights = previous.get("weights", {})
         augmentations = previous.get("training_augmentation", {})
+        provenance = previous.get("training_provenance", {})
         # Native save writes the same serialized bytes to each checkpoint touched by this event.
         saved_sha = file_hash(self.last)
         weights[self.last.name] = saved_sha
         augmentations[self.last.name] = deepcopy(self.context["protocol"]["config"]["augment"])
+        prefix = f"resume_{os.getpid()}_" if self.context["config"]["train"]["resume"] else ""
+        record = {
+            "weight_sha256": saved_sha,
+            "native_checkpoint": deepcopy(native_metadata),
+            "comparison_config": deepcopy(self.context["config"]),
+            "protocol": deepcopy(self.context["protocol"]),
+            "ancestry": deepcopy(self.context["resume_provenance"]),
+            "backend_lock": json.loads((HERE / "backend.lock.json").read_text(encoding="utf-8")),
+            **{
+                name[:-5]: json.loads((self.save_dir / (prefix + name)).read_text(encoding="utf-8"))
+                for name in [
+                    "effective_config.json",
+                    "requested_effective_diff.json",
+                    "environment.json",
+                    "initialization.json",
+                ]
+            },
+        }
+        provenance[self.last.name] = record
         if self.best_fitness == self.fitness:
             weights[self.best.name] = saved_sha
             augmentations[self.best.name] = deepcopy(augmentations[self.last.name])
+            provenance[self.best.name] = deepcopy(record)
         if self.save_period > 0 and self.epoch % self.save_period == 0:
             weights[f"epoch{self.epoch}.pt"] = saved_sha
             augmentations[f"epoch{self.epoch}.pt"] = deepcopy(augmentations[self.last.name])
+            provenance[f"epoch{self.epoch}.pt"] = deepcopy(record)
         write_json(
             manifest_path,
             {
@@ -329,6 +351,7 @@ class ComparisonTrainer(DetectionTrainer):
                 "original_pretrained_sha256": self.context["pretrained_provenance"]["sha256"],
                 "execution_kind": self.context["config"]["_execution_kind"],
                 "training_augmentation": augmentations,
+                "training_provenance": provenance,
             },
         )
         if self.best_fitness == self.fitness:

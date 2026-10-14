@@ -34,8 +34,8 @@
     "fresh_process_native_fp32_fuse_nms_complete_exports": "PASSED",
     "core_package_members_and_strict_bytes": {
       "status": "PASSED",
-      "bytes": 102433,
-      "sha256": "c8f6090efc515c1c6d6ca83de7b02d3b695ada540da4b5e0c2cb90f21ec5a475"
+      "bytes": 95849,
+      "sha256": "2a6beb9426e44ce88c196dcd0f6714be8d67e0c74d03d8e157849ade4f494f2d"
     },
     "cuda_native_amp_updates": "PASSED",
     "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
@@ -71,7 +71,18 @@
     "history_survives_verified_native_reload_and_inference": "PASSED: learned model state exactly preserved; no training-policy reconstruction",
     "resume_history_real_worker_refresh": "PASSED: actual ComparisonTrainer resume owner with native worker process",
     "original_smoke_weight_unchanged": "PASSED",
-    "resume_history_fixture_scope": "Actual native checkpoint restore/serialization and worker process; zero extra optimizer updates; formal server resume still UNVERIFIED"
+    "resume_history_fixture_scope": "Actual native checkpoint restore/serialization and worker process; zero extra optimizer updates; formal server resume still UNVERIFIED",
+    "resume_retains_training_history_without_duplicate_segments": "PASSED",
+    "CLI_mapping_cannot_bypass_leaf_schema": "PASSED: typo/whole mapping rejected; individual supported leaf applied",
+    "native_plot_missing_font_never_downloads": "PASSED: real PIL annotation/plot_images rendered; zero URL/download calls with empty local/system fonts",
+    "completed_checkpoint_rejected_before_optimizer_update": "PASSED: actual train entry with step instrumentation; zero attempts; owned FAILED status; all cloned weights unchanged",
+    "old_evaluation_package_keeps_selected_training_provenance": "PASSED: different B published by actual native serialization; A metadata/curves retained; later records only history",
+    "verified_capture_model_and_sha_survive_live_weight_replacement": "PASSED: native reload of captured A exactly unchanged after current best B differs",
+    "native_save_metadata_reuses_single_csv_serialization": "PASSED: native serializer returns the same metadata embedded in its checkpoint; no reloaded source used by packager",
+    "source_smoke_weights_unchanged": "PASSED",
+    "native_lightweight_metadata_matches_serialized_checkpoint": "PASSED: same epoch/train_args/train_results payload; one CSV read and one current-write hash",
+    "checkpoint_provenance_ancestry_and_older_files": "PASSED: A-to-B-to-A causal parent records frozen; old best/epoch provenance preserved",
+    "cold_owner_targets_scope": "Finite synthetic targets; completed-run rejection instruments zero optimizer update attempts; native save/reload/provenance fixtures perform zero extra updates; no server/full original test"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -145,5 +156,5 @@
   },
   "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
   "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
-  "adversarial_findings_addressed": 17
+  "adversarial_findings_addressed": 21
 }

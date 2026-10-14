@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-from common import bootstrap, environment, file_hash, protocol, result_directory, status, write_json
+from common import bootstrap, environment, protocol, result_directory, status, write_json
 from runtime import checkpoint_info, preflight
 
 
@@ -23,6 +23,8 @@ def benchmark(cfg, args):
     directory.mkdir(parents=True)
     status(directory, "benchmark", "RUNNING")
     try:
+        captured_weight = directory / "weight_snapshot.pt"
+        run, checkpoint = checkpoint_info(cfg["weights"], captured_weight)
         backend = bootstrap(cfg)
         public = protocol(
             cfg, checkpoint["data_sha256"], checkpoint["training_augmentation"][Path(cfg["weights"]).name]
@@ -38,7 +40,7 @@ def benchmark(cfg, args):
         device = select_device(cfg["train"]["device"], 1)
         if setting["half"] and device.type != "cuda":
             raise ValueError("FP16 benchmark requires CUDA")
-        model = backend.YOLO(str(Path(cfg["weights"]).resolve()), task="detect").model
+        model = backend.YOLO(str(captured_weight), task="detect").model
         verify_model(model)
         unfused = sum(p.numel() for p in model.parameters())
         original = deepcopy(model).float().cpu()
@@ -120,7 +122,7 @@ def benchmark(cfg, args):
             "status": "MEASURED",
             "paper_eligibility": contention_status,
             "formal_result": "SMOKE" if checkpoint["execution_kind"] == "SMOKE" else "MEASURED",
-            "weight_sha256": file_hash(cfg["weights"]),
+            "weight_sha256": checkpoint["weights"][Path(cfg["weights"]).name],
             "protocol_sha256": public["protocol_sha256"],
             "training_augmentation": public["config"]["augment"],
             "settings": setting,

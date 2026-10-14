@@ -302,13 +302,13 @@ def check_pip_update_available():
 @ThreadingLocked()
 def check_font(font="Arial.ttf"):
     """
-    Find font locally or download to user's configuration directory if it does not already exist.
+    Find a font in the private configuration directory or installed system fonts.
 
     Args:
         font (str): Path or name of font.
 
     Returns:
-        file (Path): Resolved font file path.
+        file (Path | str | None): Local font path, or None when unavailable.
     """
     from matplotlib import font_manager
 
@@ -322,12 +322,6 @@ def check_font(font="Arial.ttf"):
     matches = [s for s in font_manager.findSystemFonts() if font in s]
     if any(matches):
         return matches[0]
-
-    # Download to USER_CONFIG_DIR if missing
-    url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{name}"
-    if downloads.is_url(url, check=True):
-        downloads.safe_download(url=url, file=file)
-        return file
 
 
 def check_python(minimum: str = "3.8.0", hard: bool = True) -> bool:

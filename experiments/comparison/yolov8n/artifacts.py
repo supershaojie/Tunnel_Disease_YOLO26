@@ -4,14 +4,24 @@ import csv
 import gzip
 import io
 import json
-import shutil
 import zipfile
 from pathlib import Path
 
 from common import HERE, file_hash, status, write_json
 
 
-def figures(directory, metrics, curves, run):
+def freeze_training(directory, checkpoint, weight_name):
+    """Freeze the selected checkpoint's causal records and already-serialized training curves."""
+    record = checkpoint["training_provenance"][weight_name]
+    write_json(Path(directory) / "training_provenance.json", {"selected_filename": weight_name, **record})
+    results = record["native_checkpoint"]["train_results"]
+    with (Path(directory) / "results.csv").open("w", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(results)
+        writer.writerows(zip(*results.values()))
+
+
+def figures(directory, metrics, curves):
     """Plot frozen numeric curves and training CSV; figures remain reproducible."""
     import matplotlib
 
@@ -64,9 +74,8 @@ def figures(directory, metrics, curves, run):
     fig.savefig(out / "confusion_matrix.svg")
     fig.savefig(out / "confusion_matrix.png", dpi=220)
     plt.close(fig)
-    results = Path(run) / "results.csv"
+    results = Path(directory) / "results.csv"
     if results.is_file():
-        shutil.copyfile(results, Path(directory) / "results.csv")
         with results.open(encoding="utf-8") as f:
             rows = [{k.strip(): v for k, v in r.items()} for r in csv.DictReader(f)]
         names = [k for k in rows[0] if "loss" in k or "mAP" in k]
@@ -185,6 +194,7 @@ def _members(directory):
         "evaluate_status.jsonl",
         "fixed_images.json",
         "results.csv",
+        "training_provenance.json",
     ]
     missing = [name for name in required if not (directory / name).is_file()]
     if missing:
@@ -194,34 +204,19 @@ def _members(directory):
         raise ValueError("Only completed evaluations may be packaged")
     metrics = json.loads((directory / "metrics.json").read_text(encoding="utf-8"))
     run = Path(metrics["weight"]).parent.parent
-    metadata = [
-        "user_config.json",
-        "official_defaults.json",
-        "requested_config.json",
-        "effective_config.json",
-        "environment.json",
-        "requested_effective_diff.json",
-        "parameter_sources.json",
-        "initialization.json",
-        "best_selection.json",
-        "checkpoint_manifest.json",
+    members = {f"evaluation/{name}": directory / name for name in required}
+    for name in [
         "training_summary.json",
         "train_status.json",
         "train_status.jsonl",
-        "protocol.json",
-        "data_manifest.json",
-        "run_config.json",
-        "backend.lock.json",
-    ]
-    missing = [name for name in metadata if not (run / name).is_file()]
-    if missing:
-        raise ValueError(f"Incomplete training provenance: {missing}")
-    members = {f"evaluation/{name}": directory / name for name in required}
-    members.update({f"training/{name}": run / name for name in metadata})
-    for name in ["augmentation_close.json", "optimizer_epochs.jsonl", "benchmark_location.json"]:
+        "augmentation_close.json",
+        "optimizer_epochs.jsonl",
+        "results.csv",
+        "benchmark_location.json",
+    ]:
         if (run / name).is_file():
-            members["training/" + name] = run / name
-    members.update({"training/" + p.name: p for p in run.glob("resume_*.json")})
+            members["training_history/" + name] = run / name
+    members.update({"training_history/" + p.name: p for p in run.glob("resume_*.json")})
     members.update({f"evaluation/figures/{p.name}": p for p in (directory / "figures").glob("*.svg")})
     if len([name for name in members if "/figures/" in name]) < 6:
         raise ValueError("Required paper figures are missing")

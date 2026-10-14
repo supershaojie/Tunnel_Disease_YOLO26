@@ -93,6 +93,7 @@ def main():
             ("duplicate", ["train.batch=16", "train.batch=32"]),
             ("boolean", ["train.amp=yes_invalid"]),
             ("hybrid_gt", ["train.save_hybrid=true"]),
+            ("mapping_typo", ["augment.overrides={mixupp: 0.05}"]),
         ]:
             command(
                 "reject_" + name,
