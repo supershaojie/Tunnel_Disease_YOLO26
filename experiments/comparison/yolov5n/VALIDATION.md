@@ -41,3 +41,7 @@ native 分支的额外增强在 worker 创建前注入；disabled 策略完成�
 冻结可选增强的注入边界使用 marker 验证，完整 Albumentations2.0.8 执行仍为 **UNVERIFIED**。
 首次临时验证脚本漏了 Windows 入口保护，已停止并修正后重跑受影响部分；最终针对性验证 PASSED。
 只读 GPU 进程查询返回 CONTENDED，未开展 GPU 测速。重复公共协议证明仍完全相等。
+
+最终冷审的设备顺序修正只前移原生 `select_device`，删除尾部调用；在新进程只读取设备属性核验：
+本机仅有 GPU0，实际训练入口请求 GPU1 正确拒绝并记录 FAILED，未构建模型或执行更新；
+CPU 选择后环境读取不初始化 CUDA，GPU0 选择正常。多物理 GPU 服务器执行仍为 **UNVERIFIED**。

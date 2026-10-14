@@ -120,5 +120,22 @@
     },
     "optional_albumentations_2_0_8_execution": "UNVERIFIED; injection boundary tested with marker, disabled policy tested in real training",
     "state": "PASSED"
+  },
+  "device_selection_order": {
+    "purpose": "SMOKE",
+    "invalid_device_1": "REJECTED before environment/model/optimizer initialization; train state FAILED",
+    "host_physical_gpus": 1,
+    "training_updates": 0,
+    "cpu": {
+      "selected": "cpu",
+      "cuda_initialized_after_environment": false,
+      "updates": 0
+    },
+    "0": {
+      "selected": "cuda:0",
+      "cuda_initialized_after_environment": true,
+      "updates": 0
+    },
+    "multi_physical_GPU_server_execution": "UNVERIFIED; device selection now precedes all CUDA environment queries"
   }
 }

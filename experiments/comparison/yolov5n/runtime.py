@@ -434,6 +434,10 @@ def train_native(cfg, audit, data_manifest, directory, restored=None):
     global HOOKS
 
     imports = bootstrap(cfg["cache"])
+    from utils.torch_utils import select_device
+
+    t = cfg["train"]
+    device = select_device(t["device"], batch_size=t["batch"])
     os.environ["YOLOV5_LABEL_CACHE"] = str(Path(directory) / "cache/native-labels")
     write_json(Path(directory) / "environment.json", environment(imports))
     HOOKS = TrainingHooks(cfg, audit, data_manifest, directory, restored)
@@ -445,7 +449,6 @@ def train_native(cfg, audit, data_manifest, directory, restored=None):
         opt = native.parse_opt()
     finally:
         sys.argv = previous
-    t = cfg["train"]
     for key in (
         "epochs",
         "imgsz",
@@ -476,9 +479,7 @@ def train_native(cfg, audit, data_manifest, directory, restored=None):
     hyp = {key: t[key] for key in audit["official_defaults"]["hyp"] if key not in cfg["augment"]["resolved"]}
     hyp.update({k: v for k, v in cfg["augment"]["resolved"].items() if k in audit["official_defaults"]["hyp"]})
     from utils.callbacks import Callbacks
-    from utils.torch_utils import select_device
 
-    device = select_device(t["device"], batch_size=t["batch"])
     native.train(hyp, opt, device, Callbacks())
     HOOKS.finish()
 
