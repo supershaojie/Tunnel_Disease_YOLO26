@@ -83,8 +83,12 @@ native 的协议散列锁定原生操作源码，并实录可选 Albumentations 
 原生 Dataset 构建变换后发布实际增强值；native 矩形训练关闭 Mosaic/MixUp 的行为也进入协议。
 训练输入尺寸、batch、rect、cache、epochs、seed 和关闭日程随增强身份保存。
 
-当前未发现已有可靠 YOLOv5 对比分支。本分支提供自包含共享实现，另一模型应逐文件复用同一版本，
-并比对 `augment_core_sha256` / `metrics_sha256` / `protocol_sha256`。另一模型尚未接入，跨模型一致性状态 **UNVERIFIED**。
+已只读核对 YOLOv5n 分支 `exp/compare-yolov5n-b19` 的完整提交
+`2a5cdc77914513d0fb3fac33d61a619f2d577181`：13 个共享运行文件的 Git 字节完全相同，
+增强核心哈希同为 `0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b`。
+其六图合成数据证明与本分支旧公共格式相同。当前 YOLOv8n 公共协议增加了实际训练尺寸/批量/关闭日程
+及恢复历史，因此完整协议哈希仍有格式差异；正式跨模型汇总前须统一这些字段并核对实际数据清单。
+跨模型正式协议对齐状态 **UNVERIFIED**，逐文件及新旧公共散列证据见 `shared_protocol_proof.json`。
 协议只包含公共数据内容、增强、评测、输入尺寸和实现哈希，不包含模型/优化器/绝对安装路径。
 完整 run config 与后端适配器另外散列。
 匹配身份包含共享匹配函数和评测汇总；适配器身份包含训练接口及独立推理/坐标还原代码。
@@ -93,6 +97,8 @@ native 的协议散列锁定原生操作源码，并实录可选 Albumentations 
 恢复时旧 best/epoch 仍保留各自的身份，避免按当前 profile 或 Albumentations 环境重新标记已学权重。
 恢复入口用实际起始 epoch 合并所选权重的训练历史；更改 batch/输入尺寸等策略时，新权重记录全部阶段，
 区别于全程使用新配置的训练。未改变策略的恢复沿用原身份，不重复增加阶段。
+恢复曲线写入新的独立 CSV，以所选 checkpoint 已保存的曲线初始化；中断后原 live CSV 的额外尾部
+不会混入新权重的因果记录，原 CSV 完整保留，恢复 CSV 也作为 history 打包。
 
 每轮只验证 val，复用该轮原生预测计算 B19 统一 mAP50–95，用它选择 `weights/best.pt` 和早停。
 不使用 test 选权重，不做重复验证前向。保留可恢复的 last.pt；删除原生训练结束时再验证并剥除 optimizer 的路径，

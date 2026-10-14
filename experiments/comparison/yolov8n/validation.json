@@ -23,10 +23,7 @@
       "20": {
         "class": "AdamW",
         "lr": 0.002,
-        "momentum_or_betas": [
-          0.9,
-          0.999
-        ],
+        "momentum_or_betas": [0.9, 0.999],
         "warmup_bias_lr": 0.0
       }
     },
@@ -40,7 +37,7 @@
     "cuda_native_amp_updates": "PASSED",
     "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
     "lifecycle_start_end_history": "PASSED",
-    "lint": "Ruff 0.14.0 passed",
+    "lint": "PASSED: Ruff 0.14.0 on experiment code excluding frozen vendor; vendor F checks passed; upstream E402 late imports preserved",
     "actual_import_preflight_synthetic": "PASSED",
     "resume_after_close_refreshes_real_loader_workers": "PASSED",
     "native_operator_and_optional_pipeline_identity": "PASSED",
@@ -82,7 +79,15 @@
     "source_smoke_weights_unchanged": "PASSED",
     "native_lightweight_metadata_matches_serialized_checkpoint": "PASSED: same epoch/train_args/train_results payload; one CSV read and one current-write hash",
     "checkpoint_provenance_ancestry_and_older_files": "PASSED: A-to-B-to-A causal parent records frozen; old best/epoch provenance preserved",
-    "cold_owner_targets_scope": "Finite synthetic targets; completed-run rejection instruments zero optimizer update attempts; native save/reload/provenance fixtures perform zero extra updates; no server/full original test"
+    "cold_owner_targets_scope": "Finite synthetic targets; completed-run rejection instruments zero optimizer update attempts; native save/reload/provenance fixtures perform zero extra updates; no server/full original test",
+    "resume_csv_actual_resume_entry": "PASSED: native optimizer/EMA restored; four additional CPU optimizer updates; completed exactly epoch 3",
+    "resume_csv_old_results_csv_preserved": "PASSED: original bytes including synthetic foreign epoch/loss tail",
+    "resume_csv_active_resume_csv_seeded_from_selected_checkpoint": "PASSED: epochs exactly [1,2,3], no duplicate/foreign tail",
+    "resume_csv_native_saved_train_results_and_ancestry": "PASSED: exact serialized metadata and inherited causal rows plus two resumed epochs",
+    "resume_csv_frozen_evaluation_csv": "PASSED: actual reused writer; selected checkpoint rows only",
+    "resume_csv_core_history_csv_selection": "PASSED: original and independent resume CSVs both selected as training_history",
+    "resume_csv_original_smoke_weights_unchanged": "PASSED",
+    "resume_csv_fixture_scope": "SMOKE: metadata-only interrupted-plan fixture seeded from a real two-update checkpoint; four additional native CPU updates, no server/full original test"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -106,7 +111,7 @@
     "Server Python3.12/Torch2.8/CUDA12.8/RTX4090",
     "Actual server dataset/B19 args and four historical checkpoints",
     "Historical Albumentations availability and test P/R threshold convention",
-    "YOLOv5 cross-backend shared hashes (no corresponding branch found)",
+    "YOLOv5 current public-protocol schema alignment before formal aggregate (13 shared runtime files/core verified)",
     "Formal resume of an interrupted server run",
     "Uncontended GPU benchmark and eight-model final aggregate bytes"
   ],
@@ -156,5 +161,12 @@
   },
   "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
   "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
-  "adversarial_findings_addressed": 21
+  "adversarial_findings_addressed": 22,
+  "cross_backend": {
+    "state": "SHARED_SOURCE_EXACT_EQUAL_PUBLIC_SCHEMA_DIFFERENCE",
+    "peer_commit": "2a5cdc77914513d0fb3fac33d61a619f2d577181",
+    "exact_shared_runtime_files": 13,
+    "augment_core_sha256": "0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b",
+    "formal_protocol_alignment": "UNVERIFIED: peer must adopt the same effective training geometry, close schedule and inherited-policy history schema before identical-public-hash aggregation; only this YOLOv8n branch is modified"
+  }
 }

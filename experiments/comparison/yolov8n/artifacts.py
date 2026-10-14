@@ -10,15 +10,19 @@ from pathlib import Path
 from common import HERE, file_hash, status, write_json
 
 
+def write_training_csv(path, results):
+    """Create an owned curve file from a checkpoint's already-serialized columns."""
+    with Path(path).open("x", encoding="utf-8", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(results)
+        writer.writerows(zip(*results.values()))
+
+
 def freeze_training(directory, checkpoint, weight_name):
     """Freeze the selected checkpoint's causal records and already-serialized training curves."""
     record = checkpoint["training_provenance"][weight_name]
     write_json(Path(directory) / "training_provenance.json", {"selected_filename": weight_name, **record})
-    results = record["native_checkpoint"]["train_results"]
-    with (Path(directory) / "results.csv").open("w", encoding="utf-8", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(results)
-        writer.writerows(zip(*results.values()))
+    write_training_csv(Path(directory) / "results.csv", record["native_checkpoint"]["train_results"])
 
 
 def figures(directory, metrics, curves):
@@ -216,7 +220,8 @@ def _members(directory):
     ]:
         if (run / name).is_file():
             members["training_history/" + name] = run / name
-    members.update({"training_history/" + p.name: p for p in run.glob("resume_*.json")})
+    for pattern in ["resume_*.json", "resume_*_results.csv"]:
+        members.update({"training_history/" + p.name: p for p in run.glob(pattern)})
     members.update({f"evaluation/figures/{p.name}": p for p in (directory / "figures").glob("*.svg")})
     if len([name for name in members if "/figures/" in name]) < 6:
         raise ValueError("Required paper figures are missing")

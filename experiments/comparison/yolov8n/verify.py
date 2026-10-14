@@ -374,6 +374,7 @@ def main():
                 "data_report": data_report,
                 "protocol": deepcopy(fresh),
                 "resume_augmentation": ancestor,
+                "resume_provenance": {"native_checkpoint": {"train_results": {"epoch": [1, 2]}}},
             }
             resumed._close_dataloader_mosaic = lambda: BaseTrainer._close_dataloader_mosaic(resumed)
             resumed.resume_training({"epoch": 1, "optimizer": None})

@@ -4,6 +4,7 @@ import json
 import os
 import sys
 from copy import copy, deepcopy
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import numpy as np
@@ -262,6 +263,12 @@ class ComparisonTrainer(DetectionTrainer):
                 self.context["config"], self.context["data_report"]["data_sha256"], current
             )
             write_json(self.save_dir / f"resume_{os.getpid()}_protocol.json", self.context["protocol"])
+            from artifacts import write_training_csv
+
+            self.csv = self.save_dir / (
+                f"resume_{os.getpid()}_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + "_results.csv"
+            )
+            write_training_csv(self.csv, self.context["resume_provenance"]["native_checkpoint"]["train_results"])
 
     def _setup_train(self, world_size):
         super()._setup_train(world_size)

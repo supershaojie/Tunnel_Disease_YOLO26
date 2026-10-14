@@ -312,6 +312,15 @@
     {
       "file": "ultralytics/engine/trainer.py",
       "reason": "Return the already-serialized lightweight checkpoint metadata to the comparison save owner; no second checkpoint/CSV read and no loss/optimizer/EMA changes."
+    },
+    {
+      "file": [
+        "ultralytics/data/utils.py",
+        "ultralytics/utils/__init__.py",
+        "ultralytics/utils/checks.py",
+        "ultralytics/utils/patches.py"
+      ],
+      "reason": "Delete unused legacy torch_load wrapper/capture and stale imports/AMP warning left after relocating compatibility, image verification and AMP ownership; native torch.save is preserved."
     }
   ],
   "omitted_nonruntime_files": [
@@ -413,7 +422,7 @@
     "ultralytics/data/dataset.py": "552f4184dae77b083e0e4bb2e21d7e3495c8da1d9e4a5f81eb39def629f019aa",
     "ultralytics/data/loaders.py": "245d99fc448ae91c1e6af3ae6167a3612189c26a8835be61370c026f70007f43",
     "ultralytics/data/split_dota.py": "c8eb72a47a18e47bc85412998055dd7e3dadb822cb1019ccc0d7c0786f781229",
-    "ultralytics/data/utils.py": "1d5ad4d3ad55d45b0737bb4efd6aa9332ca378f51cd4c0761881fb33340c1b50",
+    "ultralytics/data/utils.py": "c3b45dcb436e131ae9c625280c31f3a29956e16700106cc76a126bbc07c28e59",
     "ultralytics/data/__init__.py": "5467be0131bb8f7e45e00e2bf099b37df8e586f7b824024f8116b96a1293535f",
     "ultralytics/data/explorer/explorer.py": "25698b1c7869ebc876ab7bf1e29a01a2ee51628017dd1f3dca2851e7460b0dbd",
     "ultralytics/data/explorer/utils.py": "12fbee91089051306bb19ce798c9f2117d84a93bb0668fc67b273cc9f8bc3480",
@@ -521,7 +530,7 @@
     "ultralytics/trackers/utils/__init__.py": "987b49b8ae21c05f1cb95f951c373bb69eaee83d601f3d99ec923c82b9900d3b",
     "ultralytics/utils/autobatch.py": "0176e861f3529d31ac623e459a01983d077472b7e47a57b29ace905d07d9190e",
     "ultralytics/utils/benchmarks.py": "20de99a94fb50d51e7c11b1d812fef70186783c0d43112048c412076b97599d6",
-    "ultralytics/utils/checks.py": "67306619b816b146ebe5b9d025943b76363521e9912e4c07d01a450691ad0b26",
+    "ultralytics/utils/checks.py": "64233fc0841a6c5c4b8a28fbda15d3d4ce7e25e702cc2fcfbadcc06808a2c025",
     "ultralytics/utils/dist.py": "3431606beb8ac64057db32f114749e9defdc0a2190268c8e7825dc37d2483889",
     "ultralytics/utils/downloads.py": "f7b262b62859aaf20c4bafd35f9ac9006ec123c7981e5bb983c617948d11911e",
     "ultralytics/utils/errors.py": "1aa3ff2608ff9f4a5ac67f0e3219f70d30a0a0d901d968d47146aab3e33a4909",
@@ -530,13 +539,13 @@
     "ultralytics/utils/loss.py": "496dc5545169f0a8bf2c24fcc087456e6e8a9b23dc427dd198a35cbd50213102",
     "ultralytics/utils/metrics.py": "82ed681237a21c89c4338250ae4042c06db80f3c7daeb8ec6219c62996ff2d90",
     "ultralytics/utils/ops.py": "76c5cd772ad8c7fa7a8a8eb37b38a0f69f387714bb53ed74bdc787355bb620bd",
-    "ultralytics/utils/patches.py": "3a8dc390fecc6d79cd1af3dfa054a8700915bda3e1f64c0c4fff514147e35612",
+    "ultralytics/utils/patches.py": "f5690fc39b9b2f75ec5c9a789606affed96684033548f0d8aee63682ed6c716a",
     "ultralytics/utils/plotting.py": "942c7d8b751240ad8a1ac803fa5d9c6dd6efdf7737f7a808c0c16c67d88e6b5c",
     "ultralytics/utils/tal.py": "102b2ef79c44a8e22d9b13033786130f716c52222c40d5b2d29642dd37ef15f9",
     "ultralytics/utils/torch_utils.py": "9425a2903dfeb9c2db44c276bcf223d33e15a75a239260e871dc5167ffc60195",
     "ultralytics/utils/triton.py": "820d5f8a7c67a3fb58d867bd3cc866bbb3c8f70be8159a2289c753e0186abf7c",
     "ultralytics/utils/tuner.py": "02d12d2baa4eb7dc554f2c7ceb83a935157135d031cf968a1f3bde897c240f50",
-    "ultralytics/utils/__init__.py": "63dee8733351b2dd2819440804ee923b4ab64bbbb2c9da15bfa48935aaf0202a",
+    "ultralytics/utils/__init__.py": "01951233aace11f5f8b2d70e4c84a36edf00225fd69bae2471dd5e2a4b106b2e",
     "ultralytics/utils/callbacks/base.py": "6defcb57f821ddaefdb7d20e9a7e6b41e74053cf873bcd1e1e8f0dd8983ba785",
     "ultralytics/utils/callbacks/clearml.py": "33d162d4e7dd5aa726f2e5646aeb97df3248621361e93a7b268e027c0d2ed27c",
     "ultralytics/utils/callbacks/comet.py": "0135a36498a02f2f25255623970c8285afa527e42531f5f0fb313d3c0ed4c6a6",
