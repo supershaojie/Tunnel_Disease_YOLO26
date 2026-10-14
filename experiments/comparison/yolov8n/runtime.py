@@ -82,33 +82,36 @@ def prepare(cfg, args):
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_suffix(".prepare.lock")
     # Atomic per-weight short-lived exclusion; no GPU waiting and no directory-wide lock.
-    with lock_path.open("x", encoding="utf-8") as f:
-        f.write(str(os.getpid()))
+    owned_lock = lock_path.open("x", encoding="utf-8")
     temp = path.with_name(path.name + f".{os.getpid()}.part")
     try:
-        with requests.get(asset["url"], stream=True, timeout=(30, 120)) as response:
-            response.raise_for_status()
-            with temp.open("xb") as f:
+        with owned_lock as f:
+            f.write(str(os.getpid()))
+        download = temp.open("xb")
+        try:
+            with download as f, requests.get(asset["url"], stream=True, timeout=(30, 120)) as response:
+                response.raise_for_status()
                 for chunk in response.iter_content(1048576):
                     f.write(chunk)
-        if temp.stat().st_size != asset["size"]:
-            raise ValueError("Downloaded official weight size mismatch")
-        sha = file_hash(temp)
-        if path.exists():
-            if file_hash(path) != sha:
-                raise ValueError(f"Existing same-name weight differs; preserved {path}; official SHA256={sha}")
-            temp.unlink()
-        else:
-            os.replace(temp, path)
-        manifest = {
-            **asset,
-            "sha256": sha,
-            "sha256_authority": "locally computed, not officially published",
-            "release_verified_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
-        write_json(path.with_suffix(".source.json"), manifest)
+            if temp.stat().st_size != asset["size"]:
+                raise ValueError("Downloaded official weight size mismatch")
+            sha = file_hash(temp)
+            if path.exists():
+                if file_hash(path) != sha:
+                    raise ValueError(f"Existing same-name weight differs; preserved {path}; official SHA256={sha}")
+                temp.unlink()
+            else:
+                os.replace(temp, path)
+            manifest = {
+                **asset,
+                "sha256": sha,
+                "sha256_authority": "locally computed, not officially published",
+                "release_verified_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+            write_json(path.with_suffix(".source.json"), manifest)
+        finally:
+            temp.unlink(missing_ok=True)
     finally:
-        temp.unlink(missing_ok=True)
         lock_path.unlink(missing_ok=True)
     print(json.dumps({"status": "PREPARED_VERIFIED", "path": str(path), "sha256": sha}))
 

@@ -501,6 +501,7 @@ def status(directory, phase, state, **details):
         "phase": phase,
         "status": state,
         "pid": os.getpid(),
+        "log": os.environ.get("YOLO_COMPARISON_LOG"),
         "timestamp_utc": now,
         "started_utc": now if state == "RUNNING" else previous.get("started_utc", now),
         "ended_utc": now if state in ["COMPLETED", "FAILED"] else None,

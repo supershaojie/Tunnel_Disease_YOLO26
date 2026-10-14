@@ -182,6 +182,7 @@ def _members(directory):
         "curves.npz",
         "confusion_matrix.csv",
         "evaluate_status.json",
+        "evaluate_status.jsonl",
         "fixed_images.json",
         "results.csv",
     ]
@@ -206,6 +207,7 @@ def _members(directory):
         "checkpoint_manifest.json",
         "training_summary.json",
         "train_status.json",
+        "train_status.jsonl",
         "protocol.json",
         "data_manifest.json",
         "run_config.json",
@@ -216,7 +218,7 @@ def _members(directory):
         raise ValueError(f"Incomplete training provenance: {missing}")
     members = {f"evaluation/{name}": directory / name for name in required}
     members.update({f"training/{name}": run / name for name in metadata})
-    for name in ["augmentation_close.json", "optimizer_epochs.jsonl", "train_status.jsonl", "benchmark_location.json"]:
+    for name in ["augmentation_close.json", "optimizer_epochs.jsonl", "benchmark_location.json"]:
         if (run / name).is_file():
             members["training/" + name] = run / name
     members.update({"training/" + p.name: p for p in run.glob("resume_*.json")})
@@ -235,6 +237,8 @@ def _members(directory):
         ):
             members["benchmark/benchmark.json"] = benchmark
             members["benchmark/timing_samples.npz"] = benchmark.parent / "timing_samples.npz"
+            members["benchmark/benchmark_status.json"] = benchmark.parent / "benchmark_status.json"
+            members["benchmark/benchmark_status.jsonl"] = benchmark.parent / "benchmark_status.jsonl"
         else:
             members["benchmark/unmatched_benchmark.json"] = benchmark
             benchmark_status = {
@@ -264,8 +268,14 @@ def package(cfg, args):
         prefix = "" if len(directories) == 1 else f"{index:02d}_{metrics['model']}/"
         all_members.update({prefix + name: p for name, p in members.items()})
         summaries.append(metrics)
-        logs = sorted(run.glob("*.log"))
-        for p in logs[:2]:
+        logs = {
+            Path(record["log"])
+            for name, history in members.items()
+            if name.endswith("_status.jsonl")
+            for line in history.read_text(encoding="utf-8").splitlines()
+            if (record := json.loads(line)).get("log")
+        }
+        for p in sorted(logs)[-2:]:
             # Lossless gzip preserves full logs while making the result package compact.
             payloads[prefix + "logs/" + p.name + ".gz"] = gzip.compress(p.read_bytes(), mtime=0)
         if "benchmark/benchmark.json" not in members:
@@ -312,8 +322,10 @@ def package(cfg, args):
         writer.writerows({k: m[k] for k in fields} for m in summaries)
         payloads["aggregate_summary.csv"] = buffer.getvalue().encode()
     temp = output.with_name(output.name + ".partial")
+    archive = zipfile.ZipFile(temp, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=9)
     try:
-        with zipfile.ZipFile(temp, "x", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        with archive as z:
+            status(output.parent, "package", "RUNNING", output=str(output))
             for name, path in sorted(all_members.items()):
                 z.write(path, name)
             for name, content in sorted(payloads.items()):

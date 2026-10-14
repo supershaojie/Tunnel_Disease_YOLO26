@@ -34,8 +34,8 @@
     "fresh_process_native_fp32_fuse_nms_complete_exports": "PASSED",
     "core_package_members_and_strict_bytes": {
       "status": "PASSED",
-      "bytes": 100217,
-      "sha256": "84d4ed358aef0995642ac3c70d356b3c9a8f8a2fbdee5ee924a42bbc32af6911"
+      "bytes": 107324,
+      "sha256": "87a934d24acc6455e51a6a859bec6d754de3f190ef0f3c44b94ac35b0e53c63b"
     },
     "cuda_native_amp_updates": "PASSED",
     "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
@@ -52,7 +52,13 @@
     "native_checkpoint_serialization_hashes_only_current_write": "PASSED",
     "real_benchmark_records_changed_NMS_and_marks_unmatched": "PASSED: two CPU timing iterations only",
     "same_size_label_edit_selects_new_content_addressed_cache": "PASSED: synthetic copy only",
-    "explicit_SMOKE_identity_outside_dot_development": "PASSED: _development_checks path; train/reloaded evaluation/benchmark remain SMOKE"
+    "explicit_SMOKE_identity_outside_dot_development": "PASSED: _development_checks path; train/reloaded evaluation/benchmark remain SMOKE",
+    "rejected_train_eval_preserve_result_logs_and_lifecycles": "PASSED: actual entry points; tmux command mocked",
+    "genuine_failed_resume_publishes_owned_log_and_preserves_weights": "PASSED: invalid device rejected; no optimizer update",
+    "package_preserves_foreign_partial_cleans_owned_failure_records_start": "PASSED",
+    "prepare_preserves_foreign_partial_closes_owned_file_releases_lock": "PASSED: controlled network fixtures",
+    "owned_failed_resume_log_losslessly_packaged": "PASSED",
+    "current_reload_and_log_lifecycle": "PASSED: two fresh native evaluation processes; predictions exactly equal previous smoke exports; weights unchanged"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -126,5 +132,5 @@
   },
   "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
   "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
-  "adversarial_findings_addressed": 11
+  "adversarial_findings_addressed": 14
 }

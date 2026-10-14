@@ -34,7 +34,7 @@ def main():
             i += 1
     log_root = Path(cfg["cache_dir"]).resolve() / "logs"
     log_root.mkdir(parents=True, exist_ok=True)
-    log = log_root / (args.session + "_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + ".log")
+    log = log_root / (args.session + "_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ") + ".log")
     if args.mode == "train":
         result = (
             Path(cfg["train"]["resume"]).resolve().parent.parent
@@ -46,12 +46,19 @@ def main():
             raise ValueError(f"{args.mode} requires --weights <this-experiment-best.pt>")
         run = Path(cfg["weights"]).resolve().parent.parent
         result = result_directory(run, args, args.mode, cfg["eval"]["split"])
-    command = shlex.join([sys.executable, "-u", str(Path(__file__).parent / (args.mode + ".py")), *forwarded])
+    command = shlex.join(
+        [
+            "env",
+            f"YOLO_COMPARISON_LOG={log}",
+            sys.executable,
+            "-u",
+            str(Path(__file__).parent / (args.mode + ".py")),
+            *forwarded,
+        ]
+    )
     shell = (
         f"set -o pipefail\n{command} 2>&1 | tee {shlex.quote(str(log))}\n"
         "python_status=${PIPESTATUS[0]}\n"
-        f"if [ -d {shlex.quote(str(result))} ]; then cp {shlex.quote(str(log))} "
-        f"{shlex.quote(str(result / (args.mode + '.log')))}; fi\n"
         'exit "$python_status"\n'
     )
     subprocess.run(["tmux", "new-session", "-d", "-s", args.session, "-c", str(ROOT), "bash", "-lc", shell], check=True)

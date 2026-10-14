@@ -134,6 +134,8 @@ tmux attach -t cmp-y8n
 
 launch 使用当前解释器、独立日志及 tmux。已有会话明确报错，选择新 `--session` 即可。
 tee 保留 Python 退出码；会话创建不是训练完成。正式命令和实际提交 SHA 在最终交付消息中提供。
+每次 tee 日志独立保存在 cache/logs，只有实际启动的运行在生命周期中关联该日志；
+拒绝已有目录时不会覆盖旧日志。打包从生命周期历史读取日志来源，保留真正失败的运行日志。
 训练完成后分别执行 evaluate、benchmark、package；每项使用独立 `--result-dir`。
 
 测速为 batch1、可改精度/输入/预热/次数、原生 fuse、CUDA 同步，分别记录前处理/forward/NMS/总延迟。
