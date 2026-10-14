@@ -230,6 +230,7 @@ def train(cfg, args):
             "data_report": data_report,
             "pretrained_provenance": provenance,
             "protocol": public,
+            "resume_augmentation": checkpoint["training_augmentation"][Path(resumed).name] if resumed else None,
             "backend_sha": verify_backend()["commit"],
             "smoke": cfg["_execution_kind"] == "SMOKE",
         }

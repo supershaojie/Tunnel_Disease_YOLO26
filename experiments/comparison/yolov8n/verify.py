@@ -332,12 +332,12 @@ def main():
         results["checks"]["locked_native_auto_requested_effective"] = auto_results
         # Exercise the adapter's actual normalized sample and the native dataloader's worker initialization.
         from shared.data import audit, backend_paths
-        from adapter import build_dataset
+        from adapter import ComparisonTrainer, build_dataset
         from ultralytics.cfg import get_cfg
         from ultralytics.data import build_dataloader
         from ultralytics.data.build import seed_worker
 
-        audited, _ = audit(data_yaml)
+        audited, data_report = audit(data_yaml)
         paths = backend_paths(audited, output / "probe_splits")
         native_args = get_cfg(overrides={k: v for k, v in local_cfg["train"].items() if k != "betas"})
         dataset = build_dataset(local_cfg, native_args, paths, "train", 2)
@@ -355,19 +355,40 @@ def main():
         workers = InfiniteDataLoader(WorkerSamples(), batch_size=2, num_workers=1)
         try:
             assert next(iter(workers)).tolist() == [1, 1]
-            resumed = SimpleNamespace(
-                resume=True,
-                ema=None,
-                epochs=3,
-                args=SimpleNamespace(model="SMOKE", close_mosaic=2),
-                train_loader=workers,
-            )
+            ancestor_cfg = deepcopy(local_cfg)
+            ancestor_cfg["train"].update(epochs=5, close_mosaic=4)
+            ancestor_cfg["augment"]["effective"]["close_mosaic"] = 4
+            ancestor = protocol(ancestor_cfg, data_report["data_sha256"])["config"]["augment"]
+            resume_cfg = deepcopy(ancestor_cfg)
+            resume_cfg["train"].update(batch=16, imgsz=128)
+            fresh = protocol(resume_cfg, data_report["data_sha256"])
+            resumed = ComparisonTrainer.__new__(ComparisonTrainer)
+            resumed.resume, resumed.ema, resumed.epochs = True, None, 5
+            resumed.args = SimpleNamespace(model="SMOKE", close_mosaic=4)
+            resumed.train_loader = workers
+            resumed.save_dir = output / "SMOKE_resume_policy"
+            resumed.save_dir.mkdir()
+            resumed.context = {
+                "config": resume_cfg,
+                "data_report": data_report,
+                "protocol": deepcopy(fresh),
+                "resume_augmentation": ancestor,
+            }
             resumed._close_dataloader_mosaic = lambda: BaseTrainer._close_dataloader_mosaic(resumed)
-            BaseTrainer.resume_training(resumed, {"epoch": 1, "optimizer": None})
+            resumed.resume_training({"epoch": 1, "optimizer": None})
             assert resumed.start_epoch == 2 and next(iter(workers)).tolist() == [0, 0]
+            inherited = deepcopy(resumed.context["protocol"])
+            history = inherited["config"]["augment"]["history"]
+            assert history[0]["policy"] == ancestor and history[1]["start_epoch_zero_based"] == 2
+            assert history[1]["policy"] == fresh["config"]["augment"]
+            assert inherited["protocol_sha256"] != fresh["protocol_sha256"]
+            resumed.context.update(protocol=deepcopy(fresh), resume_augmentation=inherited["config"]["augment"])
+            resumed.resume_training({"epoch": 1, "optimizer": None})
+            assert resumed.context["protocol"] == inherited
         finally:
             workers.iterator._shutdown_workers()
         results["checks"]["resume_after_close_refreshes_real_loader_workers"] = "PASSED"
+        results["checks"]["resume_retains_training_history_without_duplicate_segments"] = "PASSED"
         native_cfg = resolve(parser("verify").parse_args(["--dry-run", "--set", "augment.profile=native"]))
         native_protocol = protocol(native_cfg, "synthetic-content")
         assert native_protocol["augment_core_sha256"] != protocol(cfg, "synthetic-content")["augment_core_sha256"]

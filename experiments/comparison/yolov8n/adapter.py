@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
-from common import AUG_KEYS, environment, file_hash, write_json
+from common import AUG_KEYS, environment, file_hash, protocol, write_json
 from shared import evaluation, provider
 from shared.b19.instance import Instances as B19Instances
 from ultralytics.data.augment import Albumentations, Compose, Format, LetterBox
@@ -243,6 +243,25 @@ class ComparisonTrainer(DetectionTrainer):
         if self.best_fitness is None or self.best_fitness < fitness:
             self.best_fitness = fitness
         return metrics, fitness
+
+    def resume_training(self, ckpt):
+        """Compose inherited training policies at the native resume epoch boundary."""
+        super().resume_training(ckpt)
+        if self.resume:
+            previous = deepcopy(self.context["resume_augmentation"])
+            history = previous.pop("history", None) or [{"start_epoch_zero_based": 0, "policy": previous}]
+            current = deepcopy(self.context["protocol"]["config"]["augment"])
+            if current != history[-1]["policy"]:
+                current["history"] = [
+                    *history,
+                    {"start_epoch_zero_based": self.start_epoch, "policy": deepcopy(current)},
+                ]
+            else:
+                current = self.context["resume_augmentation"]
+            self.context["protocol"] = protocol(
+                self.context["config"], self.context["data_report"]["data_sha256"], current
+            )
+            write_json(self.save_dir / f"resume_{os.getpid()}_protocol.json", self.context["protocol"])
 
     def _setup_train(self, world_size):
         super()._setup_train(world_size)
