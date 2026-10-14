@@ -249,6 +249,10 @@ class ComparisonTrainer(DetectionTrainer):
         """Compose inherited training policies at the native resume epoch boundary."""
         super().resume_training(ckpt)
         if self.resume:
+            if self.context["augmentation_close"] is not None or self.start_epoch > (
+                self.epochs - self.args.close_mosaic
+            ):
+                self._close_dataloader_mosaic()
             previous = deepcopy(self.context["resume_augmentation"])
             history = previous.pop("history", None) or [{"start_epoch_zero_based": 0, "policy": previous}]
             current = deepcopy(self.context["protocol"]["config"]["augment"])
@@ -327,6 +331,7 @@ class ComparisonTrainer(DetectionTrainer):
             "comparison_config": deepcopy(self.context["config"]),
             "protocol": deepcopy(self.context["protocol"]),
             "ancestry": deepcopy(self.context["resume_provenance"]),
+            "augmentation_close": deepcopy(self.context["augmentation_close"]),
             "backend_lock": json.loads((HERE / "backend.lock.json").read_text(encoding="utf-8")),
             **{
                 name[:-5]: json.loads((self.save_dir / (prefix + name)).read_text(encoding="utf-8"))
@@ -398,13 +403,15 @@ class ComparisonTrainer(DetectionTrainer):
 
     def _close_dataloader_mosaic(self):
         super()._close_dataloader_mosaic()
+        self.context["augmentation_close"] = {
+            "epoch_zero_based": getattr(self, "epoch", self.start_epoch),
+            "closed_operations": list(provider.CLOSED_OPERATIONS),
+            "values": deepcopy(self.train_loader.dataset.augmentation_values),
+            "previous": deepcopy(self.context["augmentation_close"]),
+        }
         write_json(
             self.save_dir / "augmentation_close.json",
-            {
-                "epoch_zero_based": getattr(self, "epoch", self.start_epoch),
-                "closed_operations": list(provider.CLOSED_OPERATIONS),
-                "values": self.train_loader.dataset.augmentation_values,
-            },
+            self.context["augmentation_close"],
         )
 
 

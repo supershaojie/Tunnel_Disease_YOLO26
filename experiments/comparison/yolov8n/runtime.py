@@ -237,6 +237,9 @@ def train(cfg, args):
             "protocol": public,
             "resume_augmentation": checkpoint["training_augmentation"][Path(resumed).name] if resumed else None,
             "resume_provenance": checkpoint["training_provenance"][Path(resumed).name] if resumed else None,
+            "augmentation_close": checkpoint["training_provenance"][Path(resumed).name].get("augmentation_close")
+            if resumed
+            else None,
             "backend_sha": verify_backend()["commit"],
             "smoke": cfg["_execution_kind"] == "SMOKE",
         }

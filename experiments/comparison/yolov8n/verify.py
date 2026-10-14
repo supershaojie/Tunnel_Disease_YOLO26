@@ -20,6 +20,7 @@ class WorkerSamples:
     """Expose a worker's augmentation state across the native loader/resume lifecycle."""
 
     mosaic = True
+    augmentation_values = {"mosaic": 1.0, "mixup": 1.0, "cutmix": 1.0, "copy_paste": 0.0}
 
     def __len__(self):
         return 4
@@ -29,6 +30,7 @@ class WorkerSamples:
 
     def close_mosaic(self, hyp):
         self.mosaic = False
+        self.augmentation_values = dict.fromkeys(self.augmentation_values, 0.0)
 
 
 def main():
@@ -94,6 +96,7 @@ def main():
             ("boolean", ["train.amp=yes_invalid"]),
             ("hybrid_gt", ["train.save_hybrid=true"]),
             ("mapping_typo", ["augment.overrides={mixupp: 0.05}"]),
+            ("none_multiscale", ["augment.profile=none", "train.multi_scale=true"]),
         ]:
             command(
                 "reject_" + name,
@@ -112,6 +115,16 @@ def main():
             == protocol(other, "synthetic-content")["protocol_sha256"]
         )
         results["checks"]["protocol_excludes_model_recipe_paths"] = "PASSED"
+        for setting in ["train.multi_scale=true", "train.time=0.1"]:
+            variant = resolve(parser("verify").parse_args(["--dry-run", "--set", setting]))
+            assert (
+                protocol(cfg, "synthetic-content")["protocol_sha256"]
+                != protocol(variant, "synthetic-content")["protocol_sha256"]
+            )
+        timed_policy = protocol(variant, "synthetic-content")["config"]["augment"]
+        assert timed_policy["close_schedule"] == "native_dynamic_epoch_budget"
+        assert timed_policy["close_epoch_zero_based"] is None
+        results["checks"]["multiscale_and_time_budget_policy_identity"] = "PASSED"
 
         sys.path.insert(0, str(HERE.parent))
         from shared import evaluation, provider
@@ -375,8 +388,8 @@ def main():
                 "protocol": deepcopy(fresh),
                 "resume_augmentation": ancestor,
                 "resume_provenance": {"native_checkpoint": {"train_results": {"epoch": [1, 2]}}},
+                "augmentation_close": None,
             }
-            resumed._close_dataloader_mosaic = lambda: BaseTrainer._close_dataloader_mosaic(resumed)
             resumed.resume_training({"epoch": 1, "optimizer": None})
             assert resumed.start_epoch == 2 and next(iter(workers)).tolist() == [0, 0]
             inherited = deepcopy(resumed.context["protocol"])

@@ -81,13 +81,17 @@ crack 数据只有检测框，非零 CopyPaste 请求会明确拒绝（没有分
 `custom` 使用冻结提供器的可编辑配置。所有变体保存独立协议。
 native 的协议散列锁定原生操作源码，并实录可选 Albumentations 的版本、启用状态和变换配置。
 原生 Dataset 构建变换后发布实际增强值；native 矩形训练关闭 Mosaic/MixUp 的行为也进入协议。
-训练输入尺寸、batch、rect、cache、epochs、seed 和关闭日程随增强身份保存。
+训练输入尺寸、multi_scale、batch、rect、cache、epochs、time、seed 和关闭日程随增强身份保存。
+`none` 明确拒绝 `multi_scale=true` 的随机输入缩放；其他 profile 保留该原生开关。
+显式时间预算沿用原生逐轮重估 epoch 的机制，协议记录 `native_dynamic_epoch_budget`，
+不宣称固定关闭 epoch。实际关闭事件由关闭 owner 冻结到各权重的因果来源，恢复时继承并重施已关闭状态，
+即使恢复预算的关闭边界尚未到达也不会重开该阶段；重复关闭事件保留其前序事件。
 
 已只读核对 YOLOv5n 分支 `exp/compare-yolov5n-b19` 的完整提交
 `2a5cdc77914513d0fb3fac33d61a619f2d577181`：13 个共享运行文件的 Git 字节完全相同，
 增强核心哈希同为 `0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b`。
 其六图合成数据证明与本分支旧公共格式相同。当前 YOLOv8n 公共协议增加了实际训练尺寸/批量/关闭日程
-及恢复历史，因此完整协议哈希仍有格式差异；正式跨模型汇总前须统一这些字段并核对实际数据清单。
+及动态预算规则/恢复历史，因此完整协议哈希仍有格式差异；正式跨模型汇总前须统一这些字段并核对实际数据清单。
 跨模型正式协议对齐状态 **UNVERIFIED**，逐文件及新旧公共散列证据见 `shared_protocol_proof.json`。
 协议只包含公共数据内容、增强、评测、输入尺寸和实现哈希，不包含模型/优化器/绝对安装路径。
 完整 run config 与后端适配器另外散列。

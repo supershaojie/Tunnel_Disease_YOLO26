@@ -738,8 +738,6 @@ class BaseTrainer:
         LOGGER.info(f"Resuming training {self.args.model} from epoch {start_epoch + 1} to {self.epochs} total epochs")
         self.best_fitness = best_fitness
         self.start_epoch = start_epoch
-        if start_epoch > (self.epochs - self.args.close_mosaic):
-            self._close_dataloader_mosaic()
 
     def _close_dataloader_mosaic(self):
         """Update dataloaders to stop using mosaic augmentation."""

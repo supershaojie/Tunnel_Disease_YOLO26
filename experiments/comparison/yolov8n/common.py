@@ -271,6 +271,8 @@ def resolve(args):
             raise ValueError(f"train.{key} must be in [0,1)")
     if type(requested["patience"]) is not int or requested["patience"] < 0:
         raise ValueError("patience must be a nonnegative integer")
+    if requested["time"] is not None and (type(requested["time"]) not in [int, float] or requested["time"] < 0):
+        raise ValueError("time must be null or nonnegative hours")
     if "," in str(requested["device"]):
         raise ValueError("This isolated comparison entry uses one CPU/GPU per process; select one device")
     if requested.get("betas") is not None:
@@ -305,7 +307,9 @@ def resolve(args):
         augment.update({key: 0.0 for key in AUG_KEYS if key not in ["copy_paste_mode", "close_mosaic"]})
         augment["close_mosaic"] = 0
     augment.update(cfg["augment"]["overrides"])
-    if profile == "none" and any(augment[key] != 0 for key in AUG_KEYS if key not in ["copy_paste_mode"]):
+    if profile == "none" and (
+        requested["multi_scale"] or any(augment[key] != 0 for key in AUG_KEYS if key not in ["copy_paste_mode"])
+    ):
         raise ValueError("none profile cannot enable random augmentations")
     for key in PROB_KEYS:
         if type(augment[key]) not in [int, float] or not 0 <= augment[key] <= 1:
@@ -436,8 +440,14 @@ def training_policy(cfg):
         "requested_values": deepcopy(cfg["augment"]["effective"]),
         "implementation": core,
         "extras": extras,
-        "training": {key: cfg["train"][key] for key in ["imgsz", "batch", "rect", "cache", "epochs", "seed"]},
-        "close_epoch_zero_based": cfg["train"]["epochs"] - values["close_mosaic"] if values["close_mosaic"] else None,
+        "training": {
+            key: cfg["train"][key]
+            for key in ["imgsz", "multi_scale", "batch", "rect", "cache", "epochs", "time", "seed"]
+        },
+        "close_schedule": "native_dynamic_epoch_budget" if cfg["train"]["time"] else "fixed_epoch_budget",
+        "close_epoch_zero_based": cfg["train"]["epochs"] - values["close_mosaic"]
+        if values["close_mosaic"] and not cfg["train"]["time"]
+        else None,
     }
 
 

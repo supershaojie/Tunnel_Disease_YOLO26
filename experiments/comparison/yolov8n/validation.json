@@ -87,7 +87,15 @@
     "resume_csv_frozen_evaluation_csv": "PASSED: actual reused writer; selected checkpoint rows only",
     "resume_csv_core_history_csv_selection": "PASSED: original and independent resume CSVs both selected as training_history",
     "resume_csv_original_smoke_weights_unchanged": "PASSED",
-    "resume_csv_fixture_scope": "SMOKE: metadata-only interrupted-plan fixture seeded from a real two-update checkpoint; four additional native CPU updates, no server/full original test"
+    "resume_csv_fixture_scope": "SMOKE: metadata-only interrupted-plan fixture seeded from a real two-update checkpoint; four additional native CPU updates, no server/full original test",
+    "multi_scale_native_geometry_and_identity": "PASSED: actual native preprocess 64-to-96 under forced native size draw; distinct public hashes; zero optimizer updates",
+    "none_multiscale_and_time_schema_rejections": "PASSED: none retains false; random-none/invalid time rejected at configuration owner",
+    "dynamic_time_budget_policy": "PASSED: actual locked native budget block estimates 2 epochs from 0.1h/200s; dynamic rule stored; no false fixed close epoch",
+    "native_loop_close_worker_and_checkpoint_owner": "PASSED: actual native loop trigger/close owner and worker reset; serialization freezes the exact observed epoch/operations/values",
+    "inherited_closed_phase_before_current_boundary": "PASSED: actual native optimizer/EMA restore; start4 before boundary19 yet worker remains closed; original event preserved",
+    "close_provenance_never_reads_mutable_live_event": "PASSED: poisoned live JSON is excluded from frozen checkpoint and restoration",
+    "source_smoke_weight_unchanged": "PASSED",
+    "policy_owner_targets_scope": "SMOKE: policy/native preprocess/locked AST budget and close blocks; native serialization/restoration fixtures; zero additional optimizer updates or formal server training"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -161,7 +169,7 @@
   },
   "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
   "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
-  "adversarial_findings_addressed": 22,
+  "adversarial_findings_addressed": 24,
   "cross_backend": {
     "state": "SHARED_SOURCE_EXACT_EQUAL_PUBLIC_SCHEMA_DIFFERENCE",
     "peer_commit": "2a5cdc77914513d0fb3fac33d61a619f2d577181",
