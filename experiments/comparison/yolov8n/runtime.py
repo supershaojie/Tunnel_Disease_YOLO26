@@ -291,7 +291,9 @@ def evaluate(cfg, args):
     status(directory, "evaluate", "RUNNING")
     try:
         backend = bootstrap(cfg, data_identity=data_report["data_sha256"])
-        public = protocol(cfg, data_report["data_sha256"])
+        public = protocol(
+            cfg, data_report["data_sha256"], checkpoint["training_augmentation"][Path(cfg["weights"]).name]
+        )
         import torch
         from ultralytics.cfg import get_cfg
         from ultralytics.data import build_dataloader
@@ -365,6 +367,7 @@ def evaluate(cfg, args):
             **{k: public[k] for k in ["protocol_sha256", "run_config_sha256"]},
             augment_core_sha256=public["augment_core_sha256"],
             adapter_sha256=public["adapter_sha256"],
+            training_augmentation=public["config"]["augment"],
             metrics_sha256=file_hash(SHARED / "b19/metrics.py"),
             data_sha256=data_report["data_sha256"],
             formal_result="SMOKE" if checkpoint["execution_kind"] == "SMOKE" else "MEASURED",

@@ -34,8 +34,8 @@
     "fresh_process_native_fp32_fuse_nms_complete_exports": "PASSED",
     "core_package_members_and_strict_bytes": {
       "status": "PASSED",
-      "bytes": 107324,
-      "sha256": "87a934d24acc6455e51a6a859bec6d754de3f190ef0f3c44b94ac35b0e53c63b"
+      "bytes": 102433,
+      "sha256": "c8f6090efc515c1c6d6ca83de7b02d3b695ada540da4b5e0c2cb90f21ec5a475"
     },
     "cuda_native_amp_updates": "PASSED",
     "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
@@ -58,7 +58,12 @@
     "package_preserves_foreign_partial_cleans_owned_failure_records_start": "PASSED",
     "prepare_preserves_foreign_partial_closes_owned_file_releases_lock": "PASSED: controlled network fixtures",
     "owned_failed_resume_log_losslessly_packaged": "PASSED",
-    "current_reload_and_log_lifecycle": "PASSED: two fresh native evaluation processes; predictions exactly equal previous smoke exports; weights unchanged"
+    "current_reload_and_log_lifecycle": "PASSED: two fresh native evaluation processes; predictions exactly equal previous smoke exports; weights unchanged",
+    "native_rect_pipeline_owned_effective_identity": "PASSED",
+    "evaluation_benchmark_keep_checkpoint_training_identity": "PASSED",
+    "inference_never_recomputes_training_policy": "PASSED: current config changes invocation hash only; checkpoint augmentation supplies canonical training identity",
+    "native_initial_recipe_and_close_schedule_survive_late_zero_state": "PASSED: real dataset close; native serialization fixture retains initial Mosaic/MixUp",
+    "older_best_epoch_keep_own_policy_on_next_save": "PASSED: actual native checkpoint serialization fixture; current last/epoch policy updated, old best/epoch untouched"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -132,5 +137,5 @@
   },
   "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
   "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
-  "adversarial_findings_addressed": 14
+  "adversarial_findings_addressed": 16
 }

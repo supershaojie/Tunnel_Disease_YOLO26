@@ -373,6 +373,36 @@ def main():
         assert native_protocol["augment_core_sha256"] != protocol(cfg, "synthetic-content")["augment_core_sha256"]
         assert isinstance(native_protocol["config"]["augment"]["extras"]["albumentations"]["enabled"], bool)
         results["checks"]["native_operator_and_optional_pipeline_identity"] = "PASSED"
+        rect_policies = []
+        for rectangular in [False, True]:
+            policy_cfg = resolve(
+                parser("verify").parse_args(
+                    list(
+                        map(
+                            str,
+                            [
+                                *base,
+                                "--set",
+                                "augment.profile=native",
+                                "--set",
+                                "augment.overrides.mixup=0.05",
+                                "--set",
+                                f"train.rect={str(rectangular).lower()}",
+                            ],
+                        )
+                    )
+                )
+            )
+            recipe = protocol(policy_cfg, "synthetic-content")
+            effective = recipe["config"]["augment"]["values"]
+            real_args = get_cfg(overrides={k: v for k, v in policy_cfg["train"].items() if k != "betas"})
+            real_dataset = build_dataset(policy_cfg, real_args, paths, "train", 2)
+            assert effective == real_dataset.augmentation_values
+            assert effective["mosaic"] == (0.0 if rectangular else 1.0)
+            assert effective["mixup"] == (0.0 if rectangular else 0.05)
+            rect_policies.append(recipe["protocol_sha256"])
+        assert rect_policies[0] != rect_policies[1]
+        results["checks"]["native_rect_pipeline_owned_effective_identity"] = "PASSED"
         command(
             "reload_val",
             [
@@ -403,11 +433,15 @@ def main():
                 output / "SMOKE_test",
                 "--val-metrics",
                 output / "SMOKE_val/metrics.json",
+                "--set",
+                "augment.profile=none",
             ],
         )
         tested = json.loads((output / "SMOKE_test/metrics.json").read_text(encoding="utf-8"))
         assert tested["images"] == 3 and tested["val_frozen"] is not None
         assert tested["formal_result"] == "SMOKE"
+        assert tested["training_augmentation"]["profile"] == "b19"
+        assert json.loads((output / "SMOKE_test/run_config.json").read_text())["augment"]["profile"] == "none"
         assert tested["geometry"]["model_input_dtypes"] == [["torch.float32", "torch.float32"]]
         with np.load(output / "SMOKE_test/predictions.npz") as stored:
             assert stored["boxes"].dtype == np.float32 and len(stored["image_offsets"]) == 4
@@ -423,6 +457,8 @@ def main():
                 "cpu",
                 "--result-dir",
                 output / "SMOKE_custom_benchmark",
+                "--set",
+                "augment.profile=native",
                 "--set",
                 "benchmark.imgsz=64",
                 "--set",
@@ -451,6 +487,8 @@ def main():
             measured = json.loads(z.read("benchmark/benchmark.json"))
             assert measured["status"] == "MEASURED" and measured["formal_result"] == "SMOKE"
             assert measured["weight_sha256"] == tested["weight_sha256"]
+            assert measured["training_augmentation"] == tested["training_augmentation"]
+        results["checks"]["evaluation_benchmark_keep_checkpoint_training_identity"] = "PASSED"
         results["checks"]["core_package_members_and_strict_bytes"] = {
             "status": "PASSED",
             "bytes": (output / "SMOKE_core.zip").stat().st_size,

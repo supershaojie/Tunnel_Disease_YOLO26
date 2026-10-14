@@ -319,8 +319,8 @@ def resolve(args):
         raise ValueError("Detection-only crack boxes have no segments for CopyPaste; nonzero request unsupported")
     if profile == "native" and augment["cutmix"]:
         raise ValueError("Locked native v8 has no CutMix; use b19/custom")
-    if profile == "b19" and requested["rect"] and any(augment[k] for k in ["mosaic", "mixup", "cutmix"]):
-        raise ValueError("rect training conflicts with B19 mix augmentations")
+    if profile in ["b19", "custom"] and requested["rect"] and any(augment[k] for k in ["mosaic", "mixup", "cutmix"]):
+        raise ValueError("rect training conflicts with shared mix augmentations")
     requested["close_mosaic"] = augment["close_mosaic"]
     for key in AUG_KEYS:
         if key in official:
@@ -376,46 +376,16 @@ def resolve(args):
     return cfg
 
 
-def protocol(cfg, data_hash):
+def protocol(cfg, data_hash, training_augmentation=None):
     """Build model-independent protocol plus separate backend adapter and run hashes."""
-    profile = cfg["augment"]["profile"]
-    if profile in ["b19", "custom"]:
-        core = digest(
-            {
-                "b19": {
-                    name: file_hash(SHARED / "b19" / name)
-                    for name in ["augment.py", "instance.py", "ops.py", "metrics.py"]
-                },
-                "provider": file_hash(SHARED / "provider.py"),
-            }
-        )
-        extras = {"albumentations": {"enabled": False}}
+    if training_augmentation is not None:
+        augmentation = deepcopy(training_augmentation)
     else:
-        core = digest(
-            {
-                name: file_hash(VENDOR / "ultralytics" / name)
-                for name in ["data/augment.py", "utils/instance.py", "utils/ops.py"]
-            }
-        )
-        extras = {"albumentations": {"enabled": False}}
-        if profile == "native":
-            from ultralytics.data.augment import Albumentations
-
-            native_extra = Albumentations()
-            extras["albumentations"] = {
-                "enabled": native_extra.transform is not None,
-                "version": getattr(sys.modules.get("albumentations"), "__version__", None),
-                "pipeline": native_extra.transform.to_dict() if native_extra.transform is not None else None,
-            }
+        augmentation = training_policy(cfg)
     public = {
         "id": cfg["protocol"],
         "data": data_hash,
-        "augment": {
-            "profile": profile,
-            "values": cfg["augment"]["effective"],
-            "implementation": core,
-            "extras": extras,
-        },
+        "augment": augmentation,
         "eval": {k: v for k, v in cfg["eval"].items() if k not in ["split", "fixed_images", "display_conf"]},
         "imgsz": cfg["train"]["imgsz"],
         "metrics_implementation": file_hash(SHARED / "b19/metrics.py"),
@@ -427,8 +397,45 @@ def protocol(cfg, data_hash):
         "config": public,
         "protocol_sha256": digest(public),
         "run_config_sha256": digest(cfg),
-        "augment_core_sha256": core,
+        "augment_core_sha256": augmentation["implementation"],
         "adapter_sha256": digest({name: file_hash(HERE / name) for name in ["adapter.py", "runtime.py"]}),
+    }
+
+
+def training_policy(cfg):
+    """Freeze the initial pipeline and its full close schedule, independent of later inference."""
+    profile = cfg["augment"]["profile"]
+    values = deepcopy(cfg["augment"]["effective"])
+    extras = {"albumentations": {"enabled": False}}
+    if profile in ["b19", "custom"]:
+        core = digest(
+            {
+                "b19": {
+                    name: file_hash(SHARED / "b19" / name)
+                    for name in ["augment.py", "instance.py", "ops.py", "metrics.py"]
+                },
+                "provider": file_hash(SHARED / "provider.py"),
+            }
+        )
+    else:
+        core = digest(
+            {
+                name: file_hash(VENDOR / "ultralytics" / name)
+                for name in ["data/augment.py", "data/dataset.py", "data/base.py", "utils/instance.py", "utils/ops.py"]
+            }
+        )
+        if profile == "native":
+            from adapter import ComparisonDataset
+
+            values, extras = ComparisonDataset.native_policy(cfg)
+    return {
+        "profile": profile,
+        "values": values,
+        "requested_values": deepcopy(cfg["augment"]["effective"]),
+        "implementation": core,
+        "extras": extras,
+        "training": {key: cfg["train"][key] for key in ["imgsz", "batch", "rect", "cache", "epochs", "seed"]},
+        "close_epoch_zero_based": cfg["train"]["epochs"] - values["close_mosaic"] if values["close_mosaic"] else None,
     }
 
 

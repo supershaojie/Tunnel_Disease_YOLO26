@@ -24,7 +24,9 @@ def benchmark(cfg, args):
     status(directory, "benchmark", "RUNNING")
     try:
         backend = bootstrap(cfg)
-        public = protocol(cfg, checkpoint["data_sha256"])
+        public = protocol(
+            cfg, checkpoint["data_sha256"], checkpoint["training_augmentation"][Path(cfg["weights"]).name]
+        )
         import numpy as np
         import torch
         from ultralytics.data.augment import LetterBox
@@ -120,7 +122,7 @@ def benchmark(cfg, args):
             "formal_result": "SMOKE" if checkpoint["execution_kind"] == "SMOKE" else "MEASURED",
             "weight_sha256": file_hash(cfg["weights"]),
             "protocol_sha256": public["protocol_sha256"],
-            "training_protocol_sha256": checkpoint["protocol_sha256"],
+            "training_augmentation": public["config"]["augment"],
             "settings": setting,
             "NMS": {k: cfg["eval"][k] for k in ["conf", "iou", "max_det"]},
             "parameters": {

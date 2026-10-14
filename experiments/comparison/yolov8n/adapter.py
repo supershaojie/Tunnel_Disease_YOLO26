@@ -2,15 +2,17 @@
 
 import json
 import os
+import sys
 from copy import copy, deepcopy
+from types import SimpleNamespace
 
 import numpy as np
 import torch
 
-from common import environment, file_hash, write_json
+from common import AUG_KEYS, environment, file_hash, write_json
 from shared import evaluation, provider
 from shared.b19.instance import Instances as B19Instances
-from ultralytics.data.augment import Compose, Format, LetterBox
+from ultralytics.data.augment import Albumentations, Compose, Format, LetterBox
 from ultralytics.data.dataset import YOLODataset
 from ultralytics.models.yolo.detect import DetectionTrainer, DetectionValidator
 from ultralytics.utils.instance import Instances
@@ -65,7 +67,9 @@ class ComparisonDataset(YOLODataset):
             transforms.append(NativeFormat(self.augmentation_values["bgr"]))
             return transforms
         if self.augment and profile == "native":
-            return super().build_transforms(hyp)
+            transforms = super().build_transforms(hyp)
+            self.augmentation_values.update({key: getattr(hyp, key) for key in AUG_KEYS if hasattr(hyp, key)})
+            return transforms
         # none and evaluation have no random augmentation, including native automatic extras.
         return Compose(
             [
@@ -79,6 +83,25 @@ class ComparisonDataset(YOLODataset):
         if self.comparison["augment"]["profile"] == "native":
             return super().close_mosaic(hyp)
         self.transforms = self.build_transforms(hyp)
+
+    @classmethod
+    def native_policy(cls, cfg):
+        """Inspect the same native pipeline owner without loading images or creating caches."""
+        probe = cls.__new__(cls)
+        probe.comparison = cfg
+        probe.augmentation_values = deepcopy(cfg["augment"]["effective"])
+        probe.augment, probe.rect, probe.imgsz = True, cfg["train"]["rect"], cfg["train"]["imgsz"]
+        probe.use_segments = probe.use_keypoints = probe.use_obb = False
+        probe.data = {}
+        transforms = probe.build_transforms(SimpleNamespace(**cfg["train"]))
+        extra = next(t for t in transforms.transforms if isinstance(t, Albumentations))
+        return probe.augmentation_values, {
+            "albumentations": {
+                "enabled": extra.transform is not None,
+                "version": getattr(sys.modules.get("albumentations"), "__version__", None),
+                "pipeline": extra.transform.to_dict() if extra.transform is not None else None,
+            }
+        }
 
 
 def build_dataset(cfg, args, data, mode, batch, stride=32, pad=None):
@@ -263,14 +286,19 @@ class ComparisonTrainer(DetectionTrainer):
     def save_model(self):
         super().save_model()
         manifest_path = self.save_dir / "checkpoint_manifest.json"
-        weights = json.loads(manifest_path.read_text(encoding="utf-8"))["weights"] if manifest_path.is_file() else {}
+        previous = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.is_file() else {}
+        weights = previous.get("weights", {})
+        augmentations = previous.get("training_augmentation", {})
         # Native save writes the same serialized bytes to each checkpoint touched by this event.
         saved_sha = file_hash(self.last)
         weights[self.last.name] = saved_sha
+        augmentations[self.last.name] = deepcopy(self.context["protocol"]["config"]["augment"])
         if self.best_fitness == self.fitness:
             weights[self.best.name] = saved_sha
+            augmentations[self.best.name] = deepcopy(augmentations[self.last.name])
         if self.save_period > 0 and self.epoch % self.save_period == 0:
             weights[f"epoch{self.epoch}.pt"] = saved_sha
+            augmentations[f"epoch{self.epoch}.pt"] = deepcopy(augmentations[self.last.name])
         write_json(
             manifest_path,
             {
@@ -281,6 +309,7 @@ class ComparisonTrainer(DetectionTrainer):
                 "weights": weights,
                 "original_pretrained_sha256": self.context["pretrained_provenance"]["sha256"],
                 "execution_kind": self.context["config"]["_execution_kind"],
+                "training_augmentation": augmentations,
             },
         )
         if self.best_fitness == self.fitness:

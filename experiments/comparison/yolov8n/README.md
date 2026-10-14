@@ -78,12 +78,17 @@ crack 数据只有检测框，非零 CopyPaste 请求会明确拒绝（没有分
 `none` 真正关闭随机增强；`native` 使用锁定 v8 原生增强，并拒绝其不支持的非零 CutMix；
 `custom` 使用冻结提供器的可编辑配置。所有变体保存独立协议。
 native 的协议散列锁定原生操作源码，并实录可选 Albumentations 的版本、启用状态和变换配置。
+原生 Dataset 构建变换后发布实际增强值；native 矩形训练关闭 Mosaic/MixUp 的行为也进入协议。
+训练输入尺寸、batch、rect、cache、epochs、seed 和关闭日程随增强身份保存。
 
 当前未发现已有可靠 YOLOv5 对比分支。本分支提供自包含共享实现，另一模型应逐文件复用同一版本，
 并比对 `augment_core_sha256` / `metrics_sha256` / `protocol_sha256`。另一模型尚未接入，跨模型一致性状态 **UNVERIFIED**。
 协议只包含公共数据内容、增强、评测、输入尺寸和实现哈希，不包含模型/优化器/绝对安装路径。
 完整 run config 与后端适配器另外散列。
 匹配身份包含共享匹配函数和评测汇总；适配器身份包含训练接口及独立推理/坐标还原代码。
+每个 best/last/epoch 权重冻结其训练增强配方及完整关闭日程，晚期零概率状态不替代早期配方。
+独立评测和测速沿用该权重的增强身份；当前配置只提供实际评测/NMS/输入设置及调用哈希。
+恢复时旧 best/epoch 仍保留各自的身份，避免按当前 profile 或 Albumentations 环境重新标记已学权重。
 
 每轮只验证 val，复用该轮原生预测计算 B19 统一 mAP50–95，用它选择 `weights/best.pt` 和早停。
 不使用 test 选权重，不做重复验证前向。保留可恢复的 last.pt；删除原生训练结束时再验证并剥除 optimizer 的路径，
