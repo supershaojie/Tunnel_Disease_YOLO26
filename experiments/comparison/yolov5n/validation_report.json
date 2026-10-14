@@ -1,0 +1,141 @@
+{
+  "purpose": "SMOKE",
+  "server_training": "NOT_STARTED",
+  "server_environment": "UNVERIFIED",
+  "real_dataset_test": "NOT_RUN",
+  "checks": {
+    "interfaces_configuration": "PASSED",
+    "metrics_reference_and_counts": "PASSED",
+    "forced_augmentations_schedule_workers": "PASSED",
+    "CPU_FP32_two_native_loss_updates": {
+      "state": "PASSED",
+      "summary": {
+        "state": "COMPLETED",
+        "purpose": "SMOKE",
+        "completed_epochs": 2,
+        "best_epoch_zero_based": 0,
+        "best_metric": "unified_val_mAP50_95",
+        "best_value_fraction": 0.0,
+        "optimizer_updates": 2,
+        "ema_updates": 2,
+        "update_count_source": "optimizer step post-hook; AMP-skipped steps do not count",
+        "stop_reason": "requested epochs completed",
+        "native_early_stop_preserved": true
+      },
+      "untransferred_keys": [
+        "model.24.m.0.bias",
+        "model.24.m.0.weight",
+        "model.24.m.1.bias",
+        "model.24.m.1.weight",
+        "model.24.m.2.bias",
+        "model.24.m.2.weight"
+      ]
+    },
+    "fresh_process_evaluate_FP32_fuse_NMS_exports": "PASSED",
+    "compact_package": {
+      "state": "PASSED",
+      "bytes": 157035,
+      "members": 79
+    },
+    "CUDA_AMP_two_native_loss_updates": {
+      "state": "PASSED",
+      "amp": {
+        "requested": true,
+        "actual": true,
+        "device": "cuda:0",
+        "mechanism": "native check_amp, verified local bus image and verified same-family fallback weights"
+      }
+    },
+    "explicit_resume_state": "PASSED",
+    "duplicate_run_refused": "PASSED"
+  },
+  "state": "PASSED",
+  "shared_protocol_proof": {
+    "state": "EXACT_EQUAL",
+    "peer_commit": "cd9e69720b5c0d6b3fa297ec588431099ded9e58",
+    "shared_source_commit": "482e555248c0ba52b4bea2b474498cab61fd6f37",
+    "augment_core_sha256": "0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b",
+    "protocol_sha256": "5f96fc2c421ae52ac17edd4ace3ea266a1b9bead64b07426eb883f0299d04fc4",
+    "data_sha256": "d8c1be51b8f0e7a04c34c82e42e055fd45fcec558a3099967dddef41328f0604"
+  },
+  "local_environment": {
+    "sys_executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
+    "python": "3.11.15 | packaged by Anaconda, Inc. | (main, Jun 11 2026, 15:12:53) [MSC v.1942 64 bit (AMD64)]",
+    "platform": "Windows-10-10.0.19045-SP0",
+    "packages": {
+      "torch": "2.7.1+cu118",
+      "torchvision": "0.22.1+cu118",
+      "numpy": "2.4.4",
+      "opencv-python": "5.0.0.93",
+      "PyYAML": "6.0.3",
+      "matplotlib": "3.11.0",
+      "scipy": "1.17.1",
+      "pandas": "2.2.3",
+      "seaborn": "0.13.2",
+      "tqdm": "4.67.1",
+      "ultralytics-thop": "2.0.20",
+      "albumentations": "2.0.8"
+    },
+    "cuda_runtime": "11.8",
+    "cuda_available": true,
+    "gpu_names": ["NVIDIA GeForce RTX 2060"],
+    "imports": {
+      "models": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov5n-b19\\experiments\\comparison\\yolov5n\\vendor\\yolov5\\models\\yolo.py",
+      "utils": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov5n-b19\\experiments\\comparison\\yolov5n\\vendor\\yolov5\\utils\\general.py",
+      "vendor": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov5n-b19\\experiments\\comparison\\yolov5n\\vendor\\yolov5"
+    },
+    "backend_commit": "915bbf294bb74c859f0b41f1c23bc395014ea679",
+    "server_validation": "UNVERIFIED"
+  },
+  "source_lock_verified": true,
+  "historical_optional_albumentations": "UNVERIFIED",
+  "historical_test_PR_threshold": "UNVERIFIED",
+  "combined_server_source": "UNVERIFIED",
+  "live_server_tmux": "UNVERIFIED",
+  "review_corrections": {
+    "purpose": "SMOKE",
+    "server_training": "NOT_STARTED",
+    "checks": {
+      "all_single_value_conflicts_and_adversarial_import_order": "PASSED in .dev/review-fixes before interrupted native cache scan",
+      "training_identity_rejected_evaluation_variant_allowed": "PASSED in .dev/review-fixes before interrupted native cache scan",
+      "native_explicit_transform_injection_before_workers": "PASSED",
+      "native_source_hash_and_read_only_original_data": "PASSED",
+      "native_one_real_CPU_loss_update_spawned_worker": {
+        "state": "COMPLETED",
+        "purpose": "SMOKE",
+        "completed_epochs": 1,
+        "best_epoch_zero_based": 0,
+        "best_metric": "unified_val_mAP50_95",
+        "best_value_fraction": 0.0,
+        "optimizer_updates": 1,
+        "ema_updates": 1,
+        "update_count_source": "optimizer step post-hook; AMP-skipped steps do not count",
+        "stop_reason": "requested epochs completed",
+        "native_early_stop_preserved": true
+      },
+      "read_only_gpu_contention_query": {
+        "state": "CONTENDED",
+        "timing_performed": false
+      }
+    },
+    "optional_albumentations_2_0_8_execution": "UNVERIFIED; injection boundary tested with marker, disabled policy tested in real training",
+    "state": "PASSED"
+  },
+  "device_selection_order": {
+    "purpose": "SMOKE",
+    "invalid_device_1": "REJECTED before environment/model/optimizer initialization; train state FAILED",
+    "host_physical_gpus": 1,
+    "training_updates": 0,
+    "cpu": {
+      "selected": "cpu",
+      "cuda_initialized_after_environment": false,
+      "updates": 0
+    },
+    "0": {
+      "selected": "cuda:0",
+      "cuda_initialized_after_environment": true,
+      "updates": 0
+    },
+    "multi_physical_GPU_server_execution": "UNVERIFIED; device selection now precedes all CUDA environment queries"
+  }
+}

@@ -1,0 +1,3 @@
+[tool.ruff]
+extend = "../../../pyproject.toml"
+exclude = ["b19", "provider.py", "data.py", "evaluation.py", "__init__.py"]

@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/supershaojie/Tunnel_Disease_YOLO26",
+  "reference_commit": "482e555248c0ba52b4bea2b474498cab61fd6f37",
+  "reference_branch": "codex/compare-yolov8n-b19",
+  "files": {
+    "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "b19/LICENSE": "0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0",
+    "b19/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "b19/augment.py": "4220aba3fc6fd9c0f801c5e303769be4041be8143ab14e8db66c84188904aad4",
+    "b19/checks.py": "9537236945bed01d6dc527e0c4241d0779ff86138eeea80a6b37cdabfac9e233",
+    "b19/instance.py": "d49f7a39c7a468703353a326ce1b254382c83ac9f67e3aef378035bac7f456c1",
+    "b19/matching.py": "c1b8da213c37e25c4b1250eed25d71689aabdd99277d5138e48c70ccc99e15ab",
+    "b19/metrics.py": "b906f02eee406dc8e40d2f74b220d1e78a1b6d19663af9c44b38153c35c9f0be",
+    "b19/ops.py": "93ecc1c01d4b01245941ea6a828420361570a31ec2fdfbcd5b09b47eb506dd78",
+    "b19/source.lock.json": "e9b33f3f447f675fb3a663c3178a1fe63e2c7ee3a147e87e0adeb1d6d1b4f1b1",
+    "data.py": "d17401cbcfff5009dce9dd5ce5955a2d19d63b5d2a91f98a5d2b5b3588da52b4",
+    "evaluation.py": "ed9ab8abb0b31f8ff77ed47b63ad84a1f7d0af92a0403e01ab407f8ceecb5856",
+    "provider.py": "1e933622d7da148f8d0ac92c1d97442eea16c7d0686f83fc2249a36664ceb3de"
+  },
+  "reuse": "Verbatim committed shared provider, data audit, matching, AP and prediction exchange. No source dependency on another worktree."
+}

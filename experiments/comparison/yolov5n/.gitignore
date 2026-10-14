@@ -1,0 +1,3 @@
+cache/
+!vendor/yolov5/data/images/bus.jpg
+!vendor/yolov5/requirements.txt

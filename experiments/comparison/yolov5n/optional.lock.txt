@@ -1,0 +1,4 @@
+# Optional FLOP measurement; absent profiler yields NA with a reason.
+ultralytics-thop==2.0.20
+# Only augment.albumentations=frozen_default uses this package.
+albumentations==2.0.8

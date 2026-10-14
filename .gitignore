@@ -207,3 +207,5 @@ results.csv
 
 # CI test asset cache
 .ultralytics_cache/
+# Isolated YOLOv5n development environment
+.dev/
