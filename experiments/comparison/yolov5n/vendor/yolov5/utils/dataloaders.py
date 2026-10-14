@@ -28,7 +28,7 @@ from PIL import ExifTags, Image, ImageOps
 from torch.utils.data import DataLoader, Dataset, dataloader, distributed
 from tqdm import tqdm
 
-from utils.augmentations import (Albumentations, augment_hsv, classify_albumentations, classify_transforms, copy_paste,
+from utils.augmentations import (augment_hsv, classify_albumentations, classify_transforms, copy_paste,
                                  letterbox, mixup, random_perspective)
 from utils.general import (DATASETS_DIR, LOGGER, NUM_THREADS, TQDM_BAR_FORMAT, check_dataset, check_requirements,
                            check_yaml, clean_str, cv2, is_colab, is_kaggle, segments2boxes, unzip_file, xyn2xy,
@@ -115,7 +115,8 @@ def create_dataloader(path,
                       image_weights=False,
                       quad=False,
                       prefix='',
-                      shuffle=False):
+                      shuffle=False,
+                      albumentations=None):
     if rect and shuffle:
         LOGGER.warning('WARNING ⚠️ --rect is incompatible with DataLoader shuffle, setting shuffle=False')
         shuffle = False
@@ -132,7 +133,8 @@ def create_dataloader(path,
             stride=int(stride),
             pad=pad,
             image_weights=image_weights,
-            prefix=prefix)
+            prefix=prefix,
+            albumentations=albumentations)
 
     batch_size = min(batch_size, len(dataset))
     nd = torch.cuda.device_count()  # number of CUDA devices
@@ -446,7 +448,8 @@ class LoadImagesAndLabels(Dataset):
                  stride=32,
                  pad=0.0,
                  min_items=0,
-                 prefix=''):
+                 prefix='',
+                 albumentations=None):
         self.img_size = img_size
         self.augment = augment
         self.hyp = hyp
@@ -456,7 +459,7 @@ class LoadImagesAndLabels(Dataset):
         self.mosaic_border = [-img_size // 2, -img_size // 2]
         self.stride = stride
         self.path = path
-        self.albumentations = Albumentations(size=img_size) if augment else None
+        self.albumentations = albumentations
 
         try:
             f = []  # image files
@@ -693,8 +696,8 @@ class LoadImagesAndLabels(Dataset):
 
         if self.augment:
             # Albumentations
-            img, labels = self.albumentations(img, labels)
-            nl = len(labels)  # update after albumentations
+            if self.albumentations is not None:
+                img = self.albumentations({'img': img, 'cls': labels[:, :1]})['img']
 
             # HSV color-space
             augment_hsv(img, hgain=hyp['hsv_h'], sgain=hyp['hsv_s'], vgain=hyp['hsv_v'])

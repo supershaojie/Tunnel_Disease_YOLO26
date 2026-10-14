@@ -261,7 +261,7 @@ class TrainingHooks:
             "autoanchor": requested["autoanchor"],
             "loss_scaling": self.audit["official_defaults"]["scaling"],
             "unfused_parameters": sum(p.numel() for p in model.parameters()),
-            "extra_native_augmentations": "none for b19/custom/none; native variant recorded separately",
+            "optional_augmentations": self.protocol["public"]["augment"]["extras"],
         }
         differences = {
             key: {"requested": requested[key], "effective": value}

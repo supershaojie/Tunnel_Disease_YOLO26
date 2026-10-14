@@ -1,6 +1,6 @@
 # 有限开发验证
 
-全部产物为 **SMOKE**，位于开发工作区 `.dev/validation-delivery/`，未提交权重、数据或运行产物。
+全部产物为 **SMOKE**，位于开发工作区 `.dev/validation-contract-final/`，未提交权重、数据或运行产物。
 正式服务器训练 **NOT_STARTED**，未连接服务器、未执行真实数据全量 test、未开展参数扫描。
 
 | 检查           | 真实观察                                                                                                                                |
@@ -34,3 +34,10 @@
 原生AMP接口的弃用warning不改变本次执行结果。冻结源码使用LF及.gitattributes，防止Windows/Linux检验值不同。
 
 逐文件复用YOLOv8n共享源码；与其提交cd9e69720b5c0d6b3fa297ec588431099ded9e58的公共协议在同一合成数据及默认配置下完全一致，证据见shared_protocol_proof.json。
+
+独立审查后的针对性验证位于 `.dev/review-fixes/` 和 `.dev/review-fixes2/`：矛盾的重复 split/其他单值参数拒绝；
+外部 models 包排在前、vendor 已存在于后时仍解析到私有源码；评测拒绝修改训练增强身份，同时允许显式评测变体。
+native 分支的额外增强在 worker 创建前注入；disabled 策略完成一个原生 CPU loss 更新及 worker spawn，原图/标签内容哈希不变。
+冻结可选增强的注入边界使用 marker 验证，完整 Albumentations2.0.8 执行仍为 **UNVERIFIED**。
+首次临时验证脚本漏了 Windows 入口保护，已停止并修正后重跑受影响部分；最终针对性验证 PASSED。
+只读 GPU 进程查询返回 CONTENDED，未开展 GPU 测速。重复公共协议证明仍完全相等。

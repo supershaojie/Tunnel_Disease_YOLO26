@@ -103,12 +103,31 @@ def config_checks(directory, cfg_path):
             ["--set", "train.batch=-1"],
             ["--set", "train.amp=1"],
             ["--set", "augment.profile=none", "--set", "augment.overrides.mosaic=1.0"],
+            ["--set", "augment.profile=none", "--set", "augment.albumentations=frozen_default"],
         )
     ):
         run([entry, "--dry-run", *extra], directory / f"bad_config_{number}.txt", expected=1)
     duplicate = directory / "duplicate.yaml"
     duplicate.write_text("train:\n  batch: 2\n  batch: 3\n", encoding="utf-8")
     run([entry, "--config", str(duplicate), "--dry-run"], directory / "bad_duplicate.txt", expected=1)
+    run(
+        [str(HERE / "evaluate.py"), "--dry-run", "--split", "val", "--split", "test"],
+        directory / "contradictory_split.txt",
+        expected=2,
+    )
+    foreign = directory / "foreign_namespace/models"
+    foreign.mkdir(parents=True)
+    (foreign / "__init__.py").write_text("raise RuntimeError('foreign models imported')\n", encoding="utf-8")
+    run(
+        [
+            "-c",
+            f"import sys; sys.path.insert(0, {str(HERE)!r}); from common import bootstrap, VENDOR; "
+            f"sys.path.insert(0, {str(foreign.parent)!r}); sys.path.append(str(VENDOR)); "
+            f"result = bootstrap({str(directory / 'isolated_cache')!r}); "
+            "assert result['models'] == str(VENDOR / 'models/yolo.py'); assert sys.path[0] == str(VENDOR)",
+        ],
+        directory / "adversarial_import_order.txt",
+    )
     before = set((directory / "runs").glob("*")) if (directory / "runs").exists() else set()
     run([entry, "--config", str(cfg_path), "--dry-run"], directory / "dry_smoke.json")
     after = set((directory / "runs").glob("*")) if (directory / "runs").exists() else set()
@@ -308,6 +327,25 @@ def main():
             "untransferred_keys": transfer["missing_keys"],
         }
         weight = cpu / "weights/best.pt"
+        run(
+            [
+                str(HERE / "evaluate.py"),
+                "--config",
+                str(cfg_path),
+                "--weights",
+                str(weight),
+                "--split",
+                "val",
+                "--set",
+                "augment.profile=native",
+                "--result-dir",
+                str(directory / "wrong_training_identity"),
+            ],
+            directory / "wrong_training_identity.txt",
+            expected=1,
+        )
+        assert not (directory / "wrong_training_identity").exists()
+        report["checks"]["evaluation_preserves_training_augmentation"] = "PASSED"
         for split in ("val", "test"):
             run(
                 [str(HERE / "evaluate.py"), "--config", str(cfg_path), "--weights", str(weight), "--split", split],

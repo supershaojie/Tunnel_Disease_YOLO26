@@ -73,12 +73,14 @@ v5 的重复增强不执行，样本边界只输出 RGB CHW uint8 和一次归�
 
 `augment.profile=b19` 从真实 baseline args 取值；`custom` 从冻结 B19 默认配置起步；`none` 关闭所有随机操作；
 `native` 为官方 v5 增强变体，不能偷偷接受其不支持的 CutMix/BGR/close_mosaic。
+native 的可选增强也由适配器在 worker 启动前明确注入，其增强实现哈希指向实际 v5 源码；环境安装情况不会决定是否开启。
 `augment.overrides` 可编辑任一增强概率/强度/关闭 epoch。非零操作不会静默丢弃。
 
 B19 源码还含 **可选** Albumentations。历史服务器是否实际安装/启用、具体版本仍为 **UNVERIFIED**。
 当前可编辑预设显式选择 `augment.albumentations=disabled`，避免环境隐式引入随机操作；
 确认历史行为后可显式选 `frozen_default`，运行冻结默认 Blur/MedianBlur/ToGray/CLAHE 并要求 albumentations2.0.8。
 两种政策有不同协议哈希，不能将其历史等价性描述为已核实。
+`none` 必须配合 `disabled`，矛盾配置明确报错。
 
 冻结源码与共享提供器具有独立哈希，各后端适配器另有哈希。增强核心 SHA256 为
 `0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b`，与 YOLOv8n 使用同一源码。
@@ -98,6 +100,7 @@ B19 源码还含 **可选** Albumentations。历史服务器是否实际安装/�
 独立评测必须重载本实验训练 checkpoint，不接受原始 COCO 权重冒充已训练 best。默认 FP32、低 conf0.001、
 NMS IoU0.7、max_det300、rect=True、fuse=True、无 TTA。原始 anchor 头的得分是 objectness×class probability，
 没有重复 sigmoid，也没有 end2end 假设。实际 dtype、批次形状、resize/padding、坐标还原和 fuse/NMS 状态均写入 metrics.json。
+评测必须保持 checkpoint 的数据及训练增强身份，允许明确修改评测字段；修改训练增强配置会报错，不能重新标记已有权重。
 
 先评测 val 生成 `val_threshold.json`，再评测 test：test 严格校验阈值来自相同权重/数据/评测协议的 val。
 输出 AP50/AP75/mAP50–95、conf0.25/0.50 下精确 TP/FP/FN/P/R/F1、val 选择阈值的精确统计，

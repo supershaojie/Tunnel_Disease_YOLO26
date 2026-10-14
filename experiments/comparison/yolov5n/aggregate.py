@@ -6,6 +6,7 @@ import gzip
 import io
 from pathlib import Path
 
+from common import UniqueStore
 from comparison_io import canonical_hash, read_json
 from package import archive
 
@@ -41,10 +42,15 @@ def normalized_gt(path):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
-        "--result-dirs", nargs="+", type=Path, required=True, help="Run roots or standard test evaluation directories"
+        "--result-dirs",
+        action=UniqueStore,
+        nargs="+",
+        type=Path,
+        required=True,
+        help="Run roots or standard test evaluation directories",
     )
-    p.add_argument("--output", type=Path, required=True)
-    p.add_argument("--max-bytes", type=int, default=100000000)
+    p.add_argument("--output", action=UniqueStore, type=Path, required=True)
+    p.add_argument("--max-bytes", action=UniqueStore, type=int, default=100000000)
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
     directories = [evaluation_directory(root) for root in args.result_dirs]

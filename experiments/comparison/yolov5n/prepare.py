@@ -4,7 +4,7 @@ import copy
 import os
 from pathlib import Path
 
-from common import HERE, configuration, parser, verify_sources
+from common import HERE, UniqueStore, configuration, parser, verify_sources
 from comparison_io import checksum, digest, read_json, verify_weights
 
 URL = "https://github.com/ultralytics/yolov5/releases/download/v7.0/yolov5n.pt"
@@ -86,8 +86,8 @@ def prepare(path, proxy=None):
 
 def main():
     p = parser(__doc__)
-    p.add_argument("--cache-dir", type=Path, help="Override only the pretrained weight directory")
-    p.add_argument("--proxy", help="Optional explicit HTTP(S) proxy for this preparation request")
+    p.add_argument("--cache-dir", action=UniqueStore, type=Path, help="Override only the pretrained weight directory")
+    p.add_argument("--proxy", action=UniqueStore, help="Optional explicit HTTP(S) proxy for this preparation request")
     args = p.parse_args()
     source = verify_sources()
     planning = copy.copy(args)

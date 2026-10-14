@@ -91,5 +91,34 @@
   "historical_optional_albumentations": "UNVERIFIED",
   "historical_test_PR_threshold": "UNVERIFIED",
   "combined_server_source": "UNVERIFIED",
-  "live_server_tmux": "UNVERIFIED"
+  "live_server_tmux": "UNVERIFIED",
+  "review_corrections": {
+    "purpose": "SMOKE",
+    "server_training": "NOT_STARTED",
+    "checks": {
+      "all_single_value_conflicts_and_adversarial_import_order": "PASSED in .dev/review-fixes before interrupted native cache scan",
+      "training_identity_rejected_evaluation_variant_allowed": "PASSED in .dev/review-fixes before interrupted native cache scan",
+      "native_explicit_transform_injection_before_workers": "PASSED",
+      "native_source_hash_and_read_only_original_data": "PASSED",
+      "native_one_real_CPU_loss_update_spawned_worker": {
+        "state": "COMPLETED",
+        "purpose": "SMOKE",
+        "completed_epochs": 1,
+        "best_epoch_zero_based": 0,
+        "best_metric": "unified_val_mAP50_95",
+        "best_value_fraction": 0.0,
+        "optimizer_updates": 1,
+        "ema_updates": 1,
+        "update_count_source": "optimizer step post-hook; AMP-skipped steps do not count",
+        "stop_reason": "requested epochs completed",
+        "native_early_stop_preserved": true
+      },
+      "read_only_gpu_contention_query": {
+        "state": "CONTENDED",
+        "timing_performed": false
+      }
+    },
+    "optional_albumentations_2_0_8_execution": "UNVERIFIED; injection boundary tested with marker, disabled policy tested in real training",
+    "state": "PASSED"
+  }
 }

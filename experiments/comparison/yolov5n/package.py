@@ -8,6 +8,7 @@ import os
 import zipfile
 from pathlib import Path
 
+from common import UniqueStore
 from comparison_io import digest, now, read_json, status, write_json
 
 CORE = (
@@ -192,9 +193,13 @@ def archive(values, output, max_bytes, selection):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--result-dir", type=Path, required=True)
-    p.add_argument("--output", type=Path, help="Default: run-name.core.zip beside the result directory")
-    p.add_argument("--max-bytes", type=int, help="Override package.max_bytes from the saved requested config")
+    p.add_argument("--result-dir", action=UniqueStore, type=Path, required=True)
+    p.add_argument(
+        "--output", action=UniqueStore, type=Path, help="Default: run-name.core.zip beside the result directory"
+    )
+    p.add_argument(
+        "--max-bytes", action=UniqueStore, type=int, help="Override package.max_bytes from the saved requested config"
+    )
     p.add_argument("--dry-run", action="store_true")
     args = p.parse_args()
     run = args.result_dir.resolve()

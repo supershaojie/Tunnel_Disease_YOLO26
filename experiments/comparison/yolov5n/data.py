@@ -12,8 +12,7 @@ from torch.utils.data import DataLoader, Dataset
 
 from common import load_yaml
 from comparison_io import write_json
-
-IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
+from shared.data import label_path
 
 
 def image_read(path):
@@ -21,15 +20,6 @@ def image_read(path):
     if image is None:
         raise ValueError(f"Unreadable image: {path}")
     return image
-
-
-def label_path(image):
-    parts = list(image.parts)
-    indexes = [i for i, part in enumerate(parts) if part == "images"]
-    if not indexes:
-        raise ValueError(f"Expected images/labels dataset layout: {image}")
-    parts[indexes[-1]] = "labels"
-    return Path(*parts).with_suffix(".txt")
 
 
 def read_labels(path):
@@ -239,13 +229,23 @@ def create_dataloader(path, imgsz, batch_size, stride, single_cls, augment=False
     split = "train" if augment else "val"
     records = HOOKS.manifest["splits"][split]["records"]
     if augment and HOOKS.cfg["augment"]["profile"] == "native":
+        from augmentation import optional_transform
         from utils.dataloaders import create_dataloader as native_loader
 
         root = Path(HOOKS.cfg["cache"]) / "native-index"
         root.mkdir(parents=True, exist_ok=True)
         index = root / f"{HOOKS.manifest['splits'][split]['sha256']}.txt"
         index.write_text("\n".join(r["image"] for r in records) + "\n", encoding="utf-8")
-        result = native_loader(str(index), imgsz, batch_size, stride, single_cls, augment=True, **kwargs)
+        result = native_loader(
+            str(index),
+            imgsz,
+            batch_size,
+            stride,
+            single_cls,
+            augment=True,
+            albumentations=optional_transform(HOOKS.cfg["augment"]["albumentations"]),
+            **kwargs,
+        )
         if {str(Path(p).resolve()) for p in result[1].im_files} != {str(Path(r["image"]).resolve()) for r in records}:
             raise ValueError("Native dataset skipped images; full manifest identity is required")
         return result

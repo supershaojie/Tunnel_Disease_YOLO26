@@ -5,14 +5,16 @@ import importlib.metadata
 import time
 from pathlib import Path
 
-from common import bootstrap, configuration, parser, print_plan, verify_sources
+from common import UniqueStore, bootstrap, configuration, parser, print_plan, verify_sources
 from comparison_io import digest, now, status, trusted_load, verify_weights, write_json
 
 
 def main():
     p = parser(__doc__)
-    p.add_argument("--image", type=Path, help="One fixed representative image; loaded before all timing")
-    p.add_argument("--result-dir", type=Path)
+    p.add_argument(
+        "--image", action=UniqueStore, type=Path, help="One fixed representative image; loaded before all timing"
+    )
+    p.add_argument("--result-dir", action=UniqueStore, type=Path)
     args = p.parse_args()
     cfg, audit = configuration(args)
     verify_sources()

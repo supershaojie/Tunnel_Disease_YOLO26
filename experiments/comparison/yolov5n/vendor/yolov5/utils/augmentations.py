@@ -19,39 +19,6 @@ IMAGENET_MEAN = 0.485, 0.456, 0.406  # RGB mean
 IMAGENET_STD = 0.229, 0.224, 0.225  # RGB standard deviation
 
 
-class Albumentations:
-    # YOLOv5 Albumentations class (optional, only used if package is installed)
-    def __init__(self, size=640):
-        self.transform = None
-        prefix = colorstr('albumentations: ')
-        try:
-            import albumentations as A
-            check_version(A.__version__, '1.0.3', hard=True)  # version requirement
-
-            T = [
-                A.RandomResizedCrop(height=size, width=size, scale=(0.8, 1.0), ratio=(0.9, 1.11), p=0.0),
-                A.Blur(p=0.01),
-                A.MedianBlur(p=0.01),
-                A.ToGray(p=0.01),
-                A.CLAHE(p=0.01),
-                A.RandomBrightnessContrast(p=0.0),
-                A.RandomGamma(p=0.0),
-                A.ImageCompression(quality_lower=75, p=0.0)]  # transforms
-            self.transform = A.Compose(T, bbox_params=A.BboxParams(format='yolo', label_fields=['class_labels']))
-
-            LOGGER.info(prefix + ', '.join(f'{x}'.replace('always_apply=False, ', '') for x in T if x.p))
-        except ImportError:  # package not installed, skip
-            pass
-        except Exception as e:
-            LOGGER.info(f'{prefix}{e}')
-
-    def __call__(self, im, labels, p=1.0):
-        if self.transform and random.random() < p:
-            new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
-            im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
-        return im, labels
-
-
 def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False):
     # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = (x - mean) / std
     return TF.normalize(x, mean, std, inplace=inplace)

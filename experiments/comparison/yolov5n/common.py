@@ -18,7 +18,6 @@ VENDOR = HERE / "vendor/yolov5"
 SHARED = HERE.parent / "shared"
 sys.path.insert(0, str(HERE.parent))  # pure shared package is needed before native checkpoint bootstrap
 DEFAULT = HERE / "configs/default.yaml"
-HISTORY_YAML_SHA = "1f18760508e9dbf2332cd7102ee9c15e11e08f3d15fc4202c8ee0ed1bb785b12"
 AUG = dict(
     hsv_h=0.024,
     hsv_s=0.84,
@@ -219,8 +218,11 @@ def configuration(args):
     validate_augmentation(augmentation)
     if augmentation["copy_paste"]:
         raise ValueError("Detection-only labels have no polygons for CopyPaste; nonzero request is unsupported")
-    if profile == "none" and any(v for k, v in augmentation.items() if k != "copy_paste_mode"):
-        raise ValueError("none profile cannot contain nonzero random augmentation overrides")
+    if profile == "none" and (
+        cfg["augment"]["albumentations"] != "disabled"
+        or any(v for k, v in augmentation.items() if k != "copy_paste_mode")
+    ):
+        raise ValueError("none profile requires disabled Albumentations and zero random augmentation values")
     if profile == "native" and (augmentation["cutmix"] or augmentation["bgr"] or augmentation["close_mosaic"]):
         raise ValueError("v7.0 native profile has no CutMix, BGR randomization or close_mosaic; use b19/custom")
     cfg["augment"]["resolved"] = augmentation
@@ -364,13 +366,15 @@ def bootstrap(cache):
                 path = getattr(module, "__file__", None)
                 if path and not Path(path).resolve().is_relative_to(VENDOR):
                     raise RuntimeError(f"Conflicting {name} loaded from {path}; start a new independent process")
-    for path in (HERE.parent, VENDOR):
-        if str(path) not in sys.path:
-            sys.path.insert(0, str(path))
+    paths = (str(VENDOR), str(HERE.parent))
+    sys.path[:] = [*paths, *(path for path in sys.path if path not in paths)]
     import models.yolo
     import utils.general
 
-    return {"models": models.yolo.__file__, "utils": utils.general.__file__, "vendor": str(VENDOR)}
+    imports = {"models": models.yolo.__file__, "utils": utils.general.__file__, "vendor": str(VENDOR)}
+    if any(not Path(imports[key]).resolve().is_relative_to(VENDOR) for key in ("models", "utils")):
+        raise RuntimeError(f"Native imports must resolve inside the locked vendor: {imports}")
+    return imports
 
 
 def backend_train():
@@ -395,7 +399,11 @@ def protocol(cfg, manifest):
         "augment": {
             "profile": cfg["augment"]["profile"],
             "values": cfg["augment"]["resolved"],
-            "implementation": core,
+            "implementation": canonical_hash(
+                {name: digest(VENDOR / name) for name in ("utils/augmentations.py", "utils/dataloaders.py")}
+            )
+            if cfg["augment"]["profile"] == "native"
+            else core,
             "extras": {"albumentations": {"enabled": False}}
             if cfg["augment"]["albumentations"] == "disabled"
             else {"albumentations": {"enabled": True, "version": "2.0.8", "policy": "frozen_default"}},

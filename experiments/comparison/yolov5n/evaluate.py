@@ -3,15 +3,25 @@
 import copy
 from pathlib import Path
 
-from common import bootstrap, configuration, parser, print_plan, protocol, verify_sources
+from common import UniqueStore, bootstrap, configuration, parser, print_plan, protocol, verify_sources
 from comparison_io import digest, now, read_json, status, trusted_load, verify_weights, write_json
 
 
 def main():
     p = parser(__doc__)
-    p.add_argument("--split", choices=("val", "test"))
-    p.add_argument("--result-dir", type=Path, help="Run directory; outputs are evaluation/val or evaluation/test")
-    p.add_argument("--threshold-from", type=Path, help="Frozen threshold from evaluation of the same weights on val")
+    p.add_argument("--split", action=UniqueStore, choices=("val", "test"))
+    p.add_argument(
+        "--result-dir",
+        action=UniqueStore,
+        type=Path,
+        help="Run directory; outputs are evaluation/val or evaluation/test",
+    )
+    p.add_argument(
+        "--threshold-from",
+        action=UniqueStore,
+        type=Path,
+        help="Frozen threshold from evaluation of the same weights on val",
+    )
     args = p.parse_args()
     cfg, audit = configuration(args)
     verify_sources()
@@ -34,8 +44,8 @@ def main():
         raise ValueError("Wrong checkpoint backend identity")
     current = protocol(cfg, data)
     # An explicit evaluation variant is allowed, but data and training augmentation identity must still match.
-    if info["public"]["data"] != current["public"]["data"]:
-        raise ValueError("Evaluation data content/partition mismatch with trained checkpoint")
+    if any(info["public"][key] != current["public"][key] for key in ("data", "augment")):
+        raise ValueError("Evaluation data/training augmentation identity mismatch with trained checkpoint")
     split = cfg["eval"]["split"]
     run = args.result_dir.resolve() if args.result_dir else Path(cfg["weights"]).resolve().parent.parent
     directory = run / "evaluation" / split

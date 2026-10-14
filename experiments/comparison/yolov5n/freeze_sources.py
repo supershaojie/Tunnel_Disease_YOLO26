@@ -23,13 +23,6 @@ def git_blob(root, revision, name):
     )
 
 
-def extract(path, names):
-    source = path.read_text(encoding="utf-8")
-    lines = source.splitlines(keepends=True)
-    nodes = {n.name: n for n in ast.parse(source).body if isinstance(n, (ast.ClassDef, ast.FunctionDef))}
-    return "\n\n".join("".join(lines[nodes[n].lineno - 1 : nodes[n].end_lineno]) for n in names)
-
-
 def replace(source, old, new):
     if source.count(old) != 1:
         raise ValueError(f"Expected exactly one upstream patch target: {old[:90]}")
@@ -192,6 +185,32 @@ def freeze(upstream):
     (vendor / "train.py").write_text(train.rstrip() + "\n", encoding="utf-8", newline="\n")
     patches.append("utils/torch_utils.py: expose Adam beta2, preserving its original 0.999 default")
     dataloaders = (vendor / "utils/dataloaders.py").read_text(encoding="utf-8")
+    dataloaders = replace(dataloaders, "(Albumentations, augment_hsv", "(augment_hsv")
+    dataloaders = replace(
+        dataloaders,
+        "                      shuffle=False):",
+        "                      shuffle=False,\n                      albumentations=None):",
+    )
+    dataloaders = replace(
+        dataloaders,
+        "            prefix=prefix)",
+        "            prefix=prefix,\n            albumentations=albumentations)",
+    )
+    dataloaders = replace(
+        dataloaders,
+        "                 prefix=''):",
+        "                 prefix='',\n                 albumentations=None):",
+    )
+    dataloaders = replace(
+        dataloaders,
+        "        self.albumentations = Albumentations(size=img_size) if augment else None",
+        "        self.albumentations = albumentations",
+    )
+    dataloaders = replace(
+        dataloaders,
+        "            img, labels = self.albumentations(img, labels)\n            nl = len(labels)  # update after albumentations",
+        "            if self.albumentations is not None:\n                img = self.albumentations({'img': img, 'cls': labels[:, :1]})['img']",
+    )
     dataloaders = replace(
         dataloaders,
         "        cache_path = (p if p.is_file() else Path(self.label_files[0]).parent).with_suffix('.cache')",
@@ -210,7 +229,15 @@ def freeze(upstream):
     )
     (vendor / "utils/dataloaders.py").write_text(dataloaders, encoding="utf-8", newline="\n")
     patches.append(
-        "utils/dataloaders.py: relocate native variant label caches to experiment cache; remove write-back JPEG repair"
+        "utils/dataloaders.py: relocate native variant label caches to experiment cache; remove write-back JPEG repair and ambient optional augmentation construction; adapter injects the explicit disabled/frozen policy before workers start"
+    )
+    augmentations = (vendor / "utils/augmentations.py").read_text(encoding="utf-8")
+    start, end = augmentations.index("\nclass Albumentations:"), augmentations.index("\ndef normalize(")
+    (vendor / "utils/augmentations.py").write_text(
+        augmentations[:start] + augmentations[end:], encoding="utf-8", newline="\n"
+    )
+    patches.append(
+        "utils/augmentations.py: delete unused ambient detection Albumentations wrapper; reuse the explicit frozen B19 optional provider"
     )
     for name in ("models/common.py", "models/experimental.py"):
         text = (vendor / name).read_text(encoding="utf-8")
@@ -227,6 +254,9 @@ def freeze(upstream):
             )
         (vendor / name).write_text(text, encoding="utf-8", newline="\n")
         patches.append(f"{name}: only private checkpoint load sites use manifest-verified explicit weights_only=False")
+    patches.append(
+        "Private train checkpoint serialization retains FP32 model/EMA; lazy notebook display imports; source provenance comes from verified lock."
+    )
     lock = {
         "repository": "https://github.com/ultralytics/yolov5",
         "tag": "v7.0",
@@ -307,7 +337,7 @@ def freeze(upstream):
                 "reference_commit": shared_ref,
                 "reference_branch": "codex/compare-yolov8n-b19",
                 "files": hashes,
-                "reuse": "Verbatim committed shared provider/data audit/matching/AP/exchange.",
+                "reuse": "Verbatim committed shared provider, data audit, matching, AP and prediction exchange. No source dependency on another worktree.",
             },
             indent=2,
         )
