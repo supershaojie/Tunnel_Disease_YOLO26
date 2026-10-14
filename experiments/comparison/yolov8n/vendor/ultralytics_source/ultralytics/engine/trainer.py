@@ -358,7 +358,6 @@ class BaseTrainer:
             # Update dataloader attributes (optional)
             if epoch == (self.epochs - self.args.close_mosaic):
                 self._close_dataloader_mosaic()
-                self.train_loader.reset()
 
             if RANK in {-1, 0}:
                 LOGGER.info(self.progress_string())
@@ -750,6 +749,7 @@ class BaseTrainer:
         if hasattr(self.train_loader.dataset, "close_mosaic"):
             LOGGER.info("Closing dataloader mosaic")
             self.train_loader.dataset.close_mosaic(hyp=self.args)
+        self.train_loader.reset()
 
     def build_optimizer(self, model, name="auto", lr=0.001, momentum=0.9, decay=1e-5, iterations=1e5):
         """

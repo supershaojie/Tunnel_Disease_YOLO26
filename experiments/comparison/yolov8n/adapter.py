@@ -42,7 +42,6 @@ class ComparisonDataset(YOLODataset):
     def __init__(self, *args, comparison, **kwargs):
         self.comparison = comparison
         self.augmentation_values = deepcopy(comparison["augment"]["effective"])
-        self.closed = False
         super().__init__(*args, **kwargs)
 
     def update_labels_info(self, label):
@@ -76,7 +75,6 @@ class ComparisonDataset(YOLODataset):
         )
 
     def close_mosaic(self, hyp):
-        self.closed = True
         self.augmentation_values = provider.closed_values(self.augmentation_values)
         if self.comparison["augment"]["profile"] == "native":
             return super().close_mosaic(hyp)
@@ -264,15 +262,25 @@ class ComparisonTrainer(DetectionTrainer):
 
     def save_model(self):
         super().save_model()
+        manifest_path = self.save_dir / "checkpoint_manifest.json"
+        weights = json.loads(manifest_path.read_text(encoding="utf-8"))["weights"] if manifest_path.is_file() else {}
+        # Native save writes the same serialized bytes to each checkpoint touched by this event.
+        saved_sha = file_hash(self.last)
+        weights[self.last.name] = saved_sha
+        if self.best_fitness == self.fitness:
+            weights[self.best.name] = saved_sha
+        if self.save_period > 0 and self.epoch % self.save_period == 0:
+            weights[f"epoch{self.epoch}.pt"] = saved_sha
         write_json(
-            self.save_dir / "checkpoint_manifest.json",
+            manifest_path,
             {
                 "model": "yolov8n",
                 "backend_sha": self.context["backend_sha"],
                 "data_sha256": self.context["data_report"]["data_sha256"],
                 "protocol_sha256": self.context["protocol"]["protocol_sha256"],
-                "weights": {p.name: file_hash(p) for p in self.wdir.glob("*.pt")},
+                "weights": weights,
                 "original_pretrained_sha256": self.context["pretrained_provenance"]["sha256"],
+                "execution_kind": self.context["config"]["_execution_kind"],
             },
         )
         if self.best_fitness == self.fitness:
@@ -283,7 +291,7 @@ class ComparisonTrainer(DetectionTrainer):
                     "best_epoch": self.epoch + 1,
                     "metric": "unified val mAP50-95",
                     "value": self.fitness,
-                    "weight_sha256": file_hash(self.best),
+                    "weight_sha256": weights[self.best.name],
                     "val_confidence_selection": selection,
                     "protocol_sha256": self.context["protocol"]["protocol_sha256"],
                 },

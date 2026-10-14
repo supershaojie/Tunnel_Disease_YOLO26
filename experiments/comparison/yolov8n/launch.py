@@ -7,14 +7,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from common import ROOT, parser, resolve
+from common import ROOT, UniqueStore, parser, resolve, result_directory
 
 
 def main():
     """Launch one model without polling, waiting for or stopping another GPU process."""
     p = parser("tmux launch")
-    p.add_argument("--session", default="cmp-y8n")
-    p.add_argument("--mode", choices=["train", "evaluate", "benchmark"], default="train")
+    p.add_argument("--session", action=UniqueStore, default="cmp-y8n")
+    p.add_argument("--mode", action=UniqueStore, choices=["train", "evaluate", "benchmark"], default="train")
     args = p.parse_args()
     cfg = resolve(args)
     if args.dry_run:
@@ -35,18 +35,17 @@ def main():
     log_root = Path(cfg["cache_dir"]).resolve() / "logs"
     log_root.mkdir(parents=True, exist_ok=True)
     log = log_root / (args.session + "_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + ".log")
-    run = (
-        Path(cfg["train"]["resume"]).resolve().parent.parent
-        if cfg["train"]["resume"]
-        else Path(cfg["project"]).resolve() / cfg["name"]
-    )
-    result = (
-        Path(args.result_dir).resolve()
-        if args.result_dir
-        else run
-        if args.mode == "train"
-        else run / ("benchmark" if args.mode == "benchmark" else "evaluate_" + cfg["eval"]["split"])
-    )
+    if args.mode == "train":
+        result = (
+            Path(cfg["train"]["resume"]).resolve().parent.parent
+            if cfg["train"]["resume"]
+            else Path(cfg["project"]).resolve() / cfg["name"]
+        )
+    else:
+        if not cfg["weights"]:
+            raise ValueError(f"{args.mode} requires --weights <this-experiment-best.pt>")
+        run = Path(cfg["weights"]).resolve().parent.parent
+        result = result_directory(run, args, args.mode, cfg["eval"]["split"])
     command = shlex.join([sys.executable, "-u", str(Path(__file__).parent / (args.mode + ".py")), *forwarded])
     shell = (
         f"set -o pipefail\n{command} 2>&1 | tee {shlex.quote(str(log))}\n"

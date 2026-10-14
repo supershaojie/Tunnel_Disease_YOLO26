@@ -18,7 +18,7 @@
   与 YOLOv5n 使用独立进程。禁止在已导入其他 Ultralytics 的 Python 会话内调用。
 
 私有补丁仅涉及可信旧 checkpoint 的明确 `weights_only=False` 加载点、AMP 探针本地权重路径、
-NumPy AP 积分 API 兼容、缓存路径和只读 JPEG 验证。删除了原包全局 `torch.load` 替换、
+NumPy AP 积分 API 兼容、缓存路径、只读 JPEG 验证和增强关闭后的加载进程刷新。删除了原包全局 `torch.load` 替换、
 外部集成注册、导入时遥测和训练时 pip 更新探测。没有修改 C2f、SPPF、Detect、DFL/TAL、
 box/cls/dfl 损失、EMA、原生优化器选择或调度器。AMP 保留原生 FP32/AMP 相等性检查，
 不下载其他模型，不伪造通过状态。
@@ -68,7 +68,8 @@ Mosaic → CopyPaste → 仿射/透视 → MixUp → CutMix → HSV → 上下/�
 MixUp 的 Beta(32,32)、CutMix 的 Beta(1,1)、候选贴片、IoA 标签筛选、Mosaic buffer 选图、
 框裁剪和空框处理来自锚点函数，没有用 v8 同名函数代替。
 B19 配置从真实 `--baseline-args` 读取；关闭日程在 `epochs-close_mosaic` 的零基 epoch 触发，
-关闭 mosaic/copy_paste/mixup/cutmix，保留 HSV、仿射和翻转。
+关闭 mosaic/copy_paste/mixup/cutmix，保留 HSV、仿射和翻转。关闭操作同时重启加载进程，
+正常训练及关闭边界之后的断点恢复都使用关闭后的变换。
 
 专用 `ComparisonDataset` 在原生 Trainer 的生产路径执行一次共享增强，显式转换 Instances，
 然后使用 v8 原生 Format/collate/归一化/损失。B19/custom 下没有旧版原生重复增强及 Albumentations 额外随机操作。
@@ -76,14 +77,17 @@ B19 配置从真实 `--baseline-args` 读取；关闭日程在 `epochs-close_mos
 crack 数据只有检测框，非零 CopyPaste 请求会明确拒绝（没有分割多边形可复制）。
 `none` 真正关闭随机增强；`native` 使用锁定 v8 原生增强，并拒绝其不支持的非零 CutMix；
 `custom` 使用冻结提供器的可编辑配置。所有变体保存独立协议。
+native 的协议散列锁定原生操作源码，并实录可选 Albumentations 的版本、启用状态和变换配置。
 
 当前未发现已有可靠 YOLOv5 对比分支。本分支提供自包含共享实现，另一模型应逐文件复用同一版本，
 并比对 `augment_core_sha256` / `metrics_sha256` / `protocol_sha256`。另一模型尚未接入，跨模型一致性状态 **UNVERIFIED**。
 协议只包含公共数据内容、增强、评测、输入尺寸和实现哈希，不包含模型/优化器/绝对安装路径。
 完整 run config 与后端适配器另外散列。
+匹配身份包含共享匹配函数和评测汇总；适配器身份包含训练接口及独立推理/坐标还原代码。
 
 每轮只验证 val，复用该轮原生预测计算 B19 统一 mAP50–95，用它选择 `weights/best.pt` 和早停。
 不使用 test 选权重，不做重复验证前向。保留可恢复的 last.pt；删除原生训练结束时再验证并剥除 optimizer 的路径，
+拒绝 `train.save_hybrid=true`，避免原生自动标注功能把真值框加入验证预测。
 训练 summary 保存已完成 epoch、最佳 epoch 和停止原因。
 独立 evaluate 重载本实验权重，原生 DFL 解码与 NMS 使用 class score，无额外 objectness 和 end2end。
 保存低阈值完整原图像素预测、GT、AP50/AP75/mAP50–95、固定 conf0.25/0.50 的真实 TP/FP/FN/P/R/F1，
@@ -141,6 +145,8 @@ package 默认严格小于 12,000,000 bytes，保留完整 float32 预测/GT、�
 不放权重/数据原图/环境/缓存/重复 PNG。保留服务器原始结果，不用删低置信度预测节省空间。
 生成成员/大小/校验清单，ZIP 实际校验，不合格就报错。`--results DIR...` 做协议检查的跨模型摘要汇总，
 总包另按严格小于 100,000,000 bytes 检查。
+打包包含全部已有恢复请求/有效配置/差异/环境/初始化记录。测速完成后在训练目录记录其实际位置，
+自定义测速目录也可打包；其权重及实际评测协议不匹配时单列为 unmatched，不作为本次评测的测速。
 
 ## 有限验证
 
@@ -151,5 +157,6 @@ python experiments/comparison/yolov8n/verify.py --output .development/SMOKE_veri
 只在新临时目录创建带 SMOKE 标记的合成数据：CPU FP32 两次真实检测损失优化器更新、
 可用 CUDA 的原生 AMP 少量更新、强制增强与关闭日程、冻结 B19 AP/匹配、独立正式 evaluate 重载、
 完整 NPZ 导出、少量测速和严格大小打包。它不代表精度或服务器通过。
+验证入口明确设置 SMOKE 身份并随运行保存；重载与测速沿用该身份，不依据临时目录名称猜测。
 实际验证结论见 `validation.json`，未执行项明确标 UNVERIFIED。
 历史四组权重/独立 test 参数及组合源码仍须服务器只读核对；本次不接触这些权重。

@@ -16,6 +16,21 @@ import numpy as np
 from common import HERE, ROOT, parser, protocol, resolve, write_json
 
 
+class WorkerSamples:
+    """Expose a worker's augmentation state across the native loader/resume lifecycle."""
+
+    mosaic = True
+
+    def __len__(self):
+        return 4
+
+    def __getitem__(self, index):
+        return int(self.mosaic)
+
+    def close_mosaic(self, hyp):
+        self.mosaic = False
+
+
 def main():
     """Run a bounded synthetic SMOKE, never formal training or the original test split."""
     p = argparse.ArgumentParser(description=__doc__)
@@ -35,7 +50,7 @@ def main():
             text=True,
             encoding="utf-8",
             errors="replace",
-            env={**os.environ, "PYTHONUTF8": "1"},
+            env={**os.environ, "PYTHONUTF8": "1", "YOLO_COMPARISON_SMOKE": "1"},
         )
         (output / (name + ".log")).write_text(result.stdout + result.stderr, encoding="utf-8")
         if result.returncode != expect:
@@ -77,6 +92,7 @@ def main():
             ("probability", ["augment.overrides.cutmix=1.1"]),
             ("duplicate", ["train.batch=16", "train.batch=32"]),
             ("boolean", ["train.amp=yes_invalid"]),
+            ("hybrid_gt", ["train.save_hybrid=true"]),
         ]:
             command(
                 "reject_" + name,
@@ -84,6 +100,7 @@ def main():
                 expect=1,
             )
         results["checks"]["config_overrides_and_rejections"] = "PASSED"
+        command("reject_repeated_device", [HERE / "train.py", "--dry-run", "--device", "0", "--device", "1"], expect=2)
         cfg = resolve(parser("verify").parse_args(["--dry-run"]))
         other = deepcopy(cfg)
         other["train"]["optimizer"] = "AdamW"
@@ -259,6 +276,10 @@ def main():
             "--set",
             "train.plots=false",
             "--set",
+            "eval.batch=2",
+            "--set",
+            "eval.workers=0",
+            "--set",
             "augment.overrides.close_mosaic=0",
         ]
         command(
@@ -268,6 +289,7 @@ def main():
         run = output / "SMOKE_runs/SMOKE_cpu"
         summary = json.loads((run / "training_summary.json").read_text(encoding="utf-8"))
         assert summary["optimizer_updates_ema"] >= 2
+        assert summary["server_training_status"] == "SMOKE"
         init = json.loads((run / "initialization.json").read_text(encoding="utf-8"))
         assert len(init["inherited_keys"]) > 100 and len(init["reinitialized_keys"]) > 0
         epoch = json.loads((run / "optimizer_epochs.jsonl").read_text(encoding="utf-8").splitlines()[0])
@@ -328,6 +350,29 @@ def main():
         loader = build_dataloader(dataset, 2, 0, shuffle=True, rank=-1)
         assert loader.worker_init_fn is seed_worker
         results["checks"]["native_adapter_format_close_worker_seed"] = "PASSED"
+        from ultralytics.data.build import InfiniteDataLoader
+
+        workers = InfiniteDataLoader(WorkerSamples(), batch_size=2, num_workers=1)
+        try:
+            assert next(iter(workers)).tolist() == [1, 1]
+            resumed = SimpleNamespace(
+                resume=True,
+                ema=None,
+                epochs=3,
+                args=SimpleNamespace(model="SMOKE", close_mosaic=2),
+                train_loader=workers,
+            )
+            resumed._close_dataloader_mosaic = lambda: BaseTrainer._close_dataloader_mosaic(resumed)
+            BaseTrainer.resume_training(resumed, {"epoch": 1, "optimizer": None})
+            assert resumed.start_epoch == 2 and next(iter(workers)).tolist() == [0, 0]
+        finally:
+            workers.iterator._shutdown_workers()
+        results["checks"]["resume_after_close_refreshes_real_loader_workers"] = "PASSED"
+        native_cfg = resolve(parser("verify").parse_args(["--dry-run", "--set", "augment.profile=native"]))
+        native_protocol = protocol(native_cfg, "synthetic-content")
+        assert native_protocol["augment_core_sha256"] != protocol(cfg, "synthetic-content")["augment_core_sha256"]
+        assert isinstance(native_protocol["config"]["augment"]["extras"]["albumentations"]["enabled"], bool)
+        results["checks"]["native_operator_and_optional_pipeline_identity"] = "PASSED"
         command(
             "reload_val",
             [
@@ -341,10 +386,6 @@ def main():
                 "val",
                 "--result-dir",
                 output / "SMOKE_val",
-                "--set",
-                "eval.batch=2",
-                "--set",
-                "eval.workers=0",
             ],
         )
         command(
@@ -362,14 +403,11 @@ def main():
                 output / "SMOKE_test",
                 "--val-metrics",
                 output / "SMOKE_val/metrics.json",
-                "--set",
-                "eval.batch=2",
-                "--set",
-                "eval.workers=0",
             ],
         )
         tested = json.loads((output / "SMOKE_test/metrics.json").read_text(encoding="utf-8"))
         assert tested["images"] == 3 and tested["val_frozen"] is not None
+        assert tested["formal_result"] == "SMOKE"
         assert tested["geometry"]["model_input_dtypes"] == [["torch.float32", "torch.float32"]]
         with np.load(output / "SMOKE_test/predictions.npz") as stored:
             assert stored["boxes"].dtype == np.float32 and len(stored["image_offsets"]) == 4
@@ -383,6 +421,8 @@ def main():
                 weight,
                 "--device",
                 "cpu",
+                "--result-dir",
+                output / "SMOKE_custom_benchmark",
                 "--set",
                 "benchmark.imgsz=64",
                 "--set",
@@ -405,6 +445,12 @@ def main():
             ],
         )
         assert (output / "SMOKE_core.zip").stat().st_size < 12000000
+        import zipfile
+
+        with zipfile.ZipFile(output / "SMOKE_core.zip") as z:
+            measured = json.loads(z.read("benchmark/benchmark.json"))
+            assert measured["status"] == "MEASURED" and measured["formal_result"] == "SMOKE"
+            assert measured["weight_sha256"] == tested["weight_sha256"]
         results["checks"]["core_package_members_and_strict_bytes"] = {
             "status": "PASSED",
             "bytes": (output / "SMOKE_core.zip").stat().st_size,

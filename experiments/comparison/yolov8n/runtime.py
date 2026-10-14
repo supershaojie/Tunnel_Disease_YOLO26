@@ -18,6 +18,7 @@ from common import (
     protocol,
     read_yaml,
     resolve,
+    result_directory,
     status,
     verify_backend,
     write_json,
@@ -201,16 +202,18 @@ def train(cfg, args):
         if saved["_provenance"]["baseline_args_sha256"] != cfg["_provenance"]["baseline_args_sha256"]:
             raise ValueError("Resume B19 reference changed")
         directory = run
+        cfg["_execution_kind"] = saved["_execution_kind"]
     else:
         if planned.exists():
             raise FileExistsError(f"New run directory already exists: {planned}; use explicit --resume last.pt")
         directory = planned
         directory.mkdir(parents=True)
+        cfg["_execution_kind"] = "SMOKE" if os.environ.get("YOLO_COMPARISON_SMOKE") == "1" else "FORMAL"
     status(
         directory,
         "train",
         "RUNNING",
-        formal_training="SMOKE" if "/.development/" in directory.as_posix() else "STARTED",
+        formal_training="SMOKE" if cfg["_execution_kind"] == "SMOKE" else "STARTED",
     )
     try:
         backend = bootstrap(cfg, path, data_identity=data_report["data_sha256"])
@@ -225,7 +228,7 @@ def train(cfg, args):
             "pretrained_provenance": provenance,
             "protocol": public,
             "backend_sha": verify_backend()["commit"],
-            "smoke": "/.development/" in directory.as_posix(),
+            "smoke": cfg["_execution_kind"] == "SMOKE",
         }
         if not resumed:
             write_json(directory / "run_config.json", cfg)
@@ -250,18 +253,6 @@ def train(cfg, args):
         )
         model = backend.YOLO(str(resumed or path), task="detect")
         model.train(trainer=ComparisonTrainer, **native)
-        weights = {p.name: file_hash(p) for p in (directory / "weights").glob("*.pt")}
-        write_json(
-            directory / "checkpoint_manifest.json",
-            {
-                "model": "yolov8n",
-                "backend_sha": verify_backend()["commit"],
-                "data_sha256": data_report["data_sha256"],
-                "protocol_sha256": public["protocol_sha256"],
-                "weights": weights,
-                "original_pretrained_sha256": provenance["sha256"],
-            },
-        )
         status(
             directory,
             "train",
@@ -272,18 +263,6 @@ def train(cfg, args):
     except BaseException as e:
         # This records failure without suppressing it or changing batch/device/AMP.
         status(directory, "train", "FAILED", reason=f"{type(e).__name__}: {e}")
-        if (directory / "weights/last.pt").is_file():
-            write_json(
-                directory / "checkpoint_manifest.json",
-                {
-                    "model": "yolov8n",
-                    "backend_sha": verify_backend()["commit"],
-                    "data_sha256": data_report["data_sha256"],
-                    "protocol_sha256": protocol(cfg, data_report["data_sha256"])["protocol_sha256"],
-                    "weights": {p.name: file_hash(p) for p in (directory / "weights").glob("*.pt")},
-                    "original_pretrained_sha256": provenance["sha256"],
-                },
-            )
         raise
 
 
@@ -301,15 +280,15 @@ def evaluate(cfg, args):
     dataset, data_report = audit(cfg["data"], read_yaml)
     if checkpoint["data_sha256"] != data_report["data_sha256"]:
         raise ValueError("Evaluation data differs from audited training data")
-    public = protocol(cfg, data_report["data_sha256"])
     split = cfg["eval"]["split"]
-    directory = Path(args.result_dir or run / ("evaluate_" + split))
+    directory = result_directory(run, args, "evaluate", split)
     if directory.exists():
         raise FileExistsError(f"Evaluation directory exists: {directory}; choose --result-dir")
     directory.mkdir(parents=True)
     status(directory, "evaluate", "RUNNING")
     try:
         backend = bootstrap(cfg, data_identity=data_report["data_sha256"])
+        public = protocol(cfg, data_report["data_sha256"])
         import torch
         from ultralytics.cfg import get_cfg
         from ultralytics.data import build_dataloader
@@ -385,7 +364,7 @@ def evaluate(cfg, args):
             adapter_sha256=public["adapter_sha256"],
             metrics_sha256=file_hash(SHARED / "b19/metrics.py"),
             data_sha256=data_report["data_sha256"],
-            formal_result="SMOKE" if "/.development/" in run.as_posix() else "MEASURED",
+            formal_result="SMOKE" if checkpoint["execution_kind"] == "SMOKE" else "MEASURED",
             geometry={
                 "input_shapes": sorted(validator.observed_shapes),
                 "rect": cfg["eval"]["rect"],
@@ -406,7 +385,6 @@ def evaluate(cfg, args):
                 "TTA": False,
             },
             parameters={"unfused": training_params, "inference": sum(p.numel() for p in model.parameters())},
-            benchmark={"status": "NOT_RUN"},
         )
         write_json(directory / "metrics.json", metrics)
         write_json(directory / "protocol.json", public)

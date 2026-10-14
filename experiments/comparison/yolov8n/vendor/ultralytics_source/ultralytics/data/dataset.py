@@ -138,7 +138,8 @@ class YOLODataset(BaseDataset):
         self.label_files = img2label_paths(self.im_files)
         cache_root = Path(os.environ["YOLO_COMPARISON_CACHE_DIR"]) / "labels"
         cache_root.mkdir(parents=True, exist_ok=True)
-        cache_path = cache_root / (hashlib.sha256("\n".join(self.im_files).encode()).hexdigest() + ".cache")
+        identity = os.environ["YOLO_COMPARISON_DATA_IDENTITY"]
+        cache_path = cache_root / (hashlib.sha256((identity + "\n" + "\n".join(self.im_files)).encode()).hexdigest() + ".cache")
         try:
             cache, exists = load_dataset_cache_file(cache_path), True  # attempt to load a *.cache file
             assert cache["version"] == DATASET_CACHE_VERSION  # matches current version

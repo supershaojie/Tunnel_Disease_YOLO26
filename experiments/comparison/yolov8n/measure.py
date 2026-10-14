@@ -6,7 +6,7 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-from common import bootstrap, environment, file_hash, status, write_json
+from common import bootstrap, environment, file_hash, protocol, result_directory, status, write_json
 from runtime import checkpoint_info, preflight
 
 
@@ -17,13 +17,14 @@ def benchmark(cfg, args):
     if not cfg["weights"]:
         raise ValueError("benchmark requires --weights <this-experiment-best.pt>")
     run, checkpoint = checkpoint_info(cfg["weights"])
-    directory = Path(args.result_dir or run / "benchmark")
+    directory = result_directory(run, args, "benchmark")
     if directory.exists():
         raise FileExistsError(f"Benchmark directory exists: {directory}")
     directory.mkdir(parents=True)
     status(directory, "benchmark", "RUNNING")
     try:
         backend = bootstrap(cfg)
+        public = protocol(cfg, checkpoint["data_sha256"])
         import numpy as np
         import torch
         from ultralytics.data.augment import LetterBox
@@ -116,10 +117,12 @@ def benchmark(cfg, args):
         result = {
             "status": "MEASURED",
             "paper_eligibility": contention_status,
-            "formal_result": "SMOKE" if "/.development/" in run.as_posix() else "MEASURED",
+            "formal_result": "SMOKE" if checkpoint["execution_kind"] == "SMOKE" else "MEASURED",
             "weight_sha256": file_hash(cfg["weights"]),
-            "protocol_sha256": checkpoint["protocol_sha256"],
+            "protocol_sha256": public["protocol_sha256"],
+            "training_protocol_sha256": checkpoint["protocol_sha256"],
             "settings": setting,
+            "NMS": {k: cfg["eval"][k] for k in ["conf", "iou", "max_det"]},
             "parameters": {
                 "unfused": unfused,
                 "inference": inference,
@@ -145,6 +148,7 @@ def benchmark(cfg, args):
         np.savez_compressed(directory / "timing_samples.npz", samples_ms=samples, columns=np.asarray(columns))
         write_json(directory / "benchmark.json", result)
         status(directory, "benchmark", "COMPLETED", paper_eligibility=contention_status)
+        write_json(run / "benchmark_location.json", {"directory": str(directory)})
         print(json.dumps(result, indent=2))
     except BaseException as e:
         status(directory, "benchmark", "FAILED", reason=f"{type(e).__name__}: {e}")

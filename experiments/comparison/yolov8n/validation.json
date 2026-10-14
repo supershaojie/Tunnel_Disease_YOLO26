@@ -34,13 +34,25 @@
     "fresh_process_native_fp32_fuse_nms_complete_exports": "PASSED",
     "core_package_members_and_strict_bytes": {
       "status": "PASSED",
-      "bytes": 98815
+      "bytes": 100217,
+      "sha256": "84d4ed358aef0995642ac3c70d356b3c9a8f8a2fbdee5ee924a42bbc32af6911"
     },
     "cuda_native_amp_updates": "PASSED",
     "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
     "lifecycle_start_end_history": "PASSED",
     "lint": "Ruff 0.14.0 passed",
-    "actual_import_preflight_synthetic": "PASSED"
+    "actual_import_preflight_synthetic": "PASSED",
+    "resume_after_close_refreshes_real_loader_workers": "PASSED",
+    "native_operator_and_optional_pipeline_identity": "PASSED",
+    "implementation_hash_ownership": "PASSED",
+    "launcher_checkpoint_owned_log_with_mock_tmux": "PASSED",
+    "all_existing_resume_records_packaged_fixture": "PASSED",
+    "stale_checkpoint_or_protocol_benchmark_explicit_unmatched": "PASSED",
+    "optional_native_pipeline_state_changes_protocol_fixture": "PASSED",
+    "native_checkpoint_serialization_hashes_only_current_write": "PASSED",
+    "real_benchmark_records_changed_NMS_and_marks_unmatched": "PASSED: two CPU timing iterations only",
+    "same_size_label_edit_selects_new_content_addressed_cache": "PASSED: synthetic copy only",
+    "explicit_SMOKE_identity_outside_dot_development": "PASSED: _development_checks path; train/reloaded evaluation/benchmark remain SMOKE"
   },
   "status": "PASSED",
   "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
@@ -112,5 +124,7 @@
     "unfused_M": 2.690403,
     "inference_M": 2.684563
   },
-  "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper"
+  "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper",
+  "automation": "UNVERIFIED: repository has zero registered Actions workflows; format.yml returns 404; no automated PR checks/reviews available",
+  "adversarial_findings_addressed": 11
 }

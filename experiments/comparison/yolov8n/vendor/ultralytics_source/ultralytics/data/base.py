@@ -91,7 +91,8 @@ class BaseDataset(Dataset):
         self.ims, self.im_hw0, self.im_hw = [None] * self.ni, [None] * self.ni, [None] * self.ni
         cache_root = Path(os.environ["YOLO_COMPARISON_CACHE_DIR"]) / "images"
         cache_root.mkdir(parents=True, exist_ok=True)
-        self.npy_files = [cache_root / (hashlib.sha256(f.encode()).hexdigest() + ".npy") for f in self.im_files]
+        identity = os.environ["YOLO_COMPARISON_DATA_IDENTITY"]
+        self.npy_files = [cache_root / (hashlib.sha256((identity + "\n" + f).encode()).hexdigest() + ".npy") for f in self.im_files]
         self.cache = cache.lower() if isinstance(cache, str) else "ram" if cache is True else None
         if (self.cache == "ram" and self.check_cache_ram()) or self.cache == "disk":
             if self.cache == "ram" and hyp.deterministic:

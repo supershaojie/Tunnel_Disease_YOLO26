@@ -106,9 +106,15 @@ def write_json(path, value):
     os.replace(temp, path)
 
 
-def source_hash(directory):
-    """Hash only tracked implementation files, excluding machine-generated caches."""
-    return digest({p.relative_to(directory).as_posix(): file_hash(p) for p in sorted(Path(directory).rglob("*.py"))})
+class UniqueStore(argparse.Action):
+    """Assign a scalar/list option once without discarding contradictory repeated requests."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        assigned = vars(namespace).setdefault("_assigned_options", {})
+        if self.dest in assigned and assigned[self.dest] != values:
+            raise argparse.ArgumentError(self, f"Contradictory repeated option: {option_string}")
+        assigned[self.dest] = values
+        setattr(namespace, self.dest, values)
 
 
 def verify_backend():
@@ -125,17 +131,23 @@ def verify_backend():
 def parser(mode):
     """Build the common supported command interface without importing Torch."""
     p = argparse.ArgumentParser(description=f"Locked YOLOv8n comparison: {mode}")
-    p.add_argument("--config", default=str(HERE / "configs/default.yaml"))
+    p.add_argument("--config", action=UniqueStore, default=str(HERE / "configs/default.yaml"))
     for option in ("data", "weights", "baseline-args", "project", "name", "device", "cache-dir", "pretrained-cache"):
-        p.add_argument("--" + option)
+        p.add_argument("--" + option, action=UniqueStore)
     p.add_argument("--set", action="append", default=[], metavar="KEY=YAML_VALUE")
     p.add_argument("--dry-run", action="store_true")
-    p.add_argument("--resume", metavar="LAST_PT", help="Explicit own last.pt; no automatic latest-run lookup")
-    p.add_argument("--split", choices=["val", "test"])
-    p.add_argument("--result-dir")
-    p.add_argument("--output")
-    p.add_argument("--val-metrics", help="Trusted val metrics.json containing the frozen confidence threshold")
-    p.add_argument("--results", nargs="+", help="Result directories for protocol-checked aggregate packaging")
+    p.add_argument(
+        "--resume", action=UniqueStore, metavar="LAST_PT", help="Explicit own last.pt; no automatic latest-run lookup"
+    )
+    p.add_argument("--split", action=UniqueStore, choices=["val", "test"])
+    p.add_argument("--result-dir", action=UniqueStore)
+    p.add_argument("--output", action=UniqueStore)
+    p.add_argument(
+        "--val-metrics", action=UniqueStore, help="Trusted val metrics.json containing the frozen confidence threshold"
+    )
+    p.add_argument(
+        "--results", action=UniqueStore, nargs="+", help="Result directories for protocol-checked aggregate packaging"
+    )
     return p
 
 
@@ -247,6 +259,8 @@ def resolve(args):
         raise ValueError("Main comparison requires val=true, fraction=1, original class mapping and all images")
     if not requested["save"] or requested["pretrained"] is not True or requested["split"] != "val":
         raise ValueError("Main training requires save=true, official pretrained=true and val-only epoch selection")
+    if requested["save_hybrid"]:
+        raise ValueError("save_hybrid injects GT boxes into validation predictions and invalidates comparison metrics")
     for key in ["lr0", "lrf", "weight_decay", "warmup_epochs", "warmup_bias_lr", "box", "cls", "dfl"]:
         if type(requested[key]) not in [int, float] or requested[key] < 0:
             raise ValueError(f"train.{key} must be nonnegative numeric")
@@ -364,28 +378,63 @@ def resolve(args):
 
 def protocol(cfg, data_hash):
     """Build model-independent protocol plus separate backend adapter and run hashes."""
-    core = digest({"b19": source_hash(SHARED / "b19"), "provider": file_hash(SHARED / "provider.py")})
+    profile = cfg["augment"]["profile"]
+    if profile in ["b19", "custom"]:
+        core = digest(
+            {
+                "b19": {
+                    name: file_hash(SHARED / "b19" / name)
+                    for name in ["augment.py", "instance.py", "ops.py", "metrics.py"]
+                },
+                "provider": file_hash(SHARED / "provider.py"),
+            }
+        )
+        extras = {"albumentations": {"enabled": False}}
+    else:
+        core = digest(
+            {
+                name: file_hash(VENDOR / "ultralytics" / name)
+                for name in ["data/augment.py", "utils/instance.py", "utils/ops.py"]
+            }
+        )
+        extras = {"albumentations": {"enabled": False}}
+        if profile == "native":
+            from ultralytics.data.augment import Albumentations
+
+            native_extra = Albumentations()
+            extras["albumentations"] = {
+                "enabled": native_extra.transform is not None,
+                "version": getattr(sys.modules.get("albumentations"), "__version__", None),
+                "pipeline": native_extra.transform.to_dict() if native_extra.transform is not None else None,
+            }
     public = {
         "id": cfg["protocol"],
         "data": data_hash,
         "augment": {
-            "profile": cfg["augment"]["profile"],
+            "profile": profile,
             "values": cfg["augment"]["effective"],
             "implementation": core,
-            "extras": "Albumentations disabled",
+            "extras": extras,
         },
         "eval": {k: v for k, v in cfg["eval"].items() if k not in ["split", "fixed_images", "display_conf"]},
         "imgsz": cfg["train"]["imgsz"],
         "metrics_implementation": file_hash(SHARED / "b19/metrics.py"),
-        "matching_implementation": file_hash(SHARED / "evaluation.py"),
+        "matching_implementation": digest(
+            {name: file_hash(SHARED / name) for name in ["b19/matching.py", "evaluation.py"]}
+        ),
     }
     return {
         "config": public,
         "protocol_sha256": digest(public),
         "run_config_sha256": digest(cfg),
         "augment_core_sha256": core,
-        "adapter_sha256": file_hash(HERE / "adapter.py"),
+        "adapter_sha256": digest({name: file_hash(HERE / name) for name in ["adapter.py", "runtime.py"]}),
     }
+
+
+def result_directory(run, args, mode, split=None):
+    """Share the checkpoint-owned result location between runtime, measurement and launcher."""
+    return Path(args.result_dir or Path(run) / ("benchmark" if mode == "benchmark" else "evaluate_" + split)).resolve()
 
 
 def bootstrap(cfg, pretrained=None, data_identity=None):
@@ -396,8 +445,10 @@ def bootstrap(cfg, pretrained=None, data_identity=None):
     cache = Path(cfg["cache_dir"]).resolve()
     cache.mkdir(parents=True, exist_ok=True)
     os.environ["YOLO_AUTOINSTALL"] = "false"
+    os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
     os.environ["YOLO_CONFIG_DIR"] = str(cache / "settings")
-    os.environ["YOLO_COMPARISON_CACHE_DIR"] = str(cache / "yolov8n" / (data_identity or "no_dataset"))
+    os.environ["YOLO_COMPARISON_CACHE_DIR"] = str(cache / "yolov8n")
+    os.environ["YOLO_COMPARISON_DATA_IDENTITY"] = data_identity or "no_dataset"
     if pretrained is not None:
         os.environ["YOLO_COMPARISON_PRETRAINED"] = str(Path(pretrained).resolve())
     sys.path.insert(0, str(VENDOR))

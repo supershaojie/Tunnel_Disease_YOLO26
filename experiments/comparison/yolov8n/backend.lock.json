@@ -258,6 +258,14 @@
       "reason": "Delete update-network trigger from private training path."
     },
     {
+      "file": "ultralytics/engine/trainer.py",
+      "reason": "Delete normal-loop-only reset; augmentation closure owns worker refresh for normal and resumed training."
+    },
+    {
+      "file": "ultralytics/engine/trainer.py",
+      "reason": "Relocate worker reset into augmentation closure so resumed workers receive closed transforms."
+    },
+    {
       "file": "ultralytics/utils/__init__.py",
       "reason": "Delete original global Torch loader monkey-patch; explicit trusted private loading points own compatibility."
     },
@@ -275,7 +283,7 @@
     },
     {
       "file": "ultralytics/data/base.py",
-      "reason": "Relocate image cache ownership into experiment cache."
+      "reason": "Relocate content-addressed image cache ownership into experiment cache without nested long hash directories."
     },
     {
       "file": "ultralytics/data/dataset.py",
@@ -283,7 +291,7 @@
     },
     {
       "file": "ultralytics/data/dataset.py",
-      "reason": "Relocate label scan caches, including when cache=False."
+      "reason": "Relocate content-addressed label scan caches, including when cache=False, without nested long hash directories."
     },
     {
       "file": "ultralytics/data/utils.py",
@@ -387,10 +395,10 @@
     "ultralytics/cfg/trackers/bytetrack.yaml": "f2fa53676c7d9a14572729a826fb351bc9135e8fc7c5b4b01eea7615000b4f70",
     "ultralytics/data/annotator.py": "3e788ec47d8c49c58aa79dfdbeeb9f93af6e1b526c96d0c1e4e302521c67d906",
     "ultralytics/data/augment.py": "6022ebc31d664467a2760828ffb19e20d6b2f0a771002a911072687d979a4c70",
-    "ultralytics/data/base.py": "12a7afacc427810708618186fbab7657b0f15f5c48bc9dd67136d2348877dd9b",
+    "ultralytics/data/base.py": "d944b981acd487fbd6d045db9946e8ebf77fb25d6e3636a44fc636368e963482",
     "ultralytics/data/build.py": "01f326cf4b072189b0af2ffdd2d10915193f933d12dd2a2549c557a981e24f4f",
     "ultralytics/data/converter.py": "0e32746ad92ed9a296d224b53d93cd5fc57a593ad9f821d94fa868a44d474a32",
-    "ultralytics/data/dataset.py": "fc181349bec1f061ab555457b9b6b2b410b08ba5602daab5790cc187cd04b669",
+    "ultralytics/data/dataset.py": "552f4184dae77b083e0e4bb2e21d7e3495c8da1d9e4a5f81eb39def629f019aa",
     "ultralytics/data/loaders.py": "245d99fc448ae91c1e6af3ae6167a3612189c26a8835be61370c026f70007f43",
     "ultralytics/data/split_dota.py": "c8eb72a47a18e47bc85412998055dd7e3dadb822cb1019ccc0d7c0786f781229",
     "ultralytics/data/utils.py": "1d5ad4d3ad55d45b0737bb4efd6aa9332ca378f51cd4c0761881fb33340c1b50",
@@ -404,7 +412,7 @@
     "ultralytics/engine/model.py": "b20da1d3d9a9cfd564e5c7a8db837d379ff4c69eec0d8105b6ea495a89ff1cae",
     "ultralytics/engine/predictor.py": "3203161d425d45c54269598ecaf772d868e4fc4c911eff9aaf44921b141ef05e",
     "ultralytics/engine/results.py": "f1126537c27effdc3e9ab0d99bdc02f836494cf052eefd5cfebfd1d7bdd0c913",
-    "ultralytics/engine/trainer.py": "94130a243a6ef28c04d1e78d900b18b336c044e93e58e077be5868181d5589c7",
+    "ultralytics/engine/trainer.py": "5242dfc6128e48889444f9072e2f55ea45a8b39c63b52a12871b1b1116846928",
     "ultralytics/engine/tuner.py": "80fa834c71fbbd10763b76321f6ea6d418d529b5f1b80d970253d1cd328566c7",
     "ultralytics/engine/validator.py": "e3cdc077cec8ae4ec806524d2eed9240026c6fb62b8802d35fd18882b8829918",
     "ultralytics/engine/__init__.py": "987b49b8ae21c05f1cb95f951c373bb69eaee83d601f3d99ec923c82b9900d3b",

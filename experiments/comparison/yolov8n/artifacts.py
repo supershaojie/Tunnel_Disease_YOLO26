@@ -198,6 +198,7 @@ def _members(directory):
         "official_defaults.json",
         "requested_config.json",
         "effective_config.json",
+        "environment.json",
         "requested_effective_diff.json",
         "parameter_sources.json",
         "initialization.json",
@@ -215,22 +216,34 @@ def _members(directory):
         raise ValueError(f"Incomplete training provenance: {missing}")
     members = {f"evaluation/{name}": directory / name for name in required}
     members.update({f"training/{name}": run / name for name in metadata})
-    for name in ["augmentation_close.json", "optimizer_epochs.jsonl"]:
+    for name in ["augmentation_close.json", "optimizer_epochs.jsonl", "train_status.jsonl", "benchmark_location.json"]:
         if (run / name).is_file():
             members["training/" + name] = run / name
+    members.update({"training/" + p.name: p for p in run.glob("resume_*.json")})
     members.update({f"evaluation/figures/{p.name}": p for p in (directory / "figures").glob("*.svg")})
     if len([name for name in members if "/figures/" in name]) < 6:
         raise ValueError("Required paper figures are missing")
     members.update({f"evaluation/examples/{p.name}": p for p in (directory / "examples").glob("*") if p.is_file()})
-    benchmark = run / "benchmark/benchmark.json"
-    if benchmark.is_file():
-        members["benchmark/benchmark.json"] = benchmark
-        samples = benchmark.parent / "timing_samples.npz"
-        if samples.is_file():
-            members["benchmark/timing_samples.npz"] = samples
+    location = run / "benchmark_location.json"
+    benchmark_status = {"status": "NOT_RUN", "FLOPs": None, "FPS": None}
+    if location.is_file():
+        benchmark = Path(json.loads(location.read_text(encoding="utf-8"))["directory"]) / "benchmark.json"
+        measured = json.loads(benchmark.read_text(encoding="utf-8"))
+        if (
+            measured["weight_sha256"] == metrics["weight_sha256"]
+            and measured["protocol_sha256"] == metrics["protocol_sha256"]
+        ):
+            members["benchmark/benchmark.json"] = benchmark
+            members["benchmark/timing_samples.npz"] = benchmark.parent / "timing_samples.npz"
+        else:
+            members["benchmark/unmatched_benchmark.json"] = benchmark
+            benchmark_status = {
+                "status": "UNVERIFIED",
+                "reason": "Completed benchmark belongs to another checkpoint or evaluation protocol",
+            }
     # Include local/source provenance only, without cloning the large source tree into result packages.
     members["source/b19_source.lock.json"] = HERE.parent / "shared/b19/source.lock.json"
-    return members, metrics, run
+    return members, metrics, run, benchmark_status
 
 
 def package(cfg, args):
@@ -244,7 +257,7 @@ def package(cfg, args):
     all_members, summaries, payloads = {}, [], {}
     expected = None
     for index, directory in enumerate(directories):
-        members, metrics, run = _members(directory)
+        members, metrics, run, benchmark_status = _members(directory)
         if expected is not None and metrics["protocol_sha256"] != expected:
             raise ValueError("Aggregate protocol hashes differ; no misleading comparison package is created")
         expected = metrics["protocol_sha256"]
@@ -255,8 +268,8 @@ def package(cfg, args):
         for p in logs[:2]:
             # Lossless gzip preserves full logs while making the result package compact.
             payloads[prefix + "logs/" + p.name + ".gz"] = gzip.compress(p.read_bytes(), mtime=0)
-        if not (run / "benchmark/benchmark.json").is_file():
-            payloads[prefix + "benchmark/benchmark.json"] = b'{"status":"NOT_RUN","FLOPs":null,"FPS":null}\n'
+        if "benchmark/benchmark.json" not in members:
+            payloads[prefix + "benchmark/benchmark.json"] = json.dumps(benchmark_status).encode()
     output = Path(args.output or Path(directories[0]).parent / "yolov8n_core.zip")
     if output.exists():
         raise FileExistsError(f"Package output exists: {output}")
