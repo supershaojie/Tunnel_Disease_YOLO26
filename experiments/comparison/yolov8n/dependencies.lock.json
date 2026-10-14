@@ -1,0 +1,36 @@
+{
+  "official_source": "vendor/ultralytics_source/pyproject.toml at 6e43d1e1e5db72afbf686dee6745669bcb124b0a",
+  "native_core": {
+    "numpy": "2.4.4",
+    "torch": "2.7.1+cu118",
+    "torchvision": "0.22.1+cu118",
+    "opencv-python": "5.0.0.93",
+    "Pillow": "12.2.0",
+    "matplotlib": "3.11.0",
+    "scipy": "1.17.1",
+    "requests": "2.34.2",
+    "psutil": "7.2.2",
+    "PyYAML": "6.0.3"
+  },
+  "local_isolated_supplements": {
+    "tqdm": "4.66.5",
+    "pandas": "2.3.3",
+    "seaborn": "0.13.2",
+    "pytz": "2025.2",
+    "tzdata": "2025.2",
+    "py-cpuinfo": "9.0.0"
+  },
+  "optional": {
+    "ultralytics-thop": "2.0.20",
+    "ruff": "0.14.0"
+  },
+  "server_reference": {
+    "status": "UNVERIFIED",
+    "python": "3.12.3",
+    "torch": "2.8.0+cu128",
+    "torchvision": "0.23.0+cu128"
+  },
+  "policy": "Source is locked and private. No pip ultralytics installation. Do not upgrade shared B19 environment. Capture actual installed versions per run; use isolated venv for missing native requirements.",
+  "upstream_numpy_constraint": "numpy>=1.23.0,<2.0.0",
+  "compatibility_variant": "Local NumPy2.4 requires the documented private np.trapezoid AP patch; server NumPy version is not assumed."
+}

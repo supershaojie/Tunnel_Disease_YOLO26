@@ -1,0 +1,7 @@
+{
+  "status": "ARCHIVED_REFERENCE_NOT_CURRENT_SERVER_VERIFICATION",
+  "source_branch": "codex/exp-yolo26n-b19-fdv-c2psa-v1",
+  "source_commit": "d0b9d6feeb4a125f2dc44d110edd24340a84959f",
+  "source_path": "tools/experiments/b19_archived_args.yaml",
+  "purpose": "explicit SMOKE input and dry-run preview only; production default reads actual server args"
+}

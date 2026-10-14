@@ -1,0 +1,37 @@
+{
+  "state": "SHARED_SOURCE_EXACT_EQUAL_PUBLIC_SCHEMA_DIFFERENCE",
+  "peer_branch": "exp/compare-yolov5n-b19",
+  "peer_commit": "2a5cdc77914513d0fb3fac33d61a619f2d577181",
+  "peer_pull_request": "https://github.com/supershaojie/Tunnel_Disease_YOLO26/pull/17",
+  "shared_source_commit": "482e555248c0ba52b4bea2b474498cab61fd6f37",
+  "exact_git_byte_equal_runtime_files": [
+    "experiments/comparison/shared/__init__.py",
+    "experiments/comparison/shared/b19/LICENSE",
+    "experiments/comparison/shared/b19/__init__.py",
+    "experiments/comparison/shared/b19/augment.py",
+    "experiments/comparison/shared/b19/checks.py",
+    "experiments/comparison/shared/b19/instance.py",
+    "experiments/comparison/shared/b19/matching.py",
+    "experiments/comparison/shared/b19/metrics.py",
+    "experiments/comparison/shared/b19/ops.py",
+    "experiments/comparison/shared/b19/source.lock.json",
+    "experiments/comparison/shared/data.py",
+    "experiments/comparison/shared/evaluation.py",
+    "experiments/comparison/shared/provider.py"
+  ],
+  "formatter_only_difference": "peer shared/pyproject.toml adds Ruff configuration; excluded from runtime/core hashes",
+  "augment_core_sha256": "0ba1f5198cb24dd404212a25ffceeed14aa01b5468a79beabbf7e1828f299b6b",
+  "synthetic_data_sha256": "d8c1be51b8f0e7a04c34c82e42e055fd45fcec558a3099967dddef41328f0604",
+  "peer_public_protocol_sha256": "5f96fc2c421ae52ac17edd4ace3ea266a1b9bead64b07426eb883f0299d04fc4",
+  "legacy_projection_of_current_public_sha256": "5f96fc2c421ae52ac17edd4ace3ea266a1b9bead64b07426eb883f0299d04fc4",
+  "current_public_protocol_sha256": "593ae66678bb41e0aaf1b4d8a9960959cf69b32e72b651f369a28406d77247d9",
+  "current_augmentation_public_fields_added": [
+    "requested_values",
+    "training (including multi_scale/time)",
+    "close_schedule",
+    "close_epoch_zero_based",
+    "history when resumed"
+  ],
+  "scope": "SMOKE: six-image content identity plus default public presets; no peer/server training or full-data evaluation",
+  "formal_cross_backend_protocol_alignment": "UNVERIFIED: peer must adopt the same effective training geometry, close schedule and inherited-policy history schema before identical-public-hash aggregation; only this YOLOv8n branch is modified"
+}

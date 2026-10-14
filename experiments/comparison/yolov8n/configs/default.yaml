@@ -1,0 +1,47 @@
+protocol: comparison-b19-v1
+backend:
+  name: yolov8n
+  upstream_tag: v8.3.0
+reference:
+  baseline_args: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42/args.yaml
+data: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml
+weights: null
+cache_dir: experiments/comparison/yolov8n/cache
+pretrained_cache: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/weights/pretrained
+project: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/comparison/yolov8n
+name: null
+train:
+  epochs: 200
+  imgsz: 640
+  batch: 32
+  seed: 42
+  workers: 8
+  device: '0'
+  amp: true
+  optimizer: official_default
+  resume: false
+augment:
+  profile: b19
+  overrides: {}
+eval:
+  split: test
+  batch: 32
+  half: false
+  conf: 0.001
+  iou: 0.7
+  max_det: 300
+  rect: true
+  augment: false
+  fuse: true
+  workers: 8
+  display_conf: 0.25
+  fixed_images: null
+benchmark:
+  imgsz: 640
+  batch: 1
+  half: false
+  warmup: 20
+  iterations: 100
+  fuse: true
+package:
+  max_bytes: 12000000
