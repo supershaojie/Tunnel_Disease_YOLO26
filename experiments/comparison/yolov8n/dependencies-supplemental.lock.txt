@@ -1,0 +1,6 @@
+tqdm==4.66.5
+pandas==2.3.3
+seaborn==0.13.2
+pytz==2025.2
+tzdata==2025.2
+py-cpuinfo==9.0.0

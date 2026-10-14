@@ -1,0 +1,116 @@
+{
+  "formal_training": "NOT_STARTED",
+  "server": "UNVERIFIED",
+  "data": "SYNTHETIC_SMOKE",
+  "checks": {
+    "entry_help": "PASSED",
+    "config_overrides_and_rejections": "PASSED",
+    "protocol_excludes_model_recipe_paths": "PASSED",
+    "forced_mosaic_mixup_cutmix_cropping_schedule": "PASSED",
+    "frozen_reference_ap_matching_counts_empty_images": "PASSED",
+    "cpu_fp32_two_native_detection_optimizer_updates": {
+      "status": "PASSED",
+      "updates": 2
+    },
+    "nc1_pretrained_inheritance_and_cache_isolation": "PASSED",
+    "locked_native_auto_requested_effective": {
+      "26400": {
+        "class": "SGD",
+        "lr": 0.01,
+        "momentum_or_betas": 0.9,
+        "warmup_bias_lr": 0.0
+      },
+      "20": {
+        "class": "AdamW",
+        "lr": 0.002,
+        "momentum_or_betas": [
+          0.9,
+          0.999
+        ],
+        "warmup_bias_lr": 0.0
+      }
+    },
+    "native_adapter_format_close_worker_seed": "PASSED",
+    "fresh_process_native_fp32_fuse_nms_complete_exports": "PASSED",
+    "core_package_members_and_strict_bytes": {
+      "status": "PASSED",
+      "bytes": 98815
+    },
+    "cuda_native_amp_updates": "PASSED",
+    "private_read_only_jpeg_ownership": "PASSED: both native verification paths reject a corrupt JPEG with its original byte hash preserved",
+    "lifecycle_start_end_history": "PASSED",
+    "lint": "Ruff 0.14.0 passed",
+    "actual_import_preflight_synthetic": "PASSED"
+  },
+  "status": "PASSED",
+  "scope": "Finite synthetic local development checks only; no server connection, formal training or full original test.",
+  "backend": {
+    "tag": "v8.3.0",
+    "commit": "6e43d1e1e5db72afbf686dee6745669bcb124b0a",
+    "version": "8.3.0"
+  },
+  "environment": {
+    "sys_executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
+    "python": "3.11.15",
+    "torch": "2.7.1+cu118",
+    "torchvision": "0.22.1+cu118",
+    "cuda_runtime": "11.8",
+    "gpu": "NVIDIA GeForce RTX 2060",
+    "backend_version": "8.3.0",
+    "backend_file": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov8n-b19\\experiments\\comparison\\yolov8n\\vendor\\ultralytics_source\\ultralytics\\__init__.py",
+    "host": "DESKTOP-MERU65D"
+  },
+  "unverified": [
+    "Server Python3.12/Torch2.8/CUDA12.8/RTX4090",
+    "Actual server dataset/B19 args and four historical checkpoints",
+    "Historical Albumentations availability and test P/R threshold convention",
+    "YOLOv5 cross-backend shared hashes (no corresponding branch found)",
+    "Formal resume of an interrupted server run",
+    "Uncontended GPU benchmark and eight-model final aggregate bytes"
+  ],
+  "pretrained": {
+    "release": "https://github.com/ultralytics/assets/releases/tag/v8.3.0",
+    "api": "https://api.github.com/repos/ultralytics/assets/releases/tags/v8.3.0",
+    "asset_id": 195719301,
+    "name": "yolov8n.pt",
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt",
+    "size": 6549796,
+    "official_digest": null,
+    "sha256": "f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36",
+    "sha256_authority": "locally computed, not officially published",
+    "release_verified_at_utc": "2026-10-14T16:30:03Z"
+  },
+  "inheritance": {
+    "matching_state_keys": 313,
+    "reinitialized_keys": 78,
+    "verified_equal": 313,
+    "nc": 1,
+    "reg_max": 16,
+    "classification_branch": [
+      "Sequential",
+      "Sequential",
+      "DWConv",
+      "Conv2d",
+      "BatchNorm2d",
+      "SiLU",
+      "Conv",
+      "Conv2d",
+      "BatchNorm2d",
+      "Sequential",
+      "DWConv",
+      "Conv2d",
+      "BatchNorm2d",
+      "Conv",
+      "Conv2d",
+      "BatchNorm2d",
+      "Conv2d"
+    ]
+  },
+  "parameters_smoke": {
+    "unfused": 2690403,
+    "inference": 2684563,
+    "unfused_M": 2.690403,
+    "inference_M": 2.684563
+  },
+  "formal_results": "NOT_STARTED; no accuracy/FPS claimed for the paper"
+}
