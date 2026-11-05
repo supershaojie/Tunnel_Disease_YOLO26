@@ -1,0 +1,15 @@
+# Install inside --system-site-packages venv; retain host Torch/Torchvision.
+scipy==1.17.1
+numpy==2.4.4
+PyYAML==6.0.3
+requests==2.34.2
+psutil==7.2.2
+Pillow==12.2.0
+opencv-python==5.0.0.93
+matplotlib==3.11.0
+tqdm==4.66.5
+pandas==2.3.3
+seaborn==0.13.2
+py-cpuinfo==9.0.0
+ultralytics-thop==2.0.20
+huggingface-hub==0.23.2

@@ -1,0 +1,92 @@
+{
+  "formal_server_training": "NOT_STARTED",
+  "server_environment": "UNVERIFIED Python3.12.3/Torch2.8.0+cu128/RTX4090",
+  "scope": "Bounded development only; four actual optimizer updates total (two at128, two at640); no full test evaluation or formal FPS",
+  "environment": {
+    "sys_executable": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\.venv-y13n\\Scripts\\python.exe",
+    "python": "3.11.15",
+    "torch": "2.7.1+cu118",
+    "torchvision": "0.22.1+cu118",
+    "cuda_runtime": "11.8",
+    "gpu": "NVIDIA GeForce RTX 2060",
+    "backend_version": "8.3.63",
+    "backend_file": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\experiments\\comparison\\yolov13n\\vendor\\ultralytics_source\\ultralytics\\__init__.py",
+    "host": "DESKTOP-MERU65D"
+  },
+  "pretrained": {
+    "url": "https://github.com/iMoonLab/yolov13/releases/download/yolov13/yolov13n.pt",
+    "size": 10570688,
+    "sha256": "6653035017b0f111f80ec11ed914874ea85699b104aeac1e46e517d16889d6b7",
+    "official_digest": "sha256:6653035017b0f111f80ec11ed914874ea85699b104aeac1e46e517d16889d6b7",
+    "release": "https://github.com/iMoonLab/yolov13/releases/tag/yolov13",
+    "sha256_authority": "computed bytes match GitHub release asset digest"
+  },
+  "model": {
+    "scale": "n",
+    "n_scale": [0.5, 0.25, 1024],
+    "nc": 1,
+    "inherited_keys": 847,
+    "verified_equal_keys": 847,
+    "reinitialized_keys": 51,
+    "graph": "actual module/from edges checked against locked author YAML"
+  },
+  "training": {
+    "real_images": 4,
+    "val_images": 2,
+    "imgsz": 640,
+    "batch": 2,
+    "epochs": 1,
+    "optimizer": "SGD",
+    "native_AMP_probe": "PASSED",
+    "amp_effective": true,
+    "EMA_updates": 2,
+    "loss_items": [4.886884689331055, 9.259956359863281, 3.1126747131347656],
+    "run": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\.development\\real_smoke\\runs\\bounded_amp640"
+  },
+  "fresh_process_reload": {
+    "status": "PASSED",
+    "weight": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\.development\\real_smoke\\runs\\bounded_amp640\\weights\\best.pt",
+    "weight_sha256": "311f1e1e425e9235fe0bfedabc7ce931e40d33ce4cf73cebc3af4af861410af2",
+    "evaluation": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\.development\\real_smoke\\runs\\bounded_amp640\\evaluate_val",
+    "images": 2,
+    "geometry": {
+      "input_shapes": [[2, 3, 384, 672]],
+      "rect": true,
+      "letterbox": {
+        "auto": false,
+        "scaleup": false,
+        "center": true,
+        "padding_value": 114,
+        "stride": 32,
+        "rectangle_pad": 0.5
+      },
+      "decoded": "native yolov13n DFL, class score, no objectness multiplication",
+      "NMS_iou": 0.7,
+      "max_det": 300,
+      "fuse_requested": true,
+      "fused_actual": false,
+      "model_input_dtypes": [["torch.float32", "torch.float32"]],
+      "TTA": false
+    },
+    "parameters": {
+      "unfused": 2460106,
+      "inference": 2448090
+    },
+    "output_identity": "SMOKE"
+  },
+  "package": {
+    "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-yolov13n-b19\\.development\\real_smoke\\yolov13n_smoke_core.zip",
+    "bytes": 727193,
+    "sha256": "b74e3bb58e7a432430fdc9759e4ef215edac0d0984be264009dc5b3e1f62f5f8",
+    "zip_integrity": "PASSED; weights excluded"
+  },
+  "checks": {
+    "scoped_ruff": "PASSED",
+    "v8_default_dry_run_unchanged": "PASSED except backend import path",
+    "real_B19_pipeline": "reused frozen provider; original extra native augmentation replaced",
+    "CUDA_AMP": "PASSED on local RTX2060 only",
+    "FP32_native_fuse_NMS": "PASSED fresh process",
+    "full_test": "NOT_RUN",
+    "fair_FPS": "NOT_RUN"
+  }
+}
