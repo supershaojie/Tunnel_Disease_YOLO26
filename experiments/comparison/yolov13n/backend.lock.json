@@ -341,10 +341,6 @@
   "files": {
     "LICENSE": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef",
     "pyproject.toml": "d107e655fde35a4b4e4dac765111fb481f8948a33abea7a9dbb95472f68dbc4d",
-    ".ruff_cache/.gitignore": "9e3a60f1e6ec4ae60215c11d54b171392745ec25e9dded433d5bd921363af316",
-    ".ruff_cache/CACHEDIR.TAG": "5953156d7e0c564a427251316eaf26f8870e6483ae2197f916b630e4f93e31ae",
-    ".ruff_cache/0.14.0/11123659606752414954": "8f75d5306b371fe8f296ffb4037b11ac87169ddf41167de023764c7a767cc80f",
-    ".ruff_cache/0.14.0/17218857173654486140": "bde5bc11f7bf02b7a64060c2200e5b5dc0772d979b1d2b27889a0bc6008134de",
     "ultralytics/__init__.py": "b0410e123af901b4486a79a29128fd5fbee8b01ae38414246ccff26405098c5c",
     "ultralytics/assets/bus.jpg": "c02019c4979c191eb739ddd944445ef408dad5679acab6fd520ef9d434bfbc63",
     "ultralytics/assets/zidane.jpg": "16d73869e3267a7d4ed00de8e860833bd1657c1b252e94c0c348277adc7b6edb",
