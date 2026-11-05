@@ -1,0 +1,12 @@
+{
+  "name": "yolo11n",
+  "pretrained": {
+    "release": "https://github.com/ultralytics/assets/releases/tag/v8.3.0",
+    "api": "https://api.github.com/repos/ultralytics/assets/releases/tags/v8.3.0",
+    "asset_id": 196201276,
+    "name": "yolo11n.pt",
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n.pt",
+    "size": 5613764,
+    "official_digest": null
+  }
+}

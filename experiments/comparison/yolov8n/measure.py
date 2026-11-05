@@ -43,9 +43,9 @@ def benchmark(cfg, args):
         model = backend.YOLO(str(captured_weight), task="detect").model
         verify_model(model)
         unfused = sum(p.numel() for p in model.parameters())
-        original = deepcopy(model).float().cpu()
         if setting["fuse"]:
             model.fuse()
+        original = deepcopy(model).float().cpu()
         model.to(device).eval()
         model.half() if setting["half"] else model.float()
         inference = sum(p.numel() for p in model.parameters())
@@ -63,8 +63,8 @@ def benchmark(cfg, args):
                 "MACs": macs,
                 "FLOPs": 2 * macs,
                 "convention": "1 MAC = 2 FLOPs",
-                "structure": "unfused nc=1",
-                "not_covered": ["functional concat/add", "native DFL/TAL tensor arithmetic", "NMS"],
+                "structure": "fused nc=1" if setting["fuse"] else "unfused nc=1",
+                "not_covered": ["functional concat/add and attention matmul/softmax", "native DFL arithmetic", "NMS"],
                 "coverage_note": "THOP hook-based partial count, not a complete operation census",
             }
         except ImportError:
@@ -100,7 +100,8 @@ def benchmark(cfg, args):
             query = subprocess.run(
                 ["nvidia-smi", "--query-compute-apps=pid,process_name,used_memory", "--format=csv,noheader,nounits"],
                 capture_output=True,
-                text=True,
+                encoding="utf-8",
+                errors="replace",
                 check=False,
             )
             contention = [

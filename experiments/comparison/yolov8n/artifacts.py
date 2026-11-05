@@ -7,7 +7,7 @@ import json
 import zipfile
 from pathlib import Path
 
-from common import HERE, file_hash, status, write_json
+from common import HERE, MODEL, file_hash, status, write_json
 
 
 def write_training_csv(path, results):
@@ -280,7 +280,7 @@ def package(cfg, args):
             payloads[prefix + "logs/" + p.name + ".gz"] = gzip.compress(p.read_bytes(), mtime=0)
         if "benchmark/benchmark.json" not in members:
             payloads[prefix + "benchmark/benchmark.json"] = json.dumps(benchmark_status).encode()
-    output = Path(args.output or Path(directories[0]).parent / "yolov8n_core.zip")
+    output = Path(args.output or Path(directories[0]).parent / f"{MODEL}_core.zip")
     if output.exists():
         raise FileExistsError(f"Package output exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)

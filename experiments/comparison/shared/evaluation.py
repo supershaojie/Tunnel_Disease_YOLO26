@@ -67,6 +67,15 @@ def compute(records, split, frozen_threshold=None, collection_conf=0.001):
         "confidence": float(x[index]),
         "method": "B19 interpolated curves, smoothed mean F1 maximum; diagnostic only on test",
     }
+    curve_peaks = {
+        "method": "Independent maxima of B19 mean P/R/F1 curves; separate confidences, no joint TP/FP/FN",
+        "confidence": {},
+    }
+    for metric, curve in [("P", pc), ("R", rc), ("F1", fc)]:
+        values = curve.mean(0) if have_gt else None
+        peak_index = int(values.argmax()) if have_gt else 0
+        curve_peaks[metric] = float(values[peak_index]) if have_gt else None
+        curve_peaks["confidence"][metric] = float(x[peak_index]) if have_gt else None
     i75 = int(torch.where(torch.isclose(IOUV, torch.tensor(0.75)))[0].item())
     metrics = {
         "units": "fraction",
@@ -79,6 +88,7 @@ def compute(records, split, frozen_threshold=None, collection_conf=0.001):
         "AP75": float(all_ap[:, i75].mean()) if have_gt else None,
         "mAP50-95": float(all_ap.mean()) if have_gt else None,
         "legacy_curve_peak": peak,
+        "curve_peaks": curve_peaks,
         "fixed_confidence": {
             str(c): counts(records, c)
             if c >= collection_conf
@@ -151,13 +161,20 @@ def summary(path, metrics):
         "P",
         "R",
         "F1",
+        "curve_peak_P",
+        "curve_peak_R",
+        "curve_peak_F1",
         "AP50",
         "AP75",
         "mAP50-95",
         "protocol_sha256",
         "weight_sha256",
     ]
-    values = {**metrics, **{k: counts_at_val.get(k) for k in ["P", "R", "F1"]}}
+    values = {
+        **metrics,
+        **{k: counts_at_val.get(k) for k in ["P", "R", "F1"]},
+        **{"curve_peak_" + k: metrics.get("curve_peaks", {}).get(k) for k in ["P", "R", "F1"]},
+    }
     with Path(path).open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
