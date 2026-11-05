@@ -118,6 +118,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
+/.venv-y13n/
+/.development/
 .idea
 env/
 venv/

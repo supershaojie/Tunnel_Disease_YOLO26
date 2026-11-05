@@ -1,0 +1,4 @@
+cache/
+outputs/
+*.zip
+!vendor/ultralytics_source/ultralytics/assets/*.jpg

@@ -139,9 +139,9 @@ def save_predictions(directory, records):
     )
 
 
-def summary(path, metrics):
-    """Write a stable cross-model numeric summary with unambiguous units."""
-    counts_at_val = metrics.get("val_frozen") or {}
+def summary(path, metrics, rule="val_frozen"):
+    """Write a numeric summary using an explicit P/R/F1 statistic and unambiguous units."""
+    selected = metrics.get(rule) or {}
     fields = [
         "model",
         "split",
@@ -156,8 +156,9 @@ def summary(path, metrics):
         "mAP50-95",
         "protocol_sha256",
         "weight_sha256",
+        "P_R_F1_rule",
     ]
-    values = {**metrics, **{k: counts_at_val.get(k) for k in ["P", "R", "F1"]}}
+    values = {**metrics, **{k: selected.get(k) for k in ["P", "R", "F1"]}, "P_R_F1_rule": rule}
     with Path(path).open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
         writer.writeheader()
