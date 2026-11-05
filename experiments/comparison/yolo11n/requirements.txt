@@ -1,0 +1,17 @@
+# Reuse system-site-packages Torch/Torchvision; do not install ultralytics.
+# Existing scientific packages satisfying these floors are retained by pip.
+numpy>=1.26.4
+matplotlib>=3.3.0
+opencv-python>=4.6.0
+pillow>=7.1.2
+PyYAML>=5.3.1
+requests>=2.23.0
+psutil
+scipy==1.17.1
+tqdm==4.66.5
+pandas==2.3.3
+seaborn==0.13.2
+pytz==2025.2
+tzdata==2025.2
+py-cpuinfo==9.0.0
+ultralytics-thop==2.0.20
