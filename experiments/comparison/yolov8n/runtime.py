@@ -3,14 +3,15 @@
 import hashlib
 import json
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
 
 from common import (
     HERE,
+    MODEL,
     SHARED,
+    VENDOR,
     bootstrap,
     digest,
     environment,
@@ -28,7 +29,7 @@ from common import (
 
 def weight_path(cfg):
     """Choose an explicit weight or the verified per-model official cache."""
-    return Path(cfg["weights"] or Path(cfg["pretrained_cache"]) / "yolov8n.pt").resolve()
+    return Path(cfg["weights"] or Path(cfg["pretrained_cache"]) / f"{MODEL}.pt").resolve()
 
 
 def verified_pretrained(cfg):
@@ -128,7 +129,7 @@ def preflight(cfg, args):
             "status": "DRY_RUN",
             "formal_training": "NOT_STARTED",
             "backend_sha": lock["commit"],
-            "expected_import_path": str(HERE / "vendor/ultralytics_source/ultralytics/__init__.py"),
+            "expected_import_path": str(VENDOR / "ultralytics/__init__.py"),
             "data_status": "EXISTS_NOT_SCANNED" if Path(cfg["data"]).is_file() else "UNVERIFIED_MISSING",
             "weights_status": "EXISTS_NOT_LOADED" if weight_path(cfg).is_file() else "UNVERIFIED_NOT_PREPARED",
             "baseline_args_status": cfg["_provenance"]["baseline_args_status"],
@@ -172,7 +173,7 @@ def checkpoint_info(path, snapshot=None):
     if not manifest_path.is_file():
         raise ValueError(f"Checkpoint has no experiment provenance: {path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if manifest.get("backend_sha") != verify_backend()["commit"] or manifest.get("model") != "yolov8n":
+    if manifest.get("backend_sha") != verify_backend()["commit"] or manifest.get("model") != MODEL:
         raise ValueError("Checkpoint belongs to another model/backend")
     content = path.read_bytes()
     if manifest["weights"].get(path.name) != hashlib.sha256(content).hexdigest():
@@ -229,6 +230,7 @@ def train(cfg, args):
 
         data_paths = backend_paths(dataset, Path(cfg["cache_dir"]) / ("splits-" + data_report["data_sha256"]))
         public = protocol(cfg, data_report["data_sha256"])
+        lock = verify_backend()
         ComparisonTrainer.context = {
             "config": cfg,
             "dataset": data_paths,
@@ -240,7 +242,8 @@ def train(cfg, args):
             "augmentation_close": checkpoint["training_provenance"][Path(resumed).name].get("augmentation_close")
             if resumed
             else None,
-            "backend_sha": verify_backend()["commit"],
+            "backend_sha": lock["commit"],
+            "backend_lock": lock,
             "smoke": cfg["_execution_kind"] == "SMOKE",
         }
         if not resumed:
@@ -251,7 +254,7 @@ def train(cfg, args):
             write_json(directory / "requested_config.json", cfg["train"])
             write_json(directory / "data_manifest.json", data_report)
             write_json(directory / "protocol.json", public)
-            shutil.copyfile(HERE / "backend.lock.json", directory / "backend.lock.json")
+            write_json(directory / "backend.lock.json", lock)
         else:
             write_json(directory / ("resume_request_" + str(os.getpid()) + ".json"), cfg)
         native = {k: v for k, v in cfg["train"].items() if k != "betas"}
@@ -374,7 +377,7 @@ def evaluate(cfg, args):
             threshold = val["threshold_selection"]["confidence"]
         metrics, curves = evaluation.compute(validator.records, split, threshold, collection_conf=cfg["eval"]["conf"])
         metrics.update(
-            model="yolov8n",
+            model=MODEL,
             weight=str(Path(cfg["weights"]).resolve()),
             weight_sha256=weight_sha,
             **{k: public[k] for k in ["protocol_sha256", "run_config_sha256"]},

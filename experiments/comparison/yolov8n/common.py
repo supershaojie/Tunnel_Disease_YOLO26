@@ -12,7 +12,8 @@ from pathlib import Path
 
 import yaml
 
-HERE = Path(__file__).resolve().parent
+IMPL = HERE = Path(__file__).resolve().parent
+MODEL = HERE.name
 ROOT = HERE.parents[2]
 VENDOR = HERE / "vendor/ultralytics_source"
 SHARED = HERE.parent / "shared"
@@ -52,6 +53,13 @@ PROB_KEYS = (
     "copy_paste",
 )
 OPTIMIZERS = ("auto", "SGD", "Adam", "Adamax", "AdamW", "NAdam", "RAdam", "RMSProp")
+
+
+def configure(experiment_dir):
+    """Select an experiment's identity and configuration before importing runtime modules."""
+    global HERE, MODEL
+    HERE = Path(experiment_dir).resolve()
+    MODEL = HERE.name
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -119,18 +127,21 @@ class UniqueStore(argparse.Action):
 
 def verify_backend():
     """Reject a modified vendor tree before trusted checkpoint loading."""
-    lock = json.loads((HERE / "backend.lock.json").read_text(encoding="utf-8"))
+    lock = json.loads((IMPL / "backend.lock.json").read_text(encoding="utf-8"))
     bad = [
         name for name, sha in lock["files"].items() if not (VENDOR / name).is_file() or file_hash(VENDOR / name) != sha
     ]
     if bad:
         raise ValueError(f"Backend lock mismatch: {bad[:8]}")
+    if HERE != IMPL:
+        identity = json.loads((HERE / "backend.lock.json").read_text(encoding="utf-8"))
+        lock.update({key: identity[key] for key in ["name", "pretrained"]})
     return lock
 
 
 def parser(mode):
     """Build the common supported command interface without importing Torch."""
-    p = argparse.ArgumentParser(description=f"Locked YOLOv8n comparison: {mode}")
+    p = argparse.ArgumentParser(description=f"Locked {MODEL} comparison: {mode}")
     p.add_argument("--config", action=UniqueStore, default=str(HERE / "configs/default.yaml"))
     for option in ("data", "weights", "baseline-args", "project", "name", "device", "cache-dir", "pretrained-cache"):
         p.add_argument("--" + option, action=UniqueStore)
@@ -229,7 +240,7 @@ def resolve(args):
     for key, value in explicit.items():
         assign(key, value, "CLI")
     if cfg["protocol"] != "comparison-b19-v1" or cfg["backend"] != preset["backend"]:
-        raise ValueError("This entry requires comparison-b19-v1 and locked YOLOv8n v8.3.0")
+        raise ValueError(f"This entry requires comparison-b19-v1 and locked {MODEL} v8.3.0")
     requested = deepcopy(official)
     for key in official:
         sources.setdefault("train." + key, "public_preset" if key in preset["train"] else "locked_official_default")
@@ -294,7 +305,7 @@ def resolve(args):
         if baseline_verified:
             baseline_values = read_yaml(baseline)
         elif args.dry_run:
-            baseline_values = read_yaml(HERE / "reference/b19_archived_args.yaml")
+            baseline_values = read_yaml(IMPL / "reference/b19_archived_args.yaml")
         else:
             raise FileNotFoundError(f"B19 args missing: {baseline}; pass --baseline-args")
         missing = set(AUG_KEYS) - set(baseline_values)
@@ -368,7 +379,7 @@ def resolve(args):
         raise ValueError("package.max_bytes must be positive integer")
     cfg["name"] = (
         cfg["name"]
-        or f"compare_yolov8n_b19_e{requested['epochs']}_i{requested['imgsz']}_b{requested['batch']}_s{requested['seed']}"
+        or f"compare_{MODEL}_b19_e{requested['epochs']}_i{requested['imgsz']}_b{requested['batch']}_s{requested['seed']}"
     )
     cfg["train"] = requested
     cfg["augment"]["effective"] = augment
@@ -404,7 +415,7 @@ def protocol(cfg, data_hash, training_augmentation=None):
         "protocol_sha256": digest(public),
         "run_config_sha256": digest(cfg),
         "augment_core_sha256": augmentation["implementation"],
-        "adapter_sha256": digest({name: file_hash(HERE / name) for name in ["adapter.py", "runtime.py"]}),
+        "adapter_sha256": digest({name: file_hash(IMPL / name) for name in ["adapter.py", "runtime.py"]}),
     }
 
 
@@ -466,7 +477,7 @@ def bootstrap(cfg, pretrained=None, data_identity=None):
     os.environ["YOLO_AUTOINSTALL"] = "false"
     os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
     os.environ["YOLO_CONFIG_DIR"] = str(cache / "settings")
-    os.environ["YOLO_COMPARISON_CACHE_DIR"] = str(cache / "yolov8n")
+    os.environ["YOLO_COMPARISON_CACHE_DIR"] = str(cache / MODEL)
     os.environ["YOLO_COMPARISON_DATA_IDENTITY"] = data_identity or "no_dataset"
     if pretrained is not None:
         os.environ["YOLO_COMPARISON_PRETRAINED"] = str(Path(pretrained).resolve())

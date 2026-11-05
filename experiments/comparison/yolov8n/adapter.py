@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
-from common import AUG_KEYS, HERE, environment, file_hash, protocol, write_json
+from common import AUG_KEYS, MODEL, VENDOR, environment, file_hash, protocol, read_yaml, write_json
 from shared import evaluation, provider
 from shared.b19.instance import Instances as B19Instances
 from ultralytics.data.augment import Albumentations, Compose, Format, LetterBox
@@ -332,7 +332,7 @@ class ComparisonTrainer(DetectionTrainer):
             "protocol": deepcopy(self.context["protocol"]),
             "ancestry": deepcopy(self.context["resume_provenance"]),
             "augmentation_close": deepcopy(self.context["augmentation_close"]),
-            "backend_lock": json.loads((HERE / "backend.lock.json").read_text(encoding="utf-8")),
+            "backend_lock": self.context["backend_lock"],
             **{
                 name[:-5]: json.loads((self.save_dir / (prefix + name)).read_text(encoding="utf-8"))
                 for name in [
@@ -355,7 +355,7 @@ class ComparisonTrainer(DetectionTrainer):
         write_json(
             manifest_path,
             {
-                "model": "yolov8n",
+                "model": MODEL,
                 "backend_sha": self.context["backend_sha"],
                 "data_sha256": self.context["data_report"]["data_sha256"],
                 "protocol_sha256": self.context["protocol"]["protocol_sha256"],
@@ -419,15 +419,27 @@ def verify_model(model, nc=1):
     """Reject other families/tasks and fused formal training initialization."""
     modules = [m.__class__.__name__ for m in model.model]
     head = model.model[-1]
-    if "C2f" not in modules or "SPPF" not in modules or modules[-1] != "Detect":
-        raise ValueError(f"Not an official YOLOv8 detection structure: {modules}")
-    if head.nc != nc or head.reg_max != 16 or getattr(head, "end2end", False):
-        raise ValueError("Expected native v8 Detect nc=1 reg_max=16 without end2end")
-    nano = model.yaml.get("scale") == "n" or (
-        model.yaml.get("depth_multiple") == 0.33 and model.yaml.get("width_multiple") == 0.25
-    )
+    if modules[-1] != "Detect" or head.nc != nc or head.reg_max != 16 or getattr(head, "end2end", False):
+        raise ValueError(f"Expected native Detect nc={nc} reg_max=16 without end2end")
+    if MODEL == "yolo11n":
+        official = read_yaml(VENDOR / "ultralytics/cfg/models/11/yolo11.yaml")
+        expected = [row[2].split(".")[-1] for row in official["backbone"] + official["head"]]
+        if modules != expected:
+            raise ValueError(f"Not the official YOLO11 detection structure: {modules}")
+        nano = (
+            model.yaml.get("scale") == "n"
+            and list(model.yaml.get("scales", {}).get("n", [])) == [0.5, 0.25, 1024]
+            and [model.model[i].conv.out_channels for i in [0, 1, 3, 5, 7]] == [16, 32, 64, 128, 256]
+            and all(len(m.m) == 1 for m in model.model if m.__class__.__name__ in ["C3k2", "C2PSA"])
+        )
+    else:
+        if "C2f" not in modules or "SPPF" not in modules or modules[-1] != "Detect":
+            raise ValueError(f"Not an official YOLOv8 detection structure: {modules}")
+        nano = model.yaml.get("scale") == "n" or (
+            model.yaml.get("depth_multiple") == 0.33 and model.yaml.get("width_multiple") == 0.25
+        )
     if not nano:
-        raise ValueError("Expected official YOLOv8n nano scale")
+        raise ValueError(f"Expected official {MODEL} nano scale")
     return modules
 
 
