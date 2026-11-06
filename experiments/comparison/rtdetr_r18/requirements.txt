@@ -1,0 +1,12 @@
+# Reuse host Torch/Torchvision through venv --system-site-packages.
+# Supplemental runtime dependencies only; do not install another ultralytics package.
+numpy>=1.23.0
+matplotlib>=3.3.0
+opencv-python>=4.6.0
+pillow>=7.1.2
+pyyaml>=5.3.1
+requests>=2.23.0
+scipy>=1.4.1
+psutil>=5.8.0
+polars>=0.20.0
+ultralytics-thop>=2.0.18
