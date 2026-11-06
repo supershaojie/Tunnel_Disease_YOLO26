@@ -1,0 +1,87 @@
+{
+  "status": "PASSED_LIMITED_LOCAL_VALIDATION",
+  "source_commit": "67c3078e54a657fd96d65fee657a75fbb1dae0d6",
+  "base_commit": "12eeaf2b58bb74302c93e97bc1a9fc5219492079",
+  "environment": {
+    "sys_executable": "D:\\miniconda3\\envs\\yolo26\\python.exe",
+    "python": "3.11.15",
+    "torch": "2.7.1+cu118",
+    "torchvision": "0.22.1+cu118",
+    "cuda_runtime": "11.8",
+    "gpu": "NVIDIA GeForce RTX 2060",
+    "backend_version": "8.4.21",
+    "backend_file": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-rtdetr-r18-b19\\experiments\\comparison\\rtdetr_r18\\vendor\\ultralytics_source\\ultralytics\\__init__.py",
+    "host": "DESKTOP-MERU65D"
+  },
+  "initialization": {
+    "sha256": "fe8501bbcc1d1d5b366bdb10fd47d0fbb91edff1f9558f39e31683a550bcad8e",
+    "epoch": -1,
+    "source_nc": 80,
+    "target_nc": 1,
+    "common_state_tensors_loaded": 524,
+    "target_state_tensors": 533,
+    "class_adapted_tensors": 9,
+    "all_common_states_equal": true
+  },
+  "real_data": {
+    "train_images": 4,
+    "val_images": 2,
+    "test_images": 2,
+    "source": "existing Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42 splits; private copied smoke subset"
+  },
+  "updates": {
+    "imgsz": 256,
+    "batch": 2,
+    "batches": 2,
+    "amp": true,
+    "loss_items": [
+      [1.8445066213607788, 8.064737319946289, 0.5262129902839661],
+      [2.013674259185791, 4.371910572052002, 0.634913444519043]
+    ],
+    "augmentation": "production shared B19 provider, native RTDETR loss and optimizer"
+  },
+  "fresh_process_reload": {
+    "checkpoint": "saved and native-stripped best.pt",
+    "evaluation_imgsz": 640,
+    "observed_input_shapes": [[2, 3, 384, 672]],
+    "FP32": true,
+    "no_NMS": true,
+    "gt_roundtrip_max_error_px": 0.00012220852477184962
+  },
+  "complexity": {
+    "status": "MEASURED_PARTIAL",
+    "profiler": "thop",
+    "version": "2.0.20",
+    "input_shape": [1, 3, 640, 640],
+    "nc": 1,
+    "structure": "native fused inference model",
+    "fused_actual": false,
+    "parameters": 19877716,
+    "parameters_M": 19.877716,
+    "MACs": 28582886400.0,
+    "FLOPs": 57165772800.0,
+    "convention": "1 MAC = 2 FLOPs",
+    "not_covered": [
+      "functional attention matmul/softmax",
+      "deformable attention grid_sample",
+      "functional concat/add",
+      "query box decoding and filtering"
+    ],
+    "coverage_note": "THOP hook-based partial count; unsupported functional operators are not counted as zero-cost claims"
+  },
+  "package": {
+    "path": "E:\\PycharmProjects\\Tunnel_Disease_YOLO26\\.worktrees\\compare-rtdetr-r18-b19\\experiments\\comparison\\rtdetr_r18\\cache\\runs\\smoke3\\rtdetr_r18_smoke_core.zip",
+    "bytes": 663256,
+    "contents": "complete mini-test predictions/GT/index, curves, provenance and previews; no weights/vendor/dataset/environment"
+  },
+  "not_run": [
+    "server Python3.12/Torch2.8/cu128/RTX4090 execution",
+    "formal 200-epoch training",
+    "full val/test evaluation",
+    "formal FPS"
+  ],
+  "limitations": [
+    "native deterministic=True uses warn_only; CUDA grid_sample backward is not deterministic",
+    "native fuse() retains ResNet ConvNormLayer BatchNorm; is_fused() reports false; operation counts are partial THOP counts"
+  ]
+}

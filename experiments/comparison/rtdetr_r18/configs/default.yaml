@@ -1,0 +1,63 @@
+protocol: comparison-b19-v1
+backend:
+  name: rtdetr_r18
+  upstream_tag: LCBR-C2
+reference:
+  baseline_args: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/detect/b19_y26n_diverse5x_e200_i640_b32_musgd_b8b9hybrid_s42/args.yaml
+data: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/datasets/Tunnel_Crack_AugFirst_Diverse5x_RandomSplit_7_2_1_seed42/data.yaml
+weights: null
+cache_dir: experiments/comparison/rtdetr_r18/cache
+pretrained_cache: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/weights/pretrained
+project: /root/autodl-tmp/projects/Tunnel_Disease_YOLO26/runs/comparison/rtdetr_r18
+name: compare_rtdetr_r18_b19_e200_i640_b32_adamw_s42
+train:
+  epochs: 200
+  patience: 50
+  imgsz: 640
+  batch: 32
+  workers: 8
+  device: "0"
+  seed: 42
+  amp: true
+  deterministic: true
+  optimizer: AdamW
+  lr0: 0.0005
+  lrf: 0.01
+  momentum: 0.937
+  weight_decay: 0.0001
+  cos_lr: true
+  warmup_epochs: 5.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+  nbs: 64
+  cache: false
+  rect: false
+  resume: false
+  freeze: null
+  multi_scale: 0.0
+  plots: false
+augment:
+  profile: b19
+  overrides: {}
+eval:
+  split: test
+  batch: 32
+  half: false
+  conf: 0.001
+  iou: 0.7 # Common schema only; no NMS is executed or reported as effective.
+  max_det: 300
+  rect: true
+  augment: false
+  fuse: true
+  workers: 8
+  display_conf: 0.25
+  fixed_images: null
+benchmark:
+  imgsz: 640
+  batch: 1
+  half: false
+  warmup: 20
+  iterations: 100
+  fuse: true
+package:
+  max_bytes: 100000000

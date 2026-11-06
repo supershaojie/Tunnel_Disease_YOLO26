@@ -268,7 +268,7 @@ def resolve(args):
         raise ValueError("Main comparison requires val=true, fraction=1, original class mapping and all images")
     if not requested["save"] or requested["pretrained"] is not True or requested["split"] != "val":
         raise ValueError("Main training requires save=true, official pretrained=true and val-only epoch selection")
-    if requested["save_hybrid"]:
+    if requested.get("save_hybrid"):
         raise ValueError("save_hybrid injects GT boxes into validation predictions and invalidates comparison metrics")
     for key in ["lr0", "lrf", "weight_decay", "warmup_epochs", "warmup_bias_lr", "box", "cls", "dfl"]:
         if type(requested[key]) not in [int, float] or requested[key] < 0:
@@ -469,7 +469,7 @@ def bootstrap(cfg, pretrained=None, data_identity=None):
     if "ultralytics" in sys.modules:
         raise RuntimeError("Use a fresh Python process; do not mix named ultralytics packages")
     cache = Path(cfg["cache_dir"]).resolve()
-    cache.mkdir(parents=True, exist_ok=True)
+    (cache / "settings").mkdir(parents=True, exist_ok=True)
     os.environ["YOLO_AUTOINSTALL"] = "false"
     os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
     os.environ["YOLO_CONFIG_DIR"] = str(cache / "settings")
